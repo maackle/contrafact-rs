@@ -1,10 +1,24 @@
 use arbitrary::*;
 use derive_more::From;
-use itertools;
+use std::fmt::Debug;
 
-pub trait Fact<O> {
-    fn check(&mut self, obj: &O);
-    fn mutate(&mut self, obj: &mut O);
+#[derive(Clone)]
+pub enum Pred<T: Clone + Eq + Debug> {
+    Equals(T),
+}
+
+impl<T: Clone + Eq + Debug> Pred<T> {
+    pub fn check(&self, obj: &T) {
+        match self {
+            Self::Equals(t) => assert_eq!(obj, t),
+        }
+    }
+
+    pub fn mutate(&self, obj: &mut T) {
+        match self {
+            Self::Equals(t) => *obj = t.clone(),
+        }
+    }
 }
 
 #[derive(From)]
@@ -14,31 +28,85 @@ impl<O> FactSet<O> {
     pub fn new(set: Vec<Box<dyn Fact<O>>>) -> Self {
         Self(set)
     }
+}
 
-    fn check(&mut self, obj: &O) {
-        self.0.iter_mut().for_each(|c| c.check(obj))
-    }
-
-    fn mutate(&mut self, obj: &mut O) {
-        self.0.iter_mut().for_each(|c| c.mutate(obj))
+impl<O> Fact<O> for FactSet<O> {
+    fn constraints(&mut self) -> Constraints<O> {
+        let mut constraints = Constraints::new();
+        for f in self.0.iter_mut() {
+            constraints.extend(f.constraints());
+        }
+        constraints
     }
 }
 
-pub fn check_seq<'a, O>(seq: &[O], mut constraints: FactSet<O>)
+pub trait Fact<O> {
+    fn constraints(&mut self) -> Constraints<O>;
+}
+
+pub struct Constraints<O> {
+    checks: Vec<Box<dyn Fn(&mut O)>>,
+    mutations: Vec<Box<dyn Fn(&mut O)>>,
+}
+
+impl<'a, O> Constraints<O>
 where
-    O: Arbitrary<'a>,
+    Self: 'a,
 {
-    seq.into_iter().for_each(|obj| constraints.check(obj))
+    pub fn new() -> Self {
+        Self {
+            checks: Vec::new(),
+            mutations: Vec::new(),
+        }
+    }
+
+    pub fn add<T, G>(&mut self, get: G, pred: Pred<T>)
+    where
+        T: 'static + Clone + Eq + Debug,
+        G: 'static + Clone + Fn(&mut O) -> &mut T,
+    {
+        let g = get.clone();
+        let p = pred.clone();
+        self.checks.push(Box::new(move |obj| {
+            let t = g(obj);
+            p.check(t);
+        }));
+        self.mutations.push(Box::new(move |obj| {
+            let t = get(obj);
+            pred.mutate(t)
+        }));
+    }
+
+    pub fn extend(&mut self, other: Constraints<O>) {
+        self.checks.extend(other.checks.into_iter());
+        self.mutations.extend(other.mutations.into_iter());
+    }
 }
 
-pub fn build_seq<'a, O>(num: usize, mut constraints: FactSet<O>) -> Vec<O>
+pub fn check_seq<O>(seq: &mut [O], mut facts: FactSet<O>) {
+    for obj in seq {
+        for f in facts.0.iter_mut() {
+            f.constraints()
+                .checks
+                .into_iter()
+                .for_each(|check| check(obj))
+        }
+    }
+}
+
+pub fn build_seq<'a, O>(num: usize, mut facts: FactSet<O>) -> Vec<O>
 where
     O: Arbitrary<'a>,
 {
     let mut u = Unstructured::new(&[0]);
     itertools::unfold((), |()| {
         let mut obj = O::arbitrary(&mut u).unwrap();
-        constraints.mutate(&mut obj);
+        for f in facts.0.iter_mut() {
+            f.constraints()
+                .mutations
+                .into_iter()
+                .for_each(|mutate| mutate(&mut obj))
+        }
         Some(obj)
     })
     .take(num)
@@ -47,10 +115,11 @@ where
 
 mod tests {
     use super::*;
+
     #[derive(Arbitrary, Debug)]
     pub struct ChainLink {
-        prev: u32,
-        author: String,
+        pub prev: u32,
+        pub author: String,
     }
 
     pub struct ChainFact {
@@ -65,24 +134,26 @@ mod tests {
     }
 
     impl Fact<ChainLink> for ChainFact {
-        fn check(&mut self, obj: &ChainLink) {
-            assert_eq!(obj.prev, self.prev);
-            assert_eq!(obj.author, self.author);
+        fn constraints<'o>(&mut self) -> Constraints<ChainLink> {
+            let mut constraints = Constraints::new();
+            constraints.add(
+                |o: &mut ChainLink| &mut o.author,
+                Pred::Equals(self.author.clone()),
+            );
+            constraints.add(
+                |o: &mut ChainLink| &mut o.prev,
+                Pred::Equals(self.prev.clone()),
+            );
             self.prev += 1;
-        }
-
-        fn mutate(&mut self, obj: &mut ChainLink) {
-            obj.prev = self.prev.clone();
-            obj.author = self.author.clone();
-            self.prev += 1;
+            constraints
         }
     }
 
     #[test]
     fn test() {
-        let constraints = || FactSet::new(vec![Box::new(ChainFact::new("alice".into()))]);
-        let chain = build_seq(10, constraints());
-        check_seq(chain.as_slice(), constraints());
+        let facts = || FactSet::new(vec![Box::new(ChainFact::new("alice".into()))]);
+        let mut chain = build_seq(10, facts());
+        check_seq(chain.as_mut_slice(), facts());
         println!("Hello, world! {:?}", chain);
     }
 }
