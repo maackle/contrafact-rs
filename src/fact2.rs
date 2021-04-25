@@ -1,4 +1,5 @@
 use arbitrary::Arbitrary;
+use derive_more::From;
 use std::fmt::Debug;
 
 #[derive(Clone)]
@@ -20,8 +21,27 @@ impl<T: Clone + Eq + Debug> Pred<T> {
     }
 }
 
+#[derive(From)]
+pub struct FactSet<O>(Vec<Box<dyn Fact<O>>>);
+
+impl<O> FactSet<O> {
+    pub fn new(set: Vec<Box<dyn Fact<O>>>) -> Self {
+        Self(set)
+    }
+}
+
+// impl<O> Fact<O> for FactSet<O> {
+//     fn constraints<'o>(&mut self, obj: &'o mut O) -> Constraints<'o, O> {
+//         let mut constraints = Constraints::new();
+//         for f in self.0.iter_mut() {
+//             constraints.extend(f.constraints(obj));
+//         }
+//         constraints
+//     }
+// }
+
 pub trait Fact<O> {
-    fn define<'o>(&mut self, obj: &'o mut O) -> Constraints<'o, O>;
+    fn constraints<'o>(&mut self, obj: &'o mut O) -> Constraints<'o, O>;
 }
 
 pub struct Constraints<'a, O> {
@@ -56,14 +76,26 @@ where
             pred.mutate(t)
         }));
     }
+
+    pub fn extend(&mut self, other: Constraints<'a, O>) {
+        self.checks.extend(other.checks.into_iter());
+        self.mutations.extend(other.mutations.into_iter());
+    }
 }
 
-// pub fn check_seq<'a, O>(seq: &[O], mut constraints: FactSet<O>)
-// where
-//     O: Arbitrary<'a>,
-// {
-//     seq.into_iter().for_each(|obj| constraints.check(obj))
-// }
+pub fn check_seq<'a, O>(seq: &mut [O], mut facts: FactSet<O>)
+where
+    O: Arbitrary<'a>,
+{
+    for obj in seq {
+        for f in facts.0.iter_mut() {
+            f.constraints(obj)
+                .checks
+                .into_iter()
+                .for_each(|check| check(obj))
+        }
+    }
+}
 
 // pub fn build_seq<'a, O>(num: usize, mut constraints: FactSet<O>) -> Vec<O>
 // where
@@ -100,7 +132,7 @@ mod tests {
     }
 
     impl Fact<ChainLink> for ChainFact {
-        fn define<'o>(&mut self, obj: &'o mut ChainLink) -> Constraints<'o, ChainLink> {
+        fn constraints<'o>(&mut self, obj: &'o mut ChainLink) -> Constraints<'o, ChainLink> {
             let mut constraints = Constraints::new();
             constraints.add(
                 |o: &mut ChainLink| &mut o.author,
