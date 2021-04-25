@@ -1,4 +1,4 @@
-use arbitrary::Arbitrary;
+use arbitrary::*;
 use derive_more::From;
 use std::fmt::Debug;
 
@@ -31,7 +31,7 @@ impl<O> FactSet<O> {
 }
 
 // impl<O> Fact<O> for FactSet<O> {
-//     fn constraints<'o>(&mut self, obj: &'o mut O) -> Constraints<'o, O> {
+//     fn constraints<'o>(&mut self) -> Constraints<'o, O> {
 //         let mut constraints = Constraints::new();
 //         for f in self.0.iter_mut() {
 //             constraints.extend(f.constraints(obj));
@@ -41,15 +41,15 @@ impl<O> FactSet<O> {
 // }
 
 pub trait Fact<O> {
-    fn constraints<'o>(&mut self, obj: &'o mut O) -> Constraints<'o, O>;
+    fn constraints(&mut self) -> Constraints<O>;
 }
 
-pub struct Constraints<'a, O> {
-    checks: Vec<Box<dyn Fn(&'a mut O)>>,
-    mutations: Vec<Box<dyn Fn(&'a mut O)>>,
+pub struct Constraints<O> {
+    checks: Vec<Box<dyn Fn(&mut O)>>,
+    mutations: Vec<Box<dyn Fn(&mut O)>>,
 }
 
-impl<'a, O> Constraints<'a, O>
+impl<'a, O> Constraints<O>
 where
     Self: 'a,
 {
@@ -77,19 +77,16 @@ where
         }));
     }
 
-    pub fn extend(&mut self, other: Constraints<'a, O>) {
+    pub fn extend(&mut self, other: Constraints<O>) {
         self.checks.extend(other.checks.into_iter());
         self.mutations.extend(other.mutations.into_iter());
     }
 }
 
-pub fn check_seq<'a, O>(seq: &mut [O], mut facts: FactSet<O>)
-where
-    O: Arbitrary<'a>,
-{
+pub fn check_seq<O>(seq: &mut [O], mut facts: FactSet<O>) {
     for obj in seq {
         for f in facts.0.iter_mut() {
-            f.constraints(obj)
+            f.constraints()
                 .checks
                 .into_iter()
                 .for_each(|check| check(obj))
@@ -97,19 +94,24 @@ where
     }
 }
 
-// pub fn build_seq<'a, O>(num: usize, mut constraints: FactSet<O>) -> Vec<O>
-// where
-//     O: Arbitrary<'a>,
-// {
-//     let mut u = Unstructured::new(&[0]);
-//     itertools::unfold((), |()| {
-//         let mut obj = O::arbitrary(&mut u).unwrap();
-//         constraints.mutate(&mut obj);
-//         Some(obj)
-//     })
-//     .take(num)
-//     .collect()
-// }
+pub fn build_seq<'a, O>(num: usize, mut facts: FactSet<O>) -> Vec<O>
+where
+    O: Arbitrary<'a>,
+{
+    let mut u = Unstructured::new(&[0]);
+    itertools::unfold((), |()| {
+        let mut obj = O::arbitrary(&mut u).unwrap();
+        for f in facts.0.iter_mut() {
+            f.constraints()
+                .mutations
+                .into_iter()
+                .for_each(|mutate| mutate(&mut obj))
+        }
+        Some(obj)
+    })
+    .take(num)
+    .collect()
+}
 
 mod tests {
     use super::*;
@@ -132,7 +134,7 @@ mod tests {
     }
 
     impl Fact<ChainLink> for ChainFact {
-        fn constraints<'o>(&mut self, obj: &'o mut ChainLink) -> Constraints<'o, ChainLink> {
+        fn constraints<'o>(&mut self) -> Constraints<ChainLink> {
             let mut constraints = Constraints::new();
             constraints.add(
                 |o: &mut ChainLink| &mut o.author,
@@ -148,5 +150,10 @@ mod tests {
     }
 
     #[test]
-    fn test() {}
+    fn test() {
+        let facts = || FactSet::new(vec![Box::new(ChainFact::new("alice".into()))]);
+        let mut chain = build_seq(10, facts());
+        check_seq(chain.as_mut_slice(), facts());
+        println!("Hello, world! {:?}", chain);
+    }
 }
