@@ -2,18 +2,22 @@ use arbitrary::*;
 use derive_more::From;
 use std::fmt::Debug;
 
+/// Various boolean checks.
+/// It may be possible to leverage the `predicates` crate for this.
 #[derive(Clone)]
 pub enum Pred<T: Clone + Eq + Debug> {
     Equals(T),
 }
 
 impl<T: Clone + Eq + Debug> Pred<T> {
+    /// Assert that the predicate is matched (panic if not).
     pub fn check(&self, obj: &T) {
         match self {
             Self::Equals(t) => assert_eq!(obj, t),
         }
     }
 
+    /// Mutate a value such that it satisfies the predicate.
     pub fn mutate(&self, obj: &mut T) {
         match self {
             Self::Equals(t) => *obj = t.clone(),
@@ -44,8 +48,12 @@ pub trait Fact<O> {
     fn constraints(&mut self) -> Constraints<O>;
 }
 
+/// A set of declarative constraints. It knows how to
+/// You can add to this type with `add`
 pub struct Constraints<O> {
+    /// Closures which run assertions on the object.
     checks: Vec<Box<dyn Fn(&mut O)>>,
+    /// Closures which perform mutations on the object.
     mutations: Vec<Box<dyn Fn(&mut O)>>,
 }
 
@@ -53,6 +61,7 @@ impl<'a, O> Constraints<O>
 where
     Self: 'a,
 {
+    /// Constructor
     pub fn new() -> Self {
         Self {
             checks: Vec::new(),
@@ -60,6 +69,9 @@ where
         }
     }
 
+    /// Add a new constraint. This generates two functions,
+    /// a "check" and a "mutation", and stores them in the Constraints'
+    /// internal state.
     pub fn add<T, G>(&mut self, get: G, pred: Pred<T>)
     where
         T: 'static + Clone + Eq + Debug,
