@@ -20,8 +20,8 @@ impl<T: Clone + Eq + Debug> Pred<T> {
     }
 }
 
-pub trait Fact<'o, O> {
-    fn define(&mut self, obj: &'o mut O) -> Constraints<'o, O>;
+pub trait Fact<O> {
+    fn define<'o>(&mut self, obj: &'o mut O) -> Constraints<'o, O>;
 }
 
 pub struct Constraints<'a, O> {
@@ -99,8 +99,8 @@ mod tests {
         }
     }
 
-    impl<'o> Fact<'o, ChainLink> for ChainFact {
-        fn define(&mut self, obj: &'o mut ChainLink) -> Constraints<'o, ChainLink> {
+    impl Fact<ChainLink> for ChainFact {
+        fn define<'o>(&mut self, obj: &'o mut ChainLink) -> Constraints<'o, ChainLink> {
             let mut constraints = Constraints::new();
             constraints.add(
                 |o: &mut ChainLink| &mut o.author,
