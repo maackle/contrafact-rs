@@ -5,7 +5,7 @@ authors = ["Michael Dougherty <maackle.d@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-predicates = "1.0"
 arbitrary = {version = "1.0", features = ["derive"]}
 itertools = "0.10"
 derive_more = "0.99"
+contrafact-predicates = { path = "../contrafact-predicates" }
