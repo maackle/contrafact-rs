@@ -2,8 +2,14 @@ use arbitrary::*;
 use predicates::contrafact::Constraint;
 use std::fmt::Debug;
 
-/// A set of declarative constraints. It knows how to
-/// You can add to this type with `add`
+/// A set of declarative constraints. You can add to this set with `add`.
+///
+/// This type is a bit of a trick, meant to hide away the details of the various
+/// constraints it contains. In general, the Constraints are about subfields of
+/// some containing structure. When adding a Constraint, two closures get
+/// immediately created, one for "check" and another for "mutate", which
+/// encapsulate the subtype, so that the overall collection needs only be aware
+/// of the containing type, `O`.
 pub struct Constraints<O> {
     /// Closures which run assertions on the object.
     pub(crate) checks: Vec<Box<dyn 'static + Fn(&mut O)>>,

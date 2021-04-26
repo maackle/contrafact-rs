@@ -16,29 +16,29 @@ pub mod predicate {
 }
 
 /// Check that all of the constraints of all Facts are satisfied for this sequence.
-pub fn check_seq<O>(seq: &mut [O], mut facts: FactSet<O>) {
+pub fn check_seq<O, F>(seq: &mut [O], mut fact: F)
+where
+    F: Fact<O>,
+{
     for obj in seq {
-        for f in facts.0.iter_mut() {
-            f.constraints()
-                .checks
-                .into_iter()
-                .for_each(|check| check(obj))
-        }
+        fact.constraints()
+            .checks
+            .into_iter()
+            .for_each(|check| check(obj))
     }
 }
 
 /// Build a sequence from scratch such that all Facts are satisfied.
-pub fn build_seq<O>(u: &mut Unstructured<'static>, num: usize, mut facts: FactSet<O>) -> Vec<O>
+pub fn build_seq<O, F>(u: &mut Unstructured<'static>, num: usize, mut fact: F) -> Vec<O>
 where
     O: Arbitrary<'static>,
+    F: Fact<O>,
 {
     let mut seq = Vec::new();
     for _i in 0..num {
         let mut obj = O::arbitrary(u).unwrap();
-        for f in facts.0.iter_mut() {
-            for mutate in f.constraints().mutations.into_iter() {
-                mutate(&mut obj, u)
-            }
+        for mutate in fact.constraints().mutations.into_iter() {
+            mutate(&mut obj, u)
         }
         seq.push(obj);
     }
