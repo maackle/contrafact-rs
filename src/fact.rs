@@ -1,6 +1,6 @@
 use arbitrary::*;
-use contrafact_predicates::contrafact::Constraint;
 use derive_more::From;
+use predicates::contrafact::Constraint;
 use std::fmt::Debug;
 
 #[derive(From)]
@@ -54,15 +54,15 @@ impl<O> Constraints<O> {
         C: 'static + Constraint<T>,
     {
         let g = get.clone();
-        let p = constraint.clone();
+        let constraint2 = constraint.clone();
         self.checks.push(Box::new(move |obj| {
             let t = g(obj);
-            p.check(t);
+            constraint.check(t);
         }));
         self.mutations
             .push(Box::new(move |obj, u: &mut Unstructured<'static>| {
                 let t = get(obj);
-                constraint.mutate(t, u)
+                constraint2.mutate(t, u)
             }));
     }
 
@@ -88,7 +88,7 @@ where
     O: Arbitrary<'static>,
 {
     let mut seq = Vec::new();
-    for i in 0..num {
+    for _i in 0..num {
         let mut obj = O::arbitrary(u).unwrap();
         for f in facts.0.iter_mut() {
             for mutate in f.constraints().mutations.into_iter() {
@@ -100,24 +100,51 @@ where
     return seq;
 }
 
-mod tests {
-    use super::*;
-    use contrafact_predicates::prelude::*;
+#[macro_export]
+macro_rules! facts {
+    ( $( $fact:expr ,)+ ) => {
+        FactSet::new(vec![$(Box::new($fact),)+])
+    };
+}
 
-    #[derive(Arbitrary, Debug)]
-    pub struct ChainLink {
-        pub prev: u32,
-        pub author: String,
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::*;
+    use predicates::prelude::*;
+
+    static NOISE: once_cell::sync::Lazy<Vec<u8>> =
+        once_cell::sync::Lazy::new(|| bring_on_the_noise(99999));
+
+    #[derive(Arbitrary, Debug, Clone, PartialEq, Eq, std::hash::Hash)]
+    enum Color {
+        Cyan,
+        Magenta,
+        Yellow,
+        Black,
     }
 
-    pub struct ChainFact {
+    #[derive(Arbitrary, Debug)]
+    struct ChainLink {
         prev: u32,
         author: String,
+        color: Color,
+    }
+
+    struct ChainFact {
+        prev: u32,
+        author: String,
+        valid_colors: HashSet<Color>,
     }
 
     impl ChainFact {
-        pub fn new(author: String) -> Self {
-            Self { prev: 0, author }
+        fn new(author: String, valid_colors: &[Color]) -> Self {
+            Self {
+                prev: 0,
+                author,
+                valid_colors: valid_colors.into_iter().cloned().collect(),
+            }
         }
     }
 
@@ -132,17 +159,42 @@ mod tests {
                 |o: &mut ChainLink| &mut o.prev,
                 predicate::eq(self.prev.clone()),
             );
+            constraints.add(
+                |o: &mut ChainLink| &mut o.color,
+                predicate::in_iter(self.valid_colors.clone()),
+            );
             self.prev += 1;
             constraints
         }
     }
 
+    pub fn bring_on_the_noise(size: usize) -> Vec<u8> {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        std::iter::repeat_with(|| rng.gen()).take(size).collect()
+    }
+
     #[test]
     fn test() {
-        let facts = || FactSet::new(vec![Box::new(ChainFact::new("alice".into()))]);
-        let mut u = Unstructured::new(&[0]);
-        let mut chain = build_seq(&mut u, 10, facts());
+        const NUM: u32 = 10;
+        let facts = || {
+            facts![ChainFact::new(
+                "alice".into(),
+                &[Color::Cyan, Color::Magenta],
+            ),]
+        };
+        let mut u = Unstructured::new(&NOISE);
+
+        let mut chain = build_seq(&mut u, NUM as usize, facts());
         check_seq(chain.as_mut_slice(), facts());
-        println!("Hello, world! {:?}", chain);
+
+        dbg!(&chain);
+
+        assert!(chain.iter().all(|c| c.author == "alice"));
+        assert!(chain.iter().all(|c| c.color != Color::Black));
+        assert_eq!(chain.iter().last().unwrap().prev, NUM - 1);
+
+        // there is a high probability that this will be true
+        assert!(chain.iter().any(|c| c.color == Color::Magenta));
     }
 }
