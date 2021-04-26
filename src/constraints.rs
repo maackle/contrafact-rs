@@ -1,6 +1,6 @@
 use arbitrary::*;
 use predicates::contrafact::Constraint;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 /// A set of declarative constraints. You can add to this set with `add`.
 ///
@@ -53,4 +53,58 @@ impl<O> Constraints<O> {
         self.checks.extend(other.checks.into_iter());
         self.mutations.extend(other.mutations.into_iter());
     }
+}
+
+/// A constraint defined by a custom predicate closure.
+///
+/// NOTE: When using during a mutation, this type can do no better than
+/// brute force when finding data that matches the constraint. Therefore,
+/// if the predicate is unlikely to return `true` given arbitrary data,
+/// this constraint is a bad choice!
+///
+/// There is a fixed iteration limit, beyond which this will panic.
+#[derive(Clone)]
+pub struct PredicateConstraint<T>(Arc<dyn Fn(&T) -> bool>);
+
+impl<T> Constraint<T> for PredicateConstraint<T>
+where
+    T: predicates::contrafact::Bounds,
+{
+    fn check(&self, t: &T) {
+        assert!(self.0(t))
+    }
+
+    fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
+        const ITERATION_LIMIT: usize = 100;
+
+        for _ in 0..ITERATION_LIMIT {
+            *t = T::arbitrary(u).unwrap();
+            if self.0(t) {
+                return;
+            }
+        }
+
+        panic!(
+            "Exceeded iteration limit of {} while attempting to meet a PredicateConstraint",
+            ITERATION_LIMIT
+        );
+    }
+}
+
+impl<T> PredicateConstraint<T> {
+    pub fn new<F: 'static + Fn(&T) -> bool>(f: F) -> Self {
+        Self(Arc::new(f))
+    }
+}
+
+/// A constraint defined by a custom predicate closure.
+///
+/// NOTE: When using during a mutation, this type can do no better than
+/// brute force when finding data that matches the constraint. Therefore,
+/// if the predicate is unlikely to return `true` given arbitrary data,
+/// this constraint is a bad choice!
+///
+/// There is a fixed iteration limit, beyond which this will panic.
+pub fn predicate<T, F: 'static + Fn(&T) -> bool>(f: F) -> PredicateConstraint<T> {
+    PredicateConstraint::new(f)
 }

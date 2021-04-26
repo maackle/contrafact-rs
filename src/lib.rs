@@ -12,6 +12,7 @@ pub use fact::{Fact, FactSet};
 
 /// Re-export of predicates with Constraint impls
 pub mod constraint {
+    pub use crate::constraints::predicate;
     pub use ::predicates::prelude::predicate::{eq, in_hash, in_iter};
 }
 
