@@ -3,15 +3,15 @@
 
 #![warn(missing_docs)]
 
-mod constraint;
+mod constraints;
 mod fact;
 
 use arbitrary::{Arbitrary, Unstructured};
-pub use constraint::Constraints;
+pub use constraints::Constraints;
 pub use fact::{Fact, FactSet};
 
 /// Re-export of predicates with Constraint impls
-pub mod predicate {
+pub mod constraint {
     pub use ::predicates::prelude::predicate::{eq, in_hash, in_iter};
 }
 

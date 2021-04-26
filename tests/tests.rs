@@ -39,11 +39,11 @@ impl ChainFact {
 impl Fact<ChainLink> for ChainFact {
     fn constraints(&mut self) -> Constraints<ChainLink> {
         let mut constraints = Constraints::<ChainLink>::new();
-        constraints.add(|o| &mut o.author, predicate::eq(self.author.clone()));
-        constraints.add(|o| &mut o.prev, predicate::eq(self.prev.clone()));
+        constraints.add(|o| &mut o.author, constraint::eq(self.author.clone()));
+        constraints.add(|o| &mut o.prev, constraint::eq(self.prev.clone()));
         constraints.add(
             |o| &mut o.color,
-            predicate::in_iter(self.valid_colors.clone()),
+            constraint::in_iter(self.valid_colors.clone()),
         );
         self.prev += 1;
         constraints
