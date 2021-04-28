@@ -31,7 +31,7 @@ impl<O> Constraints<O> {
     /// internal state.
     pub fn add<T, G, C>(&mut self, get: G, constraint: C)
     where
-        T: 'static + Clone + Eq + Debug + Arbitrary<'static>,
+        T: Clone + Eq + Debug + Arbitrary<'static>,
         G: 'static + Clone + Fn(&mut O) -> &mut T,
         C: 'static + Constraint<T>,
     {
@@ -46,6 +46,19 @@ impl<O> Constraints<O> {
                 let t = get(obj);
                 constraint2.mutate(t, u)
             }));
+    }
+
+    /// Add a new constraint via a check/mutate pair.
+    /// It's preferred to use `add` when possible, which is more composable and
+    /// offers less chance of mismatch beteen the check and mutate implementations.
+    /// Use this only when unable to use `add`.
+    pub fn add_pair<T, FC, FM>(&mut self, check: FC, mutate: FM)
+    where
+        FC: 'static + Fn(&mut O),
+        FM: 'static + Fn(&mut O, &mut Unstructured<'static>),
+    {
+        self.checks.push(Box::new(check));
+        self.mutations.push(Box::new(mutate));
     }
 
     /// Combine two sets of Constraints into one
@@ -64,9 +77,9 @@ impl<O> Constraints<O> {
 ///
 /// There is a fixed iteration limit, beyond which this will panic.
 #[derive(Clone)]
-pub struct PredicateConstraint<T>(Arc<dyn Fn(&T) -> bool>);
+pub struct PredicateConstraint<'a, T>(Arc<dyn 'a + Fn(&T) -> bool>);
 
-impl<T> Constraint<T> for PredicateConstraint<T>
+impl<'a, T> Constraint<T> for PredicateConstraint<'a, T>
 where
     T: predicates::contrafact::Bounds,
 {
@@ -91,8 +104,8 @@ where
     }
 }
 
-impl<T> PredicateConstraint<T> {
-    pub fn new<F: 'static + Fn(&T) -> bool>(f: F) -> Self {
+impl<'a, T> PredicateConstraint<'a, T> {
+    pub fn new<F: 'a + Fn(&T) -> bool>(f: F) -> Self {
         Self(Arc::new(f))
     }
 }
@@ -105,6 +118,6 @@ impl<T> PredicateConstraint<T> {
 /// this constraint is a bad choice!
 ///
 /// There is a fixed iteration limit, beyond which this will panic.
-pub fn predicate<T, F: 'static + Fn(&T) -> bool>(f: F) -> PredicateConstraint<T> {
+pub fn predicate<'a, T, F: 'a + Fn(&T) -> bool>(f: F) -> PredicateConstraint<'a, T> {
     PredicateConstraint::new(f)
 }
