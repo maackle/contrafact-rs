@@ -13,7 +13,7 @@ enum Color {
     Black,
 }
 
-#[derive(Arbitrary, Debug)]
+#[derive(Arbitrary, Debug, PartialEq, Clone)]
 struct ChainLink {
     prev: u32,
     author: String,
@@ -36,17 +36,21 @@ impl ChainFact {
     }
 }
 
-impl Fact<ChainLink> for ChainFact {
-    fn constraints(&mut self) -> Constraints<ChainLink> {
-        let mut constraints = Constraints::<ChainLink>::new();
-        constraints.add(|o| &mut o.author, constraint::eq(self.author.clone()));
-        constraints.add(|o| &mut o.prev, constraint::eq(self.prev.clone()));
-        constraints.add(
+impl FactGen<ChainLink, FactSet<ChainLink>> for ChainFact {
+    fn fact(&mut self) -> FactSet<ChainLink> {
+        let same_author =
+            fact::lens::<ChainLink, _, _, _>(|o| &mut o.author, fact::eq(self.author.clone()));
+        let backlinks =
+            fact::lens::<ChainLink, _, _, _>(|o| &mut o.prev, fact::eq(self.prev.clone()));
+        let color = fact::lens::<ChainLink, _, _, _>(
             |o| &mut o.color,
-            constraint::in_iter(self.valid_colors.clone()),
+            fact::in_iter(self.valid_colors.clone()),
         );
+        let fs = facts![same_author, backlinks, color,];
         self.prev += 1;
-        constraints
+        fs
+        // let v: Vec<Box<dyn Fact<ChainLink>>> = vec![same_author, backlinks, color];
+        // v.into()
     }
 }
 
@@ -59,16 +63,11 @@ pub fn bring_on_the_noise(size: usize) -> Vec<u8> {
 #[test]
 fn test() {
     const NUM: u32 = 10;
-    let facts = || {
-        facts![ChainFact::new(
-            "alice".into(),
-            &[Color::Cyan, Color::Magenta],
-        ),]
-    };
+    let fact = ChainFact::new("alice".into(), &[Color::Cyan, Color::Magenta]);
     let mut u = Unstructured::new(&NOISE);
 
-    let mut chain = build_seq(&mut u, NUM as usize, facts());
-    check_seq(chain.as_mut_slice(), facts());
+    let mut chain = build_seq(&mut u, NUM as usize, fact.fact());
+    check_seq(chain.as_mut_slice(), fact.fact());
 
     dbg!(&chain);
 

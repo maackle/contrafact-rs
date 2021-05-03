@@ -3,16 +3,15 @@
 
 #![warn(missing_docs)]
 
-mod constraints;
-mod fact;
+mod facts;
 
 use arbitrary::{Arbitrary, Unstructured};
-pub use constraints::Constraints;
-pub use fact::{Fact, FactSet};
+pub use facts::{Fact, FactGen, FactSet, LensFact};
+use predicates::contrafact::Bounds;
 
 /// Re-export of predicates with Constraint impls
-pub mod constraint {
-    pub use crate::constraints::predicate;
+pub mod fact {
+    pub use crate::facts::{lens, predicate};
     pub use ::predicates::prelude::predicate::{eq, in_hash, in_iter};
 }
 
@@ -20,27 +19,23 @@ pub mod constraint {
 pub fn check_seq<O, F>(seq: &mut [O], mut fact: F)
 where
     F: Fact<O>,
+    O: Bounds,
 {
     for obj in seq {
-        fact.constraints()
-            .checks
-            .into_iter()
-            .for_each(|check| check(obj))
+        fact.check(obj)
     }
 }
 
 /// Build a sequence from scratch such that all Facts are satisfied.
 pub fn build_seq<O, F>(u: &mut Unstructured<'static>, num: usize, mut fact: F) -> Vec<O>
 where
-    O: Arbitrary<'static>,
+    O: Arbitrary<'static> + Bounds,
     F: Fact<O>,
 {
     let mut seq = Vec::new();
     for _i in 0..num {
         let mut obj = O::arbitrary(u).unwrap();
-        for mutate in fact.constraints().mutations.into_iter() {
-            mutate(&mut obj, u)
-        }
+        fact.mutate(&mut obj, u);
         seq.push(obj);
     }
     return seq;
