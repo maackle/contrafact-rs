@@ -1,5 +1,7 @@
 use arbitrary::*;
 
+use crate::fact::SimpleFact;
+
 /// The trait bounds for the subject of a Constraint
 pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
@@ -31,6 +33,13 @@ where
 
     /// Mutate a value such that it satisfies the constraint.
     fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>);
+
+    fn to_fact(self) -> SimpleFact<T, Self>
+    where
+        Self: Sized,
+    {
+        SimpleFact::new(self)
+    }
 }
 
 impl<T, C> Constraint<T> for Box<C>

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{
     constraint::{Bounds, ConstraintBox},
     Constraint,
@@ -9,16 +11,6 @@ pub trait Fact<T> {
     // fn advance(&mut self) {}
 }
 
-// impl<T, C> Fact<T> for C
-// where
-//     T: Bounds,
-//     C: Constraint<T> + Clone,
-// {
-//     fn constraint(&mut self) -> ConstraintBox<'_, T> {
-//         Box::new(self.to_owned())
-//     }
-// }
-
 impl<T, F> Fact<T> for Vec<F>
 where
     T: 'static + Bounds,
@@ -29,9 +21,27 @@ where
     }
 }
 
+pub struct SimpleFact<T, C>(C, PhantomData<T>);
+
+impl<T, C> SimpleFact<T, C> {
+    pub fn new(c: C) -> Self {
+        SimpleFact(c, PhantomData)
+    }
+}
+
+impl<T, C> Fact<T> for SimpleFact<T, C>
+where
+    T: Bounds,
+    C: Constraint<T> + Clone,
+{
+    fn constraint(&mut self) -> ConstraintBox<'_, T> {
+        Box::new(self.0.clone())
+    }
+}
+
 /// Check that all of the constraints of all Facts are satisfied for this sequence.
 #[tracing::instrument(skip(fact))]
-pub fn check_seq<O, F>(seq: &mut [O], mut fact: F)
+pub fn check_seq<O, F>(seq: &[O], mut fact: F)
 where
     F: Fact<O>,
     O: Bounds,

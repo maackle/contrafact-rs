@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 use crate::constraint::*;
 use arbitrary::Unstructured;
@@ -13,6 +13,7 @@ where
     Box::new(LensConstraint::new(lens, fact))
 }
 
+#[derive(Clone)]
 /// Applies a Constraint to a subset of some data by means of a lens-like closure
 /// which specifies the mutable subset to operate on. In other words, if type `O`
 /// contains a `T`, and you have a `Constraint<T>`, `LensConstraint` lets you lift that fact
@@ -24,7 +25,7 @@ where
     F: Constraint<T>,
 {
     /// Function which maps outer structure to inner substructure
-    pub(crate) lens: Box<dyn 'static + Fn(&mut O) -> &mut T>,
+    pub(crate) lens: Arc<dyn 'static + Fn(&mut O) -> &mut T>,
 
     /// The fact about the inner substructure
     pub(crate) fact: F,
@@ -47,7 +48,7 @@ where
         L: 'static + Fn(&mut O) -> &mut T,
     {
         Self {
-            lens: Box::new(lens),
+            lens: Arc::new(lens),
             fact,
             __phantom: PhantomData,
         }
@@ -75,5 +76,32 @@ where
     #[tracing::instrument(skip(self, u))]
     fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
         self.fact.mutate((self.lens)(obj), u)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{build_seq, check_seq, NOISE};
+    use crate::{facts, predicate};
+    use arbitrary::*;
+
+    #[derive(Debug, Clone, PartialEq, Arbitrary)]
+    struct S {
+        x: u32,
+        y: u32,
+    }
+
+    #[test]
+    fn test() {
+        observability::test_run().ok();
+        let mut u = Unstructured::new(&NOISE);
+
+        let f = || lens(|s: &mut S| &mut s.x, predicate::eq(1)).to_fact();
+
+        let mut ones = build_seq(&mut u, 3, f());
+        check_seq(ones.as_slice(), f());
+
+        assert!(ones.iter().all(|s| s.x == 1));
     }
 }

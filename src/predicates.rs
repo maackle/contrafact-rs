@@ -3,7 +3,15 @@
 
 use std::marker::PhantomData;
 
-use crate::constraint::*;
+use crate::{build_seq, constraint::*};
+
+pub fn always() -> BoolFact {
+    BoolFact(true)
+}
+
+pub fn never() -> BoolFact {
+    BoolFact(false)
+}
 
 pub fn eq<T>(constant: T) -> EqFact<T>
 where
@@ -49,11 +57,33 @@ where
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoolFact(bool);
+
+impl<T> Constraint<T> for BoolFact
+where
+    T: Bounds + PartialEq,
+{
+    fn check(&self, obj: &T) {
+        if !self.0 {
+            panic!("never() constraint reached.")
+        }
+    }
+
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+        if !self.0 {
+            panic!("never() constraint reached.")
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EqFact<T> {
     op: EqOp,
     constant: T,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EqOp {
     Equal,
     NotEqual,
@@ -68,7 +98,6 @@ where
             EqOp::Equal => assert!(*obj == self.constant),
             EqOp::NotEqual => assert!(*obj != self.constant),
         }
-        self.check(obj)
     }
 
     fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
@@ -81,6 +110,7 @@ where
                 }
             },
         }
+        self.check(obj)
     }
 }
 
@@ -138,5 +168,24 @@ where
             self.b.mutate(obj, u);
         }
         self.check(obj);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{check_seq, NOISE};
+    use arbitrary::Unstructured;
+
+    #[test]
+    fn test_eq() {
+        observability::test_run().ok();
+
+        let mut u = Unstructured::new(&NOISE);
+
+        let ones = build_seq(&mut u, 3, eq(1).to_fact());
+        check_seq(ones.as_slice(), eq(1).to_fact());
+
+        assert!(ones.iter().all(|x| *x == 1));
     }
 }
