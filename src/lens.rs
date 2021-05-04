@@ -82,8 +82,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::predicate;
     use crate::{build_seq, check_seq, NOISE};
-    use crate::{facts, predicate};
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -99,7 +99,7 @@ mod tests {
 
         let f = || lens(|s: &mut S| &mut s.x, predicate::eq(1)).to_fact();
 
-        let mut ones = build_seq(&mut u, 3, f());
+        let ones = build_seq(&mut u, 3, f());
         check_seq(ones.as_slice(), f());
 
         assert!(ones.iter().all(|s| s.x == 1));

@@ -100,7 +100,7 @@ where
 }
 
 #[macro_export]
-macro_rules! facts {
+macro_rules! constraints {
     ( $( $fact:expr ,)+ ) => {{
         let mut fs = Vec::new();
         $(

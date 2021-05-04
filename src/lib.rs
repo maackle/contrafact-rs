@@ -8,6 +8,7 @@ mod custom;
 mod fact;
 mod lens;
 mod predicates;
+mod prism;
 mod stateful;
 
 pub use constraint::{Constraint, ConstraintBox, ConstraintVec};

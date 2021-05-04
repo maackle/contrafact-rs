@@ -41,19 +41,20 @@ impl ChainFact {
 
 impl Fact<ChainLink> for ChainFact {
     fn constraint(&mut self) -> ConstraintBox<ChainLink> {
-        let mut constraints: ConstraintVec<ChainLink> = Vec::new();
-        constraints.push(lens(
-            |o: &mut ChainLink| &mut o.author,
-            predicate::eq(self.author.clone()),
-        ));
-        constraints.push(lens(
-            |o: &mut ChainLink| &mut o.prev,
-            predicate::eq(self.prev.clone()),
-        ));
-        constraints.push(lens(
-            |o: &mut ChainLink| &mut o.color,
-            predicate::in_iter(self.valid_colors.clone()),
-        ));
+        let constraints: ConstraintVec<ChainLink> = vec![
+            contrafact::lens(
+                |o: &mut ChainLink| &mut o.author,
+                predicate::eq(self.author.clone()),
+            ),
+            contrafact::lens(
+                |o: &mut ChainLink| &mut o.prev,
+                predicate::eq(self.prev.clone()),
+            ),
+            contrafact::lens(
+                |o: &mut ChainLink| &mut o.color,
+                predicate::in_iter(self.valid_colors.clone()),
+            ),
+        ];
 
         self.prev += 1;
 

@@ -8,7 +8,6 @@ use arbitrary::{Arbitrary, Unstructured};
 
 pub trait Fact<T> {
     fn constraint(&mut self) -> ConstraintBox<'_, T>;
-    // fn advance(&mut self) {}
 }
 
 impl<T, F> Fact<T> for Vec<F>
@@ -67,4 +66,15 @@ where
         seq.push(obj);
     }
     return seq;
+}
+
+#[macro_export]
+macro_rules! facts {
+    ( $( $fact:expr ,)+ ) => {{
+        let mut fs = Vec::new();
+        $(
+            fs.push(Box::new($fact));
+        )+
+        fs
+    }};
 }
