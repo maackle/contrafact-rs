@@ -1,44 +1,60 @@
-use derive_more::From;
+use crate::{
+    constraint::{Bounds, ConstraintBox},
+    Constraint,
+};
+use arbitrary::{Arbitrary, Unstructured};
 
-use crate::Constraints;
+pub trait Fact<T> {
+    fn constraint(&mut self) -> ConstraintBox<'_, T>;
+    // fn advance(&mut self) {}
+}
 
-/// A collection of Facts, which can also be treated as a single Fact itself
-#[derive(From)]
-pub struct FactSet<O>(pub(crate) Vec<Box<dyn Fact<O>>>);
+// impl<T, C> Fact<T> for C
+// where
+//     T: Bounds,
+//     C: Constraint<T> + Clone,
+// {
+//     fn constraint(&mut self) -> ConstraintBox<'_, T> {
+//         Box::new(self.to_owned())
+//     }
+// }
 
-impl<O> FactSet<O> {
-    /// Constructor
-    pub fn new(set: Vec<Box<dyn Fact<O>>>) -> Self {
-        Self(set)
+impl<T, F> Fact<T> for Vec<F>
+where
+    T: 'static + Bounds,
+    F: Fact<T>,
+{
+    fn constraint(&mut self) -> ConstraintBox<'_, T> {
+        Box::new(self.iter_mut().map(|f| f.constraint()).collect::<Vec<_>>())
     }
 }
 
-impl<O> Fact<O> for FactSet<O> {
-    fn constraints(&mut self) -> Constraints<O> {
-        let mut constraints = Constraints::new();
-        for f in self.0.iter_mut() {
-            constraints.extend(f.constraints());
-        }
-        constraints
+/// Check that all of the constraints of all Facts are satisfied for this sequence.
+#[tracing::instrument(skip(fact))]
+pub fn check_seq<O, F>(seq: &mut [O], mut fact: F)
+where
+    F: Fact<O>,
+    O: Bounds,
+{
+    for (_i, obj) in seq.iter().enumerate() {
+        tracing::trace!("i: {}", _i);
+        fact.constraint().check(obj)
     }
 }
 
-/// A stateful generator of Constraints.
-///
-/// A "fact" defines properties not only for a data type, but for arbitrary
-/// sequences for that type, by nature of its statefulness.
-pub trait Fact<O> {
-    /// Generate the set of Constraints applicable given the current state.
-    fn constraints(&mut self) -> Constraints<O>;
+/// Build a sequence from scratch such that all Facts are satisfied.
+#[tracing::instrument(skip(u, fact))]
+pub fn build_seq<O, F>(u: &mut Unstructured<'static>, num: usize, mut fact: F) -> Vec<O>
+where
+    O: Arbitrary<'static> + Bounds,
+    F: Fact<O>,
+{
+    let mut seq = Vec::new();
+    for _i in 0..num {
+        let mut obj = O::arbitrary(u).unwrap();
+        tracing::trace!("i: {}", _i);
+        fact.constraint().mutate(&mut obj, u);
+        seq.push(obj);
+    }
+    return seq;
 }
-
-/// Construct a FactSet from a list of Facts with less boilerplate
-#[macro_export]
-macro_rules! facts {
-    ( $( $fact:expr ,)+ ) => {
-        FactSet::new(vec![$(Box::new($fact),)+])
-    };
-}
-
-#[cfg(test)]
-mod tests {}
