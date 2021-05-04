@@ -12,7 +12,7 @@ mod stateful;
 
 pub use constraint::{Constraint, ConstraintBox, ConstraintVec};
 pub use fact::{build_seq, check_seq, Fact};
-pub use lens::{lens, LensFact};
+pub use lens::{lens, LensConstraint};
 // pub use stateful::{stateful, StatefulFact};
 
 pub mod predicate {

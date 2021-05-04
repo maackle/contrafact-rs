@@ -30,60 +30,60 @@ where
     fn check(&self, t: &T);
 
     /// Mutate a value such that it satisfies the constraint.
-    fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>);
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>);
 }
 
-impl<O, C> Constraint<O> for Box<C>
+impl<T, C> Constraint<T> for Box<C>
 where
-    O: Bounds,
-    C: Constraint<O> + ?Sized,
+    T: Bounds,
+    C: Constraint<T> + ?Sized,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &O) {
+    fn check(&self, obj: &T) {
         tracing::trace!("check");
         (*self).as_ref().check(obj);
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
         (*self).as_mut().mutate(obj, u);
     }
 }
 
-impl<O, C> Constraint<O> for &mut [C]
+impl<T, C> Constraint<T> for &mut [C]
 where
-    O: Bounds,
-    C: Constraint<O>,
+    T: Bounds,
+    C: Constraint<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &O) {
+    fn check(&self, obj: &T) {
         for f in self.iter() {
             f.check(obj)
         }
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
         for f in self.iter_mut() {
             f.mutate(obj, u)
         }
     }
 }
 
-impl<O, C> Constraint<O> for Vec<C>
+impl<T, C> Constraint<T> for Vec<C>
 where
-    O: Bounds,
-    C: Constraint<O> + Sized,
+    T: Bounds,
+    C: Constraint<T> + Sized,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &O) {
+    fn check(&self, obj: &T) {
         for f in self.iter() {
             f.check(obj)
         }
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
         for f in self.iter_mut() {
             f.mutate(obj, u)
         }

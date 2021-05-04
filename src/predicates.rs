@@ -63,20 +63,20 @@ impl<T> Constraint<T> for EqFact<T>
 where
     T: Bounds + PartialEq,
 {
-    fn check(&self, t: &T) {
+    fn check(&self, obj: &T) {
         match self.op {
-            EqOp::Equal => assert!(*t == self.constant),
-            EqOp::NotEqual => assert!(*t != self.constant),
+            EqOp::Equal => assert!(*obj == self.constant),
+            EqOp::NotEqual => assert!(*obj != self.constant),
         }
-        self.check(t)
+        self.check(obj)
     }
 
-    fn mutate(&mut self, t: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         match self.op {
-            EqOp::Equal => *t = self.constant.clone(),
+            EqOp::Equal => *obj = self.constant.clone(),
             EqOp::NotEqual => loop {
-                *t = T::arbitrary(u).unwrap();
-                if *t != self.constant {
+                *obj = T::arbitrary(u).unwrap();
+                if *obj != self.constant {
                     break;
                 }
             },
@@ -96,13 +96,13 @@ impl<T> Constraint<T> for InFact<T>
 where
     T: Bounds,
 {
-    fn check(&self, t: &T) {
-        assert!(self.inner.contains(t))
+    fn check(&self, obj: &T) {
+        assert!(self.inner.contains(obj))
     }
 
-    fn mutate(&mut self, t: &mut T, u: &mut arbitrary::Unstructured<'static>) {
-        *t = u.choose(self.inner.as_slice()).unwrap().clone();
-        self.check(t);
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+        *obj = u.choose(self.inner.as_slice()).unwrap().clone();
+        self.check(obj);
     }
 }
 
@@ -127,16 +127,16 @@ where
     P2: Constraint<T> + Constraint<T>,
     T: Bounds,
 {
-    fn check(&self, t: &T) {
+    fn check(&self, obj: &T) {
         todo!()
     }
 
-    fn mutate(&mut self, t: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         if *u.choose(&[true, false]).unwrap() {
-            self.a.mutate(t, u);
+            self.a.mutate(obj, u);
         } else {
-            self.b.mutate(t, u);
+            self.b.mutate(obj, u);
         }
-        self.check(t);
+        self.check(obj);
     }
 }
