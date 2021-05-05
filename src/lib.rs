@@ -12,8 +12,10 @@ mod prism;
 mod stateful;
 
 pub use constraint::{Constraint, ConstraintBox, ConstraintVec};
+pub use custom::{custom, CustomConstraint};
 pub use fact::{build_seq, check_seq, Fact};
 pub use lens::{lens, LensConstraint};
+pub use prism::{prism, PrismConstraint};
 
 pub mod predicate {
     pub use super::predicates::{always, eq, in_iter, ne, never, or};

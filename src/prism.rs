@@ -3,63 +3,63 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::constraint::*;
 use arbitrary::Unstructured;
 
-pub fn prism<O, T, F, P>(prism: P, fact: F) -> Box<PrismConstraint<O, T, F>>
+pub fn prism<O, T, C, P>(prism: P, constraint: C) -> Box<PrismConstraint<O, T, C>>
 where
     O: Bounds,
     T: Bounds,
-    F: Constraint<T>,
+    C: Constraint<T>,
     P: 'static + Fn(&mut O) -> Option<&mut T>,
 {
-    Box::new(PrismConstraint::new(prism, fact))
+    Box::new(PrismConstraint::new(prism, constraint))
 }
 
 #[derive(Clone)]
 /// Applies a Constraint to a subset of some data by means of a prism-like closure
 /// which specifies the mutable subset to operate on. In other words, if type `O`
-/// contains a `T`, and you have a `Constraint<T>`, `PrismConstraint` lets you lift that fact
-/// into a fact about `O`.
-pub struct PrismConstraint<O, T, F>
+/// contains a `T`, and you have a `Constraint<T>`, `PrismConstraint` lets you lift that constraint
+/// into a constraint about `O`.
+pub struct PrismConstraint<O, T, C>
 where
     T: Bounds,
     O: Bounds,
-    F: Constraint<T>,
+    C: Constraint<T>,
 {
     /// Function which maps outer structure to inner substructure
     pub(crate) prism: Arc<dyn 'static + Fn(&mut O) -> Option<&mut T>>,
 
-    /// The fact about the inner substructure
-    pub(crate) fact: F,
+    /// The constraint about the inner substructure
+    pub(crate) constraint: C,
 
-    __phantom: PhantomData<F>,
+    __phantom: PhantomData<C>,
 }
 
-impl<O, T, F> PrismConstraint<O, T, F>
+impl<O, T, C> PrismConstraint<O, T, C>
 where
     T: Bounds,
     O: Bounds,
-    F: Constraint<T>,
+    C: Constraint<T>,
 {
     /// Constructor. Supply a prism and an existing Constraint to create a new Constraint.
-    pub fn new<P>(prism: P, fact: F) -> Self
+    pub fn new<P>(prism: P, constraint: C) -> Self
     where
         T: Bounds,
         O: Bounds,
-        F: Constraint<T>,
+        C: Constraint<T>,
         P: 'static + Fn(&mut O) -> Option<&mut T>,
     {
         Self {
             prism: Arc::new(prism),
-            fact,
+            constraint,
             __phantom: PhantomData,
         }
     }
 }
 
-impl<O, T, F> Constraint<O> for PrismConstraint<O, T, F>
+impl<O, T, C> Constraint<O> for PrismConstraint<O, T, C>
 where
     T: Bounds,
     O: Bounds,
-    F: Constraint<T>,
+    C: Constraint<T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, o: &O) {
@@ -70,7 +70,7 @@ where
             let o = o as *const O;
             let o = o as *mut O;
             if let Some(t) = (self.prism)(&mut *o) {
-                self.fact.check(t)
+                self.constraint.check(t)
             }
         }
     }
@@ -78,7 +78,7 @@ where
     #[tracing::instrument(skip(self, u))]
     fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
         if let Some(t) = (self.prism)(obj) {
-            self.fact.mutate(t, u)
+            self.constraint.mutate(t, u)
         }
     }
 }

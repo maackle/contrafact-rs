@@ -65,10 +65,10 @@ impl Fact<ChainLink> for ChainFact {
 #[test]
 fn test() {
     observability::test_run().ok();
+    let mut u = Unstructured::new(&NOISE);
 
     const NUM: u32 = 10;
     let fact = || ChainFact::new("alice".into(), &[Color::Cyan, Color::Magenta]);
-    let mut u = Unstructured::new(&NOISE);
 
     let mut chain = build_seq(&mut u, NUM as usize, fact());
     dbg!(&chain);

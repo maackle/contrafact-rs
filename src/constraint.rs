@@ -102,10 +102,10 @@ where
 #[macro_export]
 macro_rules! constraints {
     ( $( $fact:expr ,)+ ) => {{
-        let mut fs = Vec::new();
+        let mut cs: $crate::ConstraintVec<_> = Vec::new();
         $(
-            fs.push(Box::new($fact));
+            cs.push(Box::new($fact));
         )+
-        fs
+        Box::new(cs)
     }};
 }
