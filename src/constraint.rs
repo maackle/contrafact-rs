@@ -6,24 +6,14 @@ use crate::fact::SimpleFact;
 pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 
-pub trait ConstraintSized<T>: Constraint<T> + Sized
-where
-    T: Bounds,
-{
-}
-impl<T, C> ConstraintSized<T> for C
-where
-    T: Bounds,
-    C: Constraint<T> + Sized,
-{
-}
-
 /// Type alias for a boxed Constraint
 pub type ConstraintBox<'a, T> = Box<dyn 'a + Constraint<T>>;
 
 /// Type alias for a Vec of boxed Constraints
 pub type ConstraintVec<'a, T> = Vec<ConstraintBox<'a, T>>;
 
+/// The result of a check operation, which contains an error message for every
+/// constraint which was not met
 #[derive(derive_more::From, derive_more::IntoIterator)]
 #[must_use = "CheckResult should be used with either `.unwrap()` or `.ok()`"]
 pub struct CheckResult(Vec<String>);
@@ -31,7 +21,7 @@ pub struct CheckResult(Vec<String>);
 impl CheckResult {
     pub fn unwrap(self) {
         if !self.0.is_empty() {
-            panic!(format!("Check failed: {:?}", self.0))
+            panic!(format!("Check failed: {:#?}", self.0))
         }
     }
 

@@ -9,7 +9,7 @@ pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(||
 
 type Id = u32;
 
-// dhtop
+// Similar to Holochain DhtOp
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 enum Omega {
     AlphaBeta { id: Id, alpha: Alpha, beta: Beta },
@@ -53,7 +53,7 @@ impl Omega {
     }
 }
 
-// header
+// Similar to Holochain Header
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 enum Alpha {
     Beta { id: Id, beta: Beta, data: String },
@@ -75,7 +75,7 @@ impl Alpha {
     }
 }
 
-// entry
+// Similar to Holochain Entry
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 struct Beta {
     id: u32,
@@ -112,11 +112,6 @@ impl Fact<Omega> for OmegaFact {
             predicate::eq("id", self.id),
         );
         let omega_constraint = constraints![
-            lens(
-                "Omega::id",
-                |o: &mut Omega| o.id(),
-                predicate::eq("id", self.id)
-            ),
             custom("Omega variant matches Alpha variant", |o: &Omega| {
                 match (o, o.alpha()) {
                     (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
@@ -124,6 +119,11 @@ impl Fact<Omega> for OmegaFact {
                     _ => false,
                 }
             }),
+            lens(
+                "Omega::id",
+                |o: &mut Omega| o.id(),
+                predicate::eq("id", self.id)
+            ),
         ];
 
         constraints![
@@ -167,6 +167,12 @@ fn test_omega_fact() {
         beta: beta.clone(),
     };
 
+    fact.constraint().mutate(&mut valid1, &mut u);
+    fact.constraint().check(dbg!(&valid1)).unwrap();
+
+    fact.constraint().mutate(&mut valid2, &mut u);
+    fact.constraint().check(dbg!(&valid2)).unwrap();
+
     let mut invalid1 = Omega::Alpha {
         id: 8,
         alpha: Alpha::Beta {
@@ -176,12 +182,28 @@ fn test_omega_fact() {
         },
     };
 
-    fact.constraint().mutate(&mut valid1, &mut u);
-    fact.constraint().check(&valid1).unwrap();
+    let mut invalid2 = Omega::AlphaBeta {
+        id: 8,
+        alpha: Alpha::Nil {
+            id: 3,
+            data: "cheese".into(),
+        },
+        beta: beta.clone(),
+    };
 
-    fact.constraint().mutate(&mut valid2, &mut u);
-    fact.constraint().check(&valid2).unwrap();
-
+    // Ensure that check fails for invalid data
+    assert_eq!(
+        dbg!(fact.constraint().check(dbg!(&invalid1)).ok().unwrap_err()).len(),
+        4,
+    );
     fact.constraint().mutate(&mut invalid1, &mut u);
-    fact.constraint().check(&invalid1).unwrap();
+    fact.constraint().check(dbg!(&invalid1)).unwrap();
+
+    // Ensure that check fails for invalid data
+    assert_eq!(
+        dbg!(fact.constraint().check(dbg!(&invalid2)).ok().unwrap_err()).len(),
+        5,
+    );
+    fact.constraint().mutate(&mut invalid2, &mut u);
+    fact.constraint().check(dbg!(&invalid2)).unwrap();
 }

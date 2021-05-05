@@ -3,7 +3,12 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::constraint::*;
 use arbitrary::Unstructured;
 
-/// Convenient constructor for LensConstraint
+/// Applies a Constraint to a subset of some data by means of a lens-like closure
+/// which specifies the mutable subset to operate on. In other words, if type `O`
+/// contains a `T`, and you have a `Constraint<T>`, `LensConstraint` lets you lift
+/// that constraint into a constraint about `O`.
+//
+// TODO: can rewrite this in terms of PrismConstraint for DRYness
 pub fn lens<O, T, C, L, S>(reason: S, lens: L, constraint: C) -> Box<LensConstraint<O, T, C>>
 where
     O: Bounds,
@@ -16,12 +21,6 @@ where
 }
 
 #[derive(Clone)]
-/// Applies a Constraint to a subset of some data by means of a lens-like closure
-/// which specifies the mutable subset to operate on. In other words, if type `O`
-/// contains a `T`, and you have a `Constraint<T>`, `LensConstraint` lets you lift
-/// that constraint into a constraint about `O`.
-//
-// TODO: can rewrite this in terms of PrismConstraint for DRYness
 pub struct LensConstraint<O, T, C>
 where
     T: Bounds,

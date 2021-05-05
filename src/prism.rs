@@ -3,7 +3,17 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::constraint::*;
 use arbitrary::Unstructured;
 
-/// Convenient constructor for PrismConstraint
+/// Applies a Constraint to a subset of some data by means of a prism-like closure
+/// which specifies the mutable subset to operate on. In other words, if type `O`
+/// contains a `T`, and you have a `Constraint<T>`, `PrismConstraint` lets you lift that constraint
+/// into a constraint about `O`.
+///
+/// A prism is like a lens, except that the target value may or may not exist.
+/// It is typically used for enums, or any structure where data may or may not
+/// be present.
+///
+/// If the prism returns Some, then the constraint will be checked, and mutation
+/// will be possible. If it returns None, then checks and mutations will not occur.
 pub fn prism<O, T, C, P, S>(label: S, prism: P, constraint: C) -> Box<PrismConstraint<O, T, C>>
 where
     O: Bounds,
@@ -16,10 +26,6 @@ where
 }
 
 #[derive(Clone)]
-/// Applies a Constraint to a subset of some data by means of a prism-like closure
-/// which specifies the mutable subset to operate on. In other words, if type `O`
-/// contains a `T`, and you have a `Constraint<T>`, `PrismConstraint` lets you lift that constraint
-/// into a constraint about `O`.
 pub struct PrismConstraint<O, T, C>
 where
     T: Bounds,

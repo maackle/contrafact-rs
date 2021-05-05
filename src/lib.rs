@@ -11,10 +11,10 @@ mod predicates;
 mod prism;
 
 pub use constraint::{Constraint, ConstraintBox, ConstraintVec};
-pub use custom::{custom, CustomConstraint};
+pub use custom::custom;
 pub use fact::{build_seq, check_seq, Fact};
-pub use lens::{lens, LensConstraint};
-pub use prism::{prism, PrismConstraint};
+pub use lens::lens;
+pub use prism::prism;
 
 /// The low-level building blocks of constraints
 // TODO: maybe put this in the same namespace as the rest.
