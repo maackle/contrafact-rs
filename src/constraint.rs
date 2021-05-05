@@ -18,8 +18,31 @@ where
 {
 }
 
+/// Type alias for a boxed Constraint
 pub type ConstraintBox<'a, T> = Box<dyn 'a + Constraint<T>>;
+
+/// Type alias for a Vec of boxed Constraints
 pub type ConstraintVec<'a, T> = Vec<ConstraintBox<'a, T>>;
+
+#[derive(derive_more::From, derive_more::IntoIterator)]
+#[must_use = "CheckResult should be used with either `.unwrap()` or `.ok()`"]
+pub struct CheckResult(Vec<String>);
+
+impl CheckResult {
+    pub fn unwrap(self) {
+        if !self.0.is_empty() {
+            panic!(format!("Check failed: {:?}", self.0))
+        }
+    }
+
+    pub fn ok(self) -> std::result::Result<(), Vec<String>> {
+        if self.0.is_empty() {
+            std::result::Result::Ok(())
+        } else {
+            std::result::Result::Err(self.0)
+        }
+    }
+}
 
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some aribtrary existing
@@ -29,11 +52,12 @@ where
     T: Bounds,
 {
     /// Assert that the constraint is satisfied (panic if not).
-    fn check(&self, t: &T);
+    fn check(&self, obj: &T) -> CheckResult;
 
     /// Mutate a value such that it satisfies the constraint.
     fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>);
 
+    /// Convert this constraint to a stateless Fact.
     fn to_fact(self) -> SimpleFact<T, Self>
     where
         Self: Sized,
@@ -48,9 +72,9 @@ where
     C: Constraint<T> + ?Sized,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) {
+    fn check(&self, obj: &T) -> CheckResult {
         tracing::trace!("check");
-        (*self).as_ref().check(obj);
+        (*self).as_ref().check(obj)
     }
 
     #[tracing::instrument(skip(self, u))]
@@ -65,10 +89,11 @@ where
     C: Constraint<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) {
-        for f in self.iter() {
-            f.check(obj)
-        }
+    fn check(&self, obj: &T) -> CheckResult {
+        self.iter()
+            .flat_map(|f| f.check(obj))
+            .collect::<Vec<_>>()
+            .into()
     }
 
     #[tracing::instrument(skip(self, u))]
@@ -85,10 +110,11 @@ where
     C: Constraint<T> + Sized,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) {
-        for f in self.iter() {
-            f.check(obj)
-        }
+    fn check(&self, obj: &T) -> CheckResult {
+        self.iter()
+            .flat_map(|f| f.check(obj))
+            .collect::<Vec<_>>()
+            .into()
     }
 
     #[tracing::instrument(skip(self, u))]
@@ -99,6 +125,8 @@ where
     }
 }
 
+/// Convenience macro for creating a collection of `Constraint`s of different types.
+/// The resulting value also implements `Constraint`.
 #[macro_export]
 macro_rules! constraints {
     ( $( $fact:expr ,)+ ) => {{

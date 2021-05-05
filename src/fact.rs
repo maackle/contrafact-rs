@@ -1,12 +1,18 @@
 use std::marker::PhantomData;
 
 use crate::{
-    constraint::{Bounds, ConstraintBox},
+    constraint::{Bounds, CheckResult, ConstraintBox},
     Constraint,
 };
 use arbitrary::{Arbitrary, Unstructured};
 
+/// A "Fact" is simply a data type which can produce a `Constraint`.
+/// When producing the constraint, there is an opportunity to mutate the Fact's
+/// state, causing it to produce a different Constraint next time `.constraint`
+/// is called. This allows for `fold()`-like application of a Fact to a sequence
+/// of data.
 pub trait Fact<T> {
+    /// Produce the constraint given the current state of this Fact
     fn constraint(&mut self) -> ConstraintBox<'_, T>;
 }
 
@@ -20,6 +26,7 @@ where
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct SimpleFact<T, C>(C, PhantomData<T>);
 
 impl<T, C> SimpleFact<T, C> {
@@ -40,15 +47,22 @@ where
 
 /// Check that all of the constraints of all Facts are satisfied for this sequence.
 #[tracing::instrument(skip(fact))]
-pub fn check_seq<O, F>(seq: &[O], mut fact: F)
+pub fn check_seq<O, F>(seq: &[O], mut fact: F) -> CheckResult
 where
     F: Fact<O>,
     O: Bounds,
 {
-    for (_i, obj) in seq.iter().enumerate() {
-        tracing::trace!("i: {}", _i);
-        fact.constraint().check(obj)
+    let mut reasons: Vec<String> = Vec::new();
+    for (i, obj) in seq.iter().enumerate() {
+        reasons.extend(
+            fact.constraint()
+                .check(obj)
+                .into_iter()
+                .map(|reason| format!("item {}: {}", i, reason))
+                .collect::<Vec<_>>(),
+        );
     }
+    reasons.into()
 }
 
 /// Build a sequence from scratch such that all Facts are satisfied.
@@ -68,6 +82,8 @@ where
     return seq;
 }
 
+/// Convenience macro for creating a collection of `Facts`s of different types.
+/// The resulting value also implements `Fact`.
 #[macro_export]
 macro_rules! facts {
     ( $( $fact:expr ,)+ ) => {{

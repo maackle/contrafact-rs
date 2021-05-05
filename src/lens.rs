@@ -3,14 +3,16 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::constraint::*;
 use arbitrary::Unstructured;
 
-pub fn lens<O, T, C, L>(lens: L, constraint: C) -> Box<LensConstraint<O, T, C>>
+/// Convenient constructor for LensConstraint
+pub fn lens<O, T, C, L, S>(reason: S, lens: L, constraint: C) -> Box<LensConstraint<O, T, C>>
 where
     O: Bounds,
     T: Bounds,
+    S: ToString,
     C: Constraint<T>,
     L: 'static + Fn(&mut O) -> &mut T,
 {
-    Box::new(LensConstraint::new(lens, constraint))
+    Box::new(LensConstraint::new(reason.to_string(), lens, constraint))
 }
 
 #[derive(Clone)]
@@ -26,11 +28,13 @@ where
     O: Bounds,
     C: Constraint<T>,
 {
+    reason: String,
+
     /// Function which maps outer structure to inner substructure
-    pub(crate) lens: Arc<dyn 'static + Fn(&mut O) -> &mut T>,
+    lens: Arc<dyn 'static + Fn(&mut O) -> &mut T>,
 
     /// The constraint about the inner substructure
-    pub(crate) constraint: C,
+    constraint: C,
 
     __phantom: PhantomData<C>,
 }
@@ -42,7 +46,7 @@ where
     C: Constraint<T>,
 {
     /// Constructor. Supply a lens and an existing Constraint to create a new Constraint.
-    pub fn new<L>(lens: L, constraint: C) -> Self
+    pub fn new<L>(reason: String, lens: L, constraint: C) -> Self
     where
         T: Bounds,
         O: Bounds,
@@ -50,6 +54,7 @@ where
         L: 'static + Fn(&mut O) -> &mut T,
     {
         Self {
+            reason,
             lens: Arc::new(lens),
             constraint,
             __phantom: PhantomData,
@@ -64,14 +69,19 @@ where
     C: Constraint<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, o: &O) {
+    fn check(&self, o: &O) -> CheckResult {
         unsafe {
             // We can convert the immutable ref to a mutable one because `check`
             // never mutates the value, but we need `lens` to return a mutable
             // reference so it can be reused in `mutate`
             let o = o as *const O;
             let o = o as *mut O;
-            self.constraint.check((self.lens)(&mut *o))
+            self.constraint
+                .check((self.lens)(&mut *o))
+                .into_iter()
+                .map(|err| format!("lens {} > {}", self.reason, err))
+                .collect::<Vec<_>>()
+                .into()
         }
     }
 
@@ -99,10 +109,10 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let f = || lens(|s: &mut S| &mut s.x, predicate::eq(1)).to_fact();
+        let f = || lens("S::x", |s: &mut S| &mut s.x, predicate::eq("must be 1", 1)).to_fact();
 
         let ones = build_seq(&mut u, 3, f());
-        check_seq(ones.as_slice(), f());
+        check_seq(ones.as_slice(), f()).unwrap();
 
         assert!(ones.iter().all(|s| s.x == 1));
     }

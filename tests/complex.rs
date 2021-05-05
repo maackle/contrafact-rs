@@ -31,7 +31,7 @@ impl Omega {
         }
     }
 
-    fn beta(&self) -> Option<&Beta> {
+    fn _beta(&self) -> Option<&Beta> {
         match self {
             Self::AlphaBeta { beta, .. } => Some(beta),
             Self::Alpha { .. } => None,
@@ -95,23 +95,45 @@ struct OmegaFact {
 impl Fact<Omega> for OmegaFact {
     fn constraint(&mut self) -> ConstraintBox<Omega> {
         let alpha_constraint = constraints![
-            lens(|a: &mut Alpha| a.id(), predicate::eq(self.id)),
-            lens(|a: &mut Alpha| a.data(), predicate::eq(self.data.clone())),
+            lens(
+                "Alpha::id",
+                |a: &mut Alpha| a.id(),
+                predicate::eq("id", self.id)
+            ),
+            lens(
+                "Alpha::data",
+                |a: &mut Alpha| a.data(),
+                predicate::eq("data", self.data.clone())
+            ),
         ];
-        let beta_constraint = lens(|b: &mut Beta| &mut b.id, predicate::eq(self.id));
+        let beta_constraint = lens(
+            "Beta::id",
+            |b: &mut Beta| &mut b.id,
+            predicate::eq("id", self.id),
+        );
         let omega_constraint = constraints![
-            lens(|o: &mut Omega| o.id(), predicate::eq(self.id)),
-            custom(|o: &Omega| match (o, o.alpha()) {
-                (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
-                (Omega::Alpha { .. }, Alpha::Nil { .. }) => true,
-                _ => false,
+            lens(
+                "Omega::id",
+                |o: &mut Omega| o.id(),
+                predicate::eq("id", self.id)
+            ),
+            custom("Omega variant matches Alpha variant", |o: &Omega| {
+                match (o, o.alpha()) {
+                    (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
+                    (Omega::Alpha { .. }, Alpha::Nil { .. }) => true,
+                    _ => false,
+                }
             }),
         ];
 
         constraints![
             omega_constraint,
-            lens(|o: &mut Omega| o.alpha_mut(), alpha_constraint),
-            prism(|o: &mut Omega| o.beta_mut(), beta_constraint),
+            lens(
+                "Omega::alpha",
+                |o: &mut Omega| o.alpha_mut(),
+                alpha_constraint
+            ),
+            prism("Omega::beta", |o: &mut Omega| o.beta_mut(), beta_constraint),
         ]
     }
 }
@@ -155,11 +177,11 @@ fn test_omega_fact() {
     };
 
     fact.constraint().mutate(&mut valid1, &mut u);
-    fact.constraint().check(&valid1);
+    fact.constraint().check(&valid1).unwrap();
 
     fact.constraint().mutate(&mut valid2, &mut u);
-    fact.constraint().check(&valid2);
+    fact.constraint().check(&valid2).unwrap();
 
     fact.constraint().mutate(&mut invalid1, &mut u);
-    fact.constraint().check(&invalid1);
+    fact.constraint().check(&invalid1).unwrap();
 }

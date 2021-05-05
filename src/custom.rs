@@ -2,14 +2,19 @@ use std::sync::Arc;
 
 use arbitrary::Unstructured;
 
-use crate::{constraint::Bounds, Constraint};
+use crate::{
+    constraint::{Bounds, CheckResult},
+    Constraint,
+};
 
-pub fn custom<T, F>(f: F) -> Box<CustomConstraint<'static, T>>
+/// Convenient constructor for CustomConstraint
+pub fn custom<T, F, S>(reason: S, f: F) -> Box<CustomConstraint<'static, T>>
 where
+    S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> bool,
 {
-    Box::new(CustomConstraint::new(f))
+    Box::new(CustomConstraint::new(reason.to_string(), f))
 }
 
 /// A constraint defined by a custom predicate closure.
@@ -21,14 +26,19 @@ where
 ///
 /// There is a fixed iteration limit, beyond which this will panic.
 #[derive(Clone)]
-pub struct CustomConstraint<'a, T>(Arc<dyn 'a + Fn(&T) -> bool>);
+pub struct CustomConstraint<'a, T>(String, Arc<dyn 'a + Fn(&T) -> bool>);
 
 impl<'a, T> Constraint<T> for CustomConstraint<'a, T>
 where
     T: Bounds,
 {
-    fn check(&self, t: &T) {
-        assert!(self.0(t))
+    fn check(&self, t: &T) -> CheckResult {
+        if self.1(t) {
+            Vec::with_capacity(0)
+        } else {
+            vec![self.0.clone()]
+        }
+        .into()
     }
 
     fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
@@ -36,7 +46,7 @@ where
 
         for _ in 0..ITERATION_LIMIT {
             *t = T::arbitrary(u).unwrap();
-            if self.0(t) {
+            if self.1(t) {
                 return;
             }
         }
@@ -49,7 +59,7 @@ where
 }
 
 impl<'a, T> CustomConstraint<'a, T> {
-    pub fn new<C: 'a + Fn(&T) -> bool>(f: C) -> Self {
-        Self(Arc::new(f))
+    pub(crate) fn new<C: 'a + Fn(&T) -> bool>(reason: String, f: C) -> Self {
+        Self(reason, Arc::new(f))
     }
 }

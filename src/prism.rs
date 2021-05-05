@@ -3,14 +3,16 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::constraint::*;
 use arbitrary::Unstructured;
 
-pub fn prism<O, T, C, P>(prism: P, constraint: C) -> Box<PrismConstraint<O, T, C>>
+/// Convenient constructor for PrismConstraint
+pub fn prism<O, T, C, P, S>(label: S, prism: P, constraint: C) -> Box<PrismConstraint<O, T, C>>
 where
     O: Bounds,
+    S: ToString,
     T: Bounds,
     C: Constraint<T>,
     P: 'static + Fn(&mut O) -> Option<&mut T>,
 {
-    Box::new(PrismConstraint::new(prism, constraint))
+    Box::new(PrismConstraint::new(label.to_string(), prism, constraint))
 }
 
 #[derive(Clone)]
@@ -24,12 +26,9 @@ where
     O: Bounds,
     C: Constraint<T>,
 {
-    /// Function which maps outer structure to inner substructure
-    pub(crate) prism: Arc<dyn 'static + Fn(&mut O) -> Option<&mut T>>,
-
-    /// The constraint about the inner substructure
-    pub(crate) constraint: C,
-
+    label: String,
+    prism: Arc<dyn 'static + Fn(&mut O) -> Option<&mut T>>,
+    constraint: C,
     __phantom: PhantomData<C>,
 }
 
@@ -40,7 +39,7 @@ where
     C: Constraint<T>,
 {
     /// Constructor. Supply a prism and an existing Constraint to create a new Constraint.
-    pub fn new<P>(prism: P, constraint: C) -> Self
+    pub fn new<P>(label: String, prism: P, constraint: C) -> Self
     where
         T: Bounds,
         O: Bounds,
@@ -48,6 +47,7 @@ where
         P: 'static + Fn(&mut O) -> Option<&mut T>,
     {
         Self {
+            label,
             prism: Arc::new(prism),
             constraint,
             __phantom: PhantomData,
@@ -62,7 +62,7 @@ where
     C: Constraint<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, o: &O) {
+    fn check(&self, o: &O) -> CheckResult {
         unsafe {
             // We can convert the immutable ref to a mutable one because `check`
             // never mutates the value, but we need `prism` to return a mutable
@@ -71,6 +71,8 @@ where
             let o = o as *mut O;
             if let Some(t) = (self.prism)(&mut *o) {
                 self.constraint.check(t)
+            } else {
+                Vec::with_capacity(0).into()
             }
         }
     }
@@ -116,10 +118,16 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let f = || vec![prism(E::x, predicate::eq(1)), prism(E::y, predicate::eq(2))].to_fact();
+        let f = || {
+            vec![
+                prism("E::x", E::x, predicate::eq("must be 1", 1)),
+                prism("E::y", E::y, predicate::eq("must be 2", 2)),
+            ]
+            .to_fact()
+        };
 
         let seq = build_seq(&mut u, 6, f());
-        check_seq(seq.as_slice(), f());
+        check_seq(seq.as_slice(), f()).unwrap();
 
         assert!(seq.iter().all(|e| match e {
             E::X(x) => *x == 1,

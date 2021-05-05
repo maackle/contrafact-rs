@@ -43,16 +43,19 @@ impl Fact<ChainLink> for ChainFact {
     fn constraint(&mut self) -> ConstraintBox<ChainLink> {
         let constraints: ConstraintVec<ChainLink> = vec![
             contrafact::lens(
+                "ChainLink::author",
                 |o: &mut ChainLink| &mut o.author,
-                predicate::eq(self.author.clone()),
+                predicate::eq("same author", self.author.clone()),
             ),
             contrafact::lens(
+                "ChainLink::prev",
                 |o: &mut ChainLink| &mut o.prev,
-                predicate::eq(self.prev.clone()),
+                predicate::eq("increasing prev", self.prev.clone()),
             ),
             contrafact::lens(
+                "ChainLink::color",
                 |o: &mut ChainLink| &mut o.color,
-                predicate::in_iter(self.valid_colors.clone()),
+                predicate::in_iter("valid color", self.valid_colors.clone()),
             ),
         ];
 
@@ -72,7 +75,7 @@ fn test() {
 
     let mut chain = build_seq(&mut u, NUM as usize, fact());
     dbg!(&chain);
-    check_seq(chain.as_mut_slice(), fact());
+    check_seq(chain.as_mut_slice(), fact()).unwrap();
 
     assert!(chain.iter().all(|c| c.author == "alice"));
     assert!(chain.iter().all(|c| c.color != Color::Black));

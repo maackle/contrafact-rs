@@ -9,7 +9,6 @@ mod fact;
 mod lens;
 mod predicates;
 mod prism;
-mod stateful;
 
 pub use constraint::{Constraint, ConstraintBox, ConstraintVec};
 pub use custom::{custom, CustomConstraint};
@@ -17,6 +16,8 @@ pub use fact::{build_seq, check_seq, Fact};
 pub use lens::{lens, LensConstraint};
 pub use prism::{prism, PrismConstraint};
 
+/// The low-level building blocks of constraints
+// TODO: maybe put this in the same namespace as the rest.
 pub mod predicate {
     pub use super::predicates::{always, eq, in_iter, ne, never, or};
 }

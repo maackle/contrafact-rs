@@ -3,54 +3,68 @@
 
 use std::marker::PhantomData;
 
-use crate::{build_seq, constraint::*};
+use crate::constraint::*;
 
-pub fn always() -> BoolFact {
-    BoolFact(true)
+/// A constraint which is always met
+pub fn always() -> BoolConstraint {
+    BoolConstraint(true)
 }
 
-pub fn never() -> BoolFact {
-    BoolFact(false)
+/// A constraint which is never met
+pub fn never() -> BoolConstraint {
+    BoolConstraint(false)
 }
 
-pub fn eq<T>(constant: T) -> EqFact<T>
+/// Specifies an equality constraint
+pub fn eq<S, T>(reason: S, constant: T) -> EqConstraint<T>
 where
+    S: ToString,
     T: std::fmt::Debug + PartialEq,
 {
-    EqFact {
+    EqConstraint {
+        reason: reason.to_string(),
         constant,
         op: EqOp::Equal,
     }
 }
 
-pub fn ne<T>(constant: T) -> EqFact<T>
+/// Specifies an inequality constraint
+pub fn ne<S, T>(reason: S, constant: T) -> EqConstraint<T>
 where
+    S: ToString,
     T: std::fmt::Debug + PartialEq,
 {
-    EqFact {
+    EqConstraint {
+        reason: reason.to_string(),
         constant,
         op: EqOp::NotEqual,
     }
 }
 
-pub fn in_iter<I, T>(iter: I) -> InFact<T>
+/// Specifies a membership constraint
+pub fn in_iter<I, S, T>(reason: S, iter: I) -> InConstraint<T>
 where
+    S: ToString,
     T: PartialEq + std::fmt::Debug,
     I: IntoIterator<Item = T>,
 {
     use std::iter::FromIterator;
-    InFact {
+    InConstraint {
+        reason: reason.to_string(),
         inner: Vec::from_iter(iter),
     }
 }
 
-pub fn or<A, B, Item>(a: A, b: B) -> OrFact<A, B, Item>
+/// Combines two constraints so that either one may be satisfied
+pub fn or<A, B, S, Item>(reason: S, a: A, b: B) -> OrConstraint<A, B, Item>
 where
+    S: ToString,
     A: Constraint<Item>,
     B: Constraint<Item>,
     Item: Bounds,
 {
-    OrFact {
+    OrConstraint {
+        reason: reason.to_string(),
         a,
         b,
         _phantom: PhantomData,
@@ -58,27 +72,31 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoolFact(bool);
+pub struct BoolConstraint(bool);
 
-impl<T> Constraint<T> for BoolFact
+impl<T> Constraint<T> for BoolConstraint
 where
     T: Bounds + PartialEq,
 {
-    fn check(&self, obj: &T) {
-        if !self.0 {
-            panic!("never() constraint reached.")
+    fn check(&self, _: &T) -> CheckResult {
+        if self.0 {
+            Vec::with_capacity(0)
+        } else {
+            vec![format!("never() always fails")]
         }
+        .into()
     }
 
-    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&mut self, _: &mut T, _: &mut arbitrary::Unstructured<'static>) {
         if !self.0 {
-            panic!("never() constraint reached.")
+            panic!("never() cannot be used for mutation.")
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EqFact<T> {
+pub struct EqConstraint<T> {
+    reason: String,
     op: EqOp,
     constant: T,
 }
@@ -89,15 +107,23 @@ pub enum EqOp {
     NotEqual,
 }
 
-impl<T> Constraint<T> for EqFact<T>
+impl<T> Constraint<T> for EqConstraint<T>
 where
     T: Bounds + PartialEq,
 {
-    fn check(&self, obj: &T) {
+    fn check(&self, obj: &T) -> CheckResult {
         match self.op {
-            EqOp::Equal => assert!(*obj == self.constant),
-            EqOp::NotEqual => assert!(*obj != self.constant),
+            EqOp::Equal if *obj != self.constant => vec![format!(
+                "{}: expected {:?} == {:?}",
+                self.reason, obj, self.constant
+            )],
+            EqOp::NotEqual if *obj == self.constant => vec![format!(
+                "{}: expected {:?} != {:?}",
+                self.reason, obj, self.constant
+            )],
+            _ => Vec::with_capacity(0),
         }
+        .into()
     }
 
     fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
@@ -111,53 +137,67 @@ where
             },
         }
         self.check(obj)
+            .ok()
+            .expect("there's a bug in EqConstraint::mutate");
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InFact<T>
+pub struct InConstraint<T>
 where
     T: PartialEq + std::fmt::Debug,
 {
+    reason: String,
     inner: Vec<T>,
 }
 
-impl<T> Constraint<T> for InFact<T>
+impl<T> Constraint<T> for InConstraint<T>
 where
     T: Bounds,
 {
-    fn check(&self, obj: &T) {
-        assert!(self.inner.contains(obj))
+    fn check(&self, obj: &T) -> CheckResult {
+        if self.inner.contains(obj) {
+            Vec::with_capacity(0)
+        } else {
+            vec![format!(
+                "{}: expected {:?} to be contained in {:?}",
+                self.reason, obj, self.inner
+            )]
+        }
+        .into()
     }
 
     fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         *obj = u.choose(self.inner.as_slice()).unwrap().clone();
-        self.check(obj);
+        self.check(obj)
+            .ok()
+            .expect("there's a bug in InConstraint::mutate");
     }
 }
 
 /// Constraint that combines two `Constraint`s, returning the OR of the results.
 ///
 /// This is created by the `or` function.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct OrFact<M1, M2, Item>
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrConstraint<M1, M2, Item>
 where
     M1: Constraint<Item>,
     M2: Constraint<Item>,
     Item: ?Sized + Bounds,
 {
+    reason: String,
     pub(crate) a: M1,
     pub(crate) b: M2,
     _phantom: PhantomData<Item>,
 }
 
-impl<P1, P2, T> Constraint<T> for OrFact<P1, P2, T>
+impl<P1, P2, T> Constraint<T> for OrConstraint<P1, P2, T>
 where
     P1: Constraint<T> + Constraint<T>,
     P2: Constraint<T> + Constraint<T>,
     T: Bounds,
 {
-    fn check(&self, obj: &T) {
+    fn check(&self, _obj: &T) -> CheckResult {
         todo!()
     }
 
@@ -167,14 +207,16 @@ where
         } else {
             self.b.mutate(obj, u);
         }
-        self.check(obj);
+        self.check(obj)
+            .ok()
+            .expect("there's a bug in OrConstraint::mutate");
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{check_seq, NOISE};
+    use crate::{build_seq, check_seq, NOISE};
     use arbitrary::Unstructured;
 
     #[test]
@@ -183,8 +225,10 @@ mod tests {
 
         let mut u = Unstructured::new(&NOISE);
 
-        let ones = build_seq(&mut u, 3, eq(1).to_fact());
-        check_seq(ones.as_slice(), eq(1).to_fact());
+        let mustbe1 = eq("must be 1", 1).to_fact();
+
+        let ones = build_seq(&mut u, 3, mustbe1.clone());
+        check_seq(ones.as_slice(), mustbe1.clone()).unwrap();
 
         assert!(ones.iter().all(|x| *x == 1));
     }
