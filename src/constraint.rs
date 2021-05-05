@@ -21,7 +21,12 @@ pub struct CheckResult(Vec<String>);
 impl CheckResult {
     pub fn unwrap(self) {
         if !self.0.is_empty() {
-            panic!(format!("Check failed: {:#?}", self.0))
+            let msg = if self.0.len() == 1 {
+                format!("Check failed: {}", self.0[0])
+            } else {
+                format!("Check failed: {:#?}", self.0)
+            };
+            panic!(msg);
         }
     }
 
@@ -31,6 +36,10 @@ impl CheckResult {
         } else {
             std::result::Result::Err(self.0)
         }
+    }
+
+    pub fn pass() -> Self {
+        Self(Vec::with_capacity(0))
     }
 }
 

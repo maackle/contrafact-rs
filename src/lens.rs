@@ -108,7 +108,7 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let f = || lens("S::x", |s: &mut S| &mut s.x, predicate::eq("must be 1", 1)).to_fact();
+        let f = || lens("S::x", |s: &mut S| &mut s.x, predicate::eq("must be 1", &1)).to_fact();
 
         let ones = build_seq(&mut u, 3, f());
         check_seq(ones.as_slice(), f()).unwrap();

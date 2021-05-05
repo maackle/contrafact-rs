@@ -40,28 +40,30 @@ impl ChainFact {
 }
 
 impl Fact<ChainLink> for ChainFact {
-    fn constraint(&mut self) -> ConstraintBox<ChainLink> {
+    fn constraint(&self) -> ConstraintBox<ChainLink> {
         let constraints: ConstraintVec<ChainLink> = vec![
             contrafact::lens(
                 "ChainLink::author",
                 |o: &mut ChainLink| &mut o.author,
-                predicate::eq("same author", self.author.clone()),
+                predicate::eq("same author", &self.author),
             ),
             contrafact::lens(
                 "ChainLink::prev",
                 |o: &mut ChainLink| &mut o.prev,
-                predicate::eq("increasing prev", self.prev.clone()),
+                predicate::eq("increasing prev", &self.prev),
             ),
             contrafact::lens(
                 "ChainLink::color",
                 |o: &mut ChainLink| &mut o.color,
-                predicate::in_iter("valid color", self.valid_colors.clone()),
+                predicate::in_iter("valid color", &self.valid_colors),
             ),
         ];
 
-        self.prev += 1;
-
         Box::new(constraints)
+    }
+
+    fn advance(&mut self) {
+        self.prev += 1;
     }
 }
 

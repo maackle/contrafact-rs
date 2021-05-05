@@ -16,7 +16,7 @@ pub fn never() -> BoolConstraint {
 }
 
 /// Specifies an equality constraint
-pub fn eq<S, T>(reason: S, constant: T) -> EqConstraint<T>
+pub fn eq<S, T>(reason: S, constant: &T) -> EqConstraint<T>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
@@ -29,7 +29,7 @@ where
 }
 
 /// Specifies an inequality constraint
-pub fn ne<S, T>(reason: S, constant: T) -> EqConstraint<T>
+pub fn ne<S, T>(reason: S, constant: &T) -> EqConstraint<T>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
@@ -42,11 +42,11 @@ where
 }
 
 /// Specifies a membership constraint
-pub fn in_iter<I, S, T>(reason: S, iter: I) -> InConstraint<T>
+pub fn in_iter<'a, I, S, T>(reason: S, iter: I) -> InConstraint<'a, T>
 where
     S: ToString,
-    T: PartialEq + std::fmt::Debug,
-    I: IntoIterator<Item = T>,
+    T: 'a + PartialEq + std::fmt::Debug,
+    I: IntoIterator<Item = &'a T>,
 {
     use std::iter::FromIterator;
     InConstraint {
@@ -95,10 +95,10 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EqConstraint<T> {
+pub struct EqConstraint<'a, T> {
     reason: String,
     op: EqOp,
-    constant: T,
+    constant: &'a T,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,17 +107,17 @@ pub enum EqOp {
     NotEqual,
 }
 
-impl<T> Constraint<T> for EqConstraint<T>
+impl<T> Constraint<T> for EqConstraint<'_, T>
 where
     T: Bounds + PartialEq,
 {
     fn check(&self, obj: &T) -> CheckResult {
         match self.op {
-            EqOp::Equal if *obj != self.constant => vec![format!(
+            EqOp::Equal if obj != self.constant => vec![format!(
                 "{}: expected {:?} == {:?}",
                 self.reason, obj, self.constant
             )],
-            EqOp::NotEqual if *obj == self.constant => vec![format!(
+            EqOp::NotEqual if obj == self.constant => vec![format!(
                 "{}: expected {:?} != {:?}",
                 self.reason, obj, self.constant
             )],
@@ -131,7 +131,7 @@ where
             EqOp::Equal => *obj = self.constant.clone(),
             EqOp::NotEqual => loop {
                 *obj = T::arbitrary(u).unwrap();
-                if *obj != self.constant {
+                if obj != self.constant {
                     break;
                 }
             },
@@ -143,20 +143,20 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InConstraint<T>
+pub struct InConstraint<'a, T>
 where
     T: PartialEq + std::fmt::Debug,
 {
     reason: String,
-    inner: Vec<T>,
+    inner: Vec<&'a T>,
 }
 
-impl<T> Constraint<T> for InConstraint<T>
+impl<T> Constraint<T> for InConstraint<'_, T>
 where
     T: Bounds,
 {
     fn check(&self, obj: &T) -> CheckResult {
-        if self.inner.contains(obj) {
+        if self.inner.contains(&obj) {
             Vec::with_capacity(0)
         } else {
             vec![format!(
@@ -168,7 +168,7 @@ where
     }
 
     fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
-        *obj = u.choose(self.inner.as_slice()).unwrap().clone();
+        *obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(obj)
             .ok()
             .expect("there's a bug in InConstraint::mutate");
@@ -197,8 +197,19 @@ where
     P2: Constraint<T> + Constraint<T>,
     T: Bounds,
 {
-    fn check(&self, _obj: &T) -> CheckResult {
-        todo!()
+    fn check(&self, obj: &T) -> CheckResult {
+        let a = self.a.check(obj).ok();
+        let b = self.b.check(obj).ok();
+        match (a, b) {
+            (Err(a), Err(b)) => vec![format!(
+                "expected either one of the following conditions to be met:
+condition 1: {:#?}
+condition 2: {:#?}",
+                a, b
+            )]
+            .into(),
+            _ => CheckResult::pass(),
+        }
     }
 
     fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
@@ -216,20 +227,35 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, NOISE};
+    use crate::{build_seq, check_seq, Fact, NOISE};
     use arbitrary::Unstructured;
 
     #[test]
     fn test_eq() {
         observability::test_run().ok();
-
         let mut u = Unstructured::new(&NOISE);
 
-        let mustbe1 = eq("must be 1", 1).to_fact();
+        let eq1 = eq("must be 1", &1).to_fact();
 
-        let ones = build_seq(&mut u, 3, mustbe1.clone());
-        check_seq(ones.as_slice(), mustbe1.clone()).unwrap();
+        let ones = build_seq(&mut u, 3, eq1.clone());
+        check_seq(ones.as_slice(), eq1.clone()).unwrap();
 
         assert!(ones.iter().all(|x| *x == 1));
+    }
+
+    #[test]
+    fn test_or() {
+        observability::test_run().ok();
+        let mut u = Unstructured::new(&NOISE);
+
+        let eq1 = eq("must be 1", &1);
+        let eq2 = eq("must be 2", &2);
+        let either = or("can be 1 or 2", eq1, eq2).to_fact();
+
+        let ones = build_seq(&mut u, 10, either.clone());
+        check_seq(ones.as_slice(), either.clone()).unwrap();
+        assert!(ones.iter().all(|x| *x == 1 || *x == 2));
+
+        assert_eq!(either.constraint().check(&3).ok().unwrap_err().len(), 1);
     }
 }

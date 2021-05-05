@@ -13,7 +13,10 @@ use arbitrary::{Arbitrary, Unstructured};
 /// of data.
 pub trait Fact<T> {
     /// Produce the constraint given the current state of this Fact
-    fn constraint(&mut self) -> ConstraintBox<'_, T>;
+    fn constraint(&self) -> ConstraintBox<'_, T>;
+
+    /// Change state after producing a new set of Constraints
+    fn advance(&mut self) {}
 }
 
 impl<T, F> Fact<T> for Vec<F>
@@ -21,8 +24,12 @@ where
     T: 'static + Bounds,
     F: Fact<T>,
 {
-    fn constraint(&mut self) -> ConstraintBox<'_, T> {
-        Box::new(self.iter_mut().map(|f| f.constraint()).collect::<Vec<_>>())
+    fn constraint(&self) -> ConstraintBox<'_, T> {
+        Box::new(self.iter().map(|f| f.constraint()).collect::<Vec<_>>())
+    }
+
+    fn advance(&mut self) {
+        self.iter_mut().for_each(|f| f.advance());
     }
 }
 
@@ -40,7 +47,7 @@ where
     T: Bounds,
     C: Constraint<T> + Clone,
 {
-    fn constraint(&mut self) -> ConstraintBox<'_, T> {
+    fn constraint(&self) -> ConstraintBox<'_, T> {
         Box::new(self.0.clone())
     }
 }
@@ -61,6 +68,7 @@ where
                 .map(|reason| format!("item {}: {}", i, reason))
                 .collect::<Vec<_>>(),
         );
+        fact.advance();
     }
     reasons.into()
 }
@@ -77,6 +85,7 @@ where
         let mut obj = O::arbitrary(u).unwrap();
         tracing::trace!("i: {}", _i);
         fact.constraint().mutate(&mut obj, u);
+        fact.advance();
         seq.push(obj);
     }
     return seq;

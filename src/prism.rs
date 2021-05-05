@@ -126,8 +126,8 @@ mod tests {
 
         let f = || {
             vec![
-                prism("E::x", E::x, predicate::eq("must be 1", 1)),
-                prism("E::y", E::y, predicate::eq("must be 2", 2)),
+                prism("E::x", E::x, predicate::eq("must be 1", &1)),
+                prism("E::y", E::y, predicate::eq("must be 2", &2)),
             ]
             .to_fact()
         };

@@ -93,23 +93,23 @@ struct OmegaFact {
 }
 
 impl Fact<Omega> for OmegaFact {
-    fn constraint(&mut self) -> ConstraintBox<Omega> {
+    fn constraint(&self) -> ConstraintBox<Omega> {
         let alpha_constraint = constraints![
             lens(
                 "Alpha::id",
                 |a: &mut Alpha| a.id(),
-                predicate::eq("id", self.id)
+                predicate::eq("id", &self.id)
             ),
             lens(
                 "Alpha::data",
                 |a: &mut Alpha| a.data(),
-                predicate::eq("data", self.data.clone())
+                predicate::eq("data", &self.data)
             ),
         ];
         let beta_constraint = lens(
             "Beta::id",
             |b: &mut Beta| &mut b.id,
-            predicate::eq("id", self.id),
+            predicate::eq("id", &self.id),
         );
         let omega_constraint = constraints![
             custom("Omega variant matches Alpha variant", |o: &Omega| {
@@ -122,7 +122,7 @@ impl Fact<Omega> for OmegaFact {
             lens(
                 "Omega::id",
                 |o: &mut Omega| o.id(),
-                predicate::eq("id", self.id)
+                predicate::eq("id", &self.id)
             ),
         ];
 
@@ -143,7 +143,7 @@ fn test_omega_fact() {
     observability::test_run().ok();
     let mut u = Unstructured::new(&NOISE);
 
-    let mut fact = OmegaFact {
+    let fact = OmegaFact {
         id: 11,
         data: "spartacus".into(),
     };
