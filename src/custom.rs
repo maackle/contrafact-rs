@@ -39,7 +39,7 @@ impl<'a, T> Constraint<T> for CustomConstraint<'a, T>
 where
     T: Bounds,
 {
-    fn check(&self, t: &T) -> CheckResult {
+    fn check(&mut self, t: &T) -> CheckResult {
         if (self.f)(t) {
             Vec::with_capacity(0)
         } else {
@@ -48,7 +48,7 @@ where
         .into()
     }
 
-    fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
+    fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
         const ITERATION_LIMIT: usize = 100;
 
         for _ in 0..ITERATION_LIMIT {

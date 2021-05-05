@@ -78,7 +78,7 @@ impl<T> Constraint<T> for BoolConstraint
 where
     T: Bounds + PartialEq,
 {
-    fn check(&self, _: &T) -> CheckResult {
+    fn check(&mut self, _: &T) -> CheckResult {
         if self.0 {
             Vec::with_capacity(0)
         } else {
@@ -87,7 +87,7 @@ where
         .into()
     }
 
-    fn mutate(&self, _: &mut T, _: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&mut self, _: &mut T, _: &mut arbitrary::Unstructured<'static>) {
         if !self.0 {
             panic!("never() cannot be used for mutation.")
         }
@@ -111,7 +111,7 @@ impl<T> Constraint<T> for EqConstraint<'_, T>
 where
     T: Bounds + PartialEq,
 {
-    fn check(&self, obj: &T) -> CheckResult {
+    fn check(&mut self, obj: &T) -> CheckResult {
         match self.op {
             EqOp::Equal if obj != self.constant => vec![format!(
                 "{}: expected {:?} == {:?}",
@@ -126,7 +126,7 @@ where
         .into()
     }
 
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         match self.op {
             EqOp::Equal => *obj = self.constant.clone(),
             EqOp::NotEqual => loop {
@@ -155,7 +155,7 @@ impl<T> Constraint<T> for InConstraint<'_, T>
 where
     T: Bounds,
 {
-    fn check(&self, obj: &T) -> CheckResult {
+    fn check(&mut self, obj: &T) -> CheckResult {
         if self.inner.contains(&obj) {
             Vec::with_capacity(0)
         } else {
@@ -167,7 +167,7 @@ where
         .into()
     }
 
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         *obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(obj)
             .ok()
@@ -197,7 +197,7 @@ where
     P2: Constraint<T> + Constraint<T>,
     T: Bounds,
 {
-    fn check(&self, obj: &T) -> CheckResult {
+    fn check(&mut self, obj: &T) -> CheckResult {
         let a = self.a.check(obj).ok();
         let b = self.b.check(obj).ok();
         match (a, b) {
@@ -212,7 +212,7 @@ condition 2: {:#?}",
         }
     }
 
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         if *u.choose(&[true, false]).unwrap() {
             self.a.mutate(obj, u);
         } else {

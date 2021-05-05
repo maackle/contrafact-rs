@@ -51,10 +51,10 @@ where
     T: Bounds,
 {
     /// Assert that the constraint is satisfied (panic if not).
-    fn check(&self, obj: &T) -> CheckResult;
+    fn check(&mut self, obj: &T) -> CheckResult;
 
     /// Mutate a value such that it satisfies the constraint.
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>);
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>);
 
     /// Convert this constraint to a stateless Fact.
     fn to_fact(self) -> SimpleFact<T, Self>
@@ -71,14 +71,14 @@ where
     C: Constraint<T> + ?Sized,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) -> CheckResult {
+    fn check(&mut self, obj: &T) -> CheckResult {
         tracing::trace!("check");
-        (*self).as_ref().check(obj)
+        (*self).as_mut().check(obj)
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
-        (*self).as_ref().mutate(obj, u);
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
+        (*self).as_mut().mutate(obj, u);
     }
 }
 
@@ -88,16 +88,16 @@ where
     C: Constraint<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) -> CheckResult {
-        self.iter()
+    fn check(&mut self, obj: &T) -> CheckResult {
+        self.iter_mut()
             .flat_map(|f| f.check(obj))
             .collect::<Vec<_>>()
             .into()
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
-        for f in self.iter() {
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
+        for f in self.iter_mut() {
             f.mutate(obj, u)
         }
     }
@@ -109,16 +109,16 @@ where
     C: Constraint<T> + Sized,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) -> CheckResult {
-        self.iter()
+    fn check(&mut self, obj: &T) -> CheckResult {
+        self.iter_mut()
             .flat_map(|f| f.check(obj))
             .collect::<Vec<_>>()
             .into()
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
-        for f in self.iter() {
+    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
+        for f in self.iter_mut() {
             f.mutate(obj, u)
         }
     }

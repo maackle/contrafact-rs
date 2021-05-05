@@ -68,7 +68,7 @@ where
     C: Constraint<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, o: &O) -> CheckResult {
+    fn check(&mut self, o: &O) -> CheckResult {
         unsafe {
             // We can convert the immutable ref to a mutable one because `check`
             // never mutates the value, but we need `lens` to return a mutable
@@ -85,7 +85,7 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut O, u: &mut Unstructured<'static>) {
+    fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
         self.constraint.mutate((self.lens)(obj), u)
     }
 }
