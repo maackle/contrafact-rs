@@ -1,5 +1,5 @@
 use arbitrary::{Arbitrary, Unstructured};
-use contrafact::{constraints, custom, lens, predicate, prism, ConstraintBox, Fact};
+use contrafact::{constraints, custom, lens, predicate, prism, DerivedFact, FactBox};
 
 pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
     use rand::Rng;
@@ -92,8 +92,8 @@ struct OmegaFact {
     data: String,
 }
 
-impl Fact<Omega> for OmegaFact {
-    fn constraint(&self) -> ConstraintBox<Omega> {
+impl DerivedFact<Omega> for OmegaFact {
+    fn fact(&self) -> FactBox<Omega> {
         let alpha_constraint = constraints![
             lens(
                 "Alpha::id",
@@ -167,11 +167,11 @@ fn test_omega_fact() {
         beta: beta.clone(),
     };
 
-    fact.constraint().mutate(&mut valid1, &mut u);
-    fact.constraint().check(dbg!(&valid1)).unwrap();
+    fact.fact().mutate(&mut valid1, &mut u);
+    fact.fact().check(dbg!(&valid1)).unwrap();
 
-    fact.constraint().mutate(&mut valid2, &mut u);
-    fact.constraint().check(dbg!(&valid2)).unwrap();
+    fact.fact().mutate(&mut valid2, &mut u);
+    fact.fact().check(dbg!(&valid2)).unwrap();
 
     let mut invalid1 = Omega::Alpha {
         id: 8,
@@ -193,17 +193,17 @@ fn test_omega_fact() {
 
     // Ensure that check fails for invalid data
     assert_eq!(
-        dbg!(fact.constraint().check(dbg!(&invalid1)).ok().unwrap_err()).len(),
+        dbg!(fact.fact().check(dbg!(&invalid1)).ok().unwrap_err()).len(),
         4,
     );
-    fact.constraint().mutate(&mut invalid1, &mut u);
-    fact.constraint().check(dbg!(&invalid1)).unwrap();
+    fact.fact().mutate(&mut invalid1, &mut u);
+    fact.fact().check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
     assert_eq!(
-        dbg!(fact.constraint().check(dbg!(&invalid2)).ok().unwrap_err()).len(),
+        dbg!(fact.fact().check(dbg!(&invalid2)).ok().unwrap_err()).len(),
         5,
     );
-    fact.constraint().mutate(&mut invalid2, &mut u);
-    fact.constraint().check(dbg!(&invalid2)).unwrap();
+    fact.fact().mutate(&mut invalid2, &mut u);
+    fact.fact().check(dbg!(&invalid2)).unwrap();
 }

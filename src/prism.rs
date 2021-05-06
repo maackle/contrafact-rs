@@ -1,11 +1,11 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::constraint::*;
+use crate::fact::*;
 use arbitrary::Unstructured;
 
-/// Applies a Constraint to a subset of some data by means of a prism-like closure
+/// Applies a Fact to a subset of some data by means of a prism-like closure
 /// which specifies the mutable subset to operate on. In other words, if type `O`
-/// contains a `T`, and you have a `Constraint<T>`, `PrismConstraint` lets you lift that constraint
+/// contains a `T`, and you have a `Fact<T>`, `PrismFact` lets you lift that constraint
 /// into a constraint about `O`.
 ///
 /// A prism is like a lens, except that the target value may or may not exist.
@@ -14,42 +14,42 @@ use arbitrary::Unstructured;
 ///
 /// If the prism returns Some, then the constraint will be checked, and mutation
 /// will be possible. If it returns None, then checks and mutations will not occur.
-pub fn prism<O, T, C, P, S>(label: S, prism: P, constraint: C) -> Box<PrismConstraint<O, T, C>>
+pub fn prism<O, T, F, P, S>(label: S, prism: P, constraint: F) -> Box<PrismFact<O, T, F>>
 where
     O: Bounds,
     S: ToString,
     T: Bounds,
-    C: Constraint<T>,
+    F: Fact<T>,
     P: 'static + Fn(&mut O) -> Option<&mut T>,
 {
-    Box::new(PrismConstraint::new(label.to_string(), prism, constraint))
+    Box::new(PrismFact::new(label.to_string(), prism, constraint))
 }
 
 #[derive(Clone)]
-pub struct PrismConstraint<O, T, C>
+pub struct PrismFact<O, T, F>
 where
     T: Bounds,
     O: Bounds,
-    C: Constraint<T>,
+    F: Fact<T>,
 {
     label: String,
     prism: Arc<dyn 'static + Fn(&mut O) -> Option<&mut T>>,
-    constraint: C,
-    __phantom: PhantomData<C>,
+    constraint: F,
+    __phantom: PhantomData<F>,
 }
 
-impl<O, T, C> PrismConstraint<O, T, C>
+impl<O, T, F> PrismFact<O, T, F>
 where
     T: Bounds,
     O: Bounds,
-    C: Constraint<T>,
+    F: Fact<T>,
 {
-    /// Constructor. Supply a prism and an existing Constraint to create a new Constraint.
-    pub fn new<P>(label: String, prism: P, constraint: C) -> Self
+    /// Constructor. Supply a prism and an existing Fact to create a new Fact.
+    pub fn new<P>(label: String, prism: P, constraint: F) -> Self
     where
         T: Bounds,
         O: Bounds,
-        C: Constraint<T>,
+        F: Fact<T>,
         P: 'static + Fn(&mut O) -> Option<&mut T>,
     {
         Self {
@@ -61,11 +61,11 @@ where
     }
 }
 
-impl<O, T, C> Constraint<O> for PrismConstraint<O, T, C>
+impl<O, T, F> Fact<O> for PrismFact<O, T, F>
 where
     T: Bounds,
     O: Bounds,
-    C: Constraint<T>,
+    F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&mut self, o: &O) -> CheckResult {
@@ -129,7 +129,6 @@ mod tests {
                 prism("E::x", E::x, predicate::eq("must be 1", &1)),
                 prism("E::y", E::y, predicate::eq("must be 2", &2)),
             ]
-            .to_fact()
         };
 
         let seq = build_seq(&mut u, 6, f());

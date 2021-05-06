@@ -1,31 +1,31 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::constraint::*;
+use crate::fact::*;
 use arbitrary::Unstructured;
 
-/// Applies a Constraint to a subset of some data by means of a lens-like closure
+/// Applies a Fact to a subset of some data by means of a lens-like closure
 /// which specifies the mutable subset to operate on. In other words, if type `O`
-/// contains a `T`, and you have a `Constraint<T>`, `LensConstraint` lets you lift
+/// contains a `T`, and you have a `Fact<T>`, `LensFact` lets you lift
 /// that constraint into a constraint about `O`.
 //
-// TODO: can rewrite this in terms of PrismConstraint for DRYness
-pub fn lens<O, T, C, L, S>(reason: S, lens: L, constraint: C) -> Box<LensConstraint<O, T, C>>
+// TODO: can rewrite this in terms of PrismFact for DRYness
+pub fn lens<O, T, F, L, S>(reason: S, lens: L, constraint: F) -> Box<LensFact<O, T, F>>
 where
     O: Bounds,
     T: Bounds,
     S: ToString,
-    C: Constraint<T>,
+    F: Fact<T>,
     L: 'static + Fn(&mut O) -> &mut T,
 {
-    Box::new(LensConstraint::new(reason.to_string(), lens, constraint))
+    Box::new(LensFact::new(reason.to_string(), lens, constraint))
 }
 
 #[derive(Clone)]
-pub struct LensConstraint<O, T, C>
+pub struct LensFact<O, T, F>
 where
     T: Bounds,
     O: Bounds,
-    C: Constraint<T>,
+    F: Fact<T>,
 {
     reason: String,
 
@@ -33,23 +33,23 @@ where
     lens: Arc<dyn 'static + Fn(&mut O) -> &mut T>,
 
     /// The constraint about the inner substructure
-    constraint: C,
+    constraint: F,
 
-    __phantom: PhantomData<C>,
+    __phantom: PhantomData<F>,
 }
 
-impl<O, T, C> LensConstraint<O, T, C>
+impl<O, T, F> LensFact<O, T, F>
 where
     T: Bounds,
     O: Bounds,
-    C: Constraint<T>,
+    F: Fact<T>,
 {
-    /// Constructor. Supply a lens and an existing Constraint to create a new Constraint.
-    pub fn new<L>(reason: String, lens: L, constraint: C) -> Self
+    /// Constructor. Supply a lens and an existing Fact to create a new Fact.
+    pub fn new<L>(reason: String, lens: L, constraint: F) -> Self
     where
         T: Bounds,
         O: Bounds,
-        C: Constraint<T>,
+        F: Fact<T>,
         L: 'static + Fn(&mut O) -> &mut T,
     {
         Self {
@@ -61,11 +61,11 @@ where
     }
 }
 
-impl<O, T, C> Constraint<O> for LensConstraint<O, T, C>
+impl<O, T, F> Fact<O> for LensFact<O, T, F>
 where
     T: Bounds,
     O: Bounds,
-    C: Constraint<T>,
+    F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&mut self, o: &O) -> CheckResult {
@@ -108,7 +108,7 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let f = || lens("S::x", |s: &mut S| &mut s.x, predicate::eq("must be 1", &1)).to_fact();
+        let f = || lens("S::x", |s: &mut S| &mut s.x, predicate::eq("must be 1", &1));
 
         let ones = build_seq(&mut u, 3, f());
         check_seq(ones.as_slice(), f()).unwrap();

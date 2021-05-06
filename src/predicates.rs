@@ -3,25 +3,25 @@
 
 use std::marker::PhantomData;
 
-use crate::constraint::*;
+use crate::fact::*;
 
 /// A constraint which is always met
-pub fn always() -> BoolConstraint {
-    BoolConstraint(true)
+pub fn always() -> BoolFact {
+    BoolFact(true)
 }
 
 /// A constraint which is never met
-pub fn never() -> BoolConstraint {
-    BoolConstraint(false)
+pub fn never() -> BoolFact {
+    BoolFact(false)
 }
 
 /// Specifies an equality constraint
-pub fn eq<S, T>(reason: S, constant: &T) -> EqConstraint<T>
+pub fn eq<S, T>(reason: S, constant: &T) -> EqFact<T>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
 {
-    EqConstraint {
+    EqFact {
         reason: reason.to_string(),
         constant,
         op: EqOp::Equal,
@@ -29,12 +29,12 @@ where
 }
 
 /// Specifies an inequality constraint
-pub fn ne<S, T>(reason: S, constant: &T) -> EqConstraint<T>
+pub fn ne<S, T>(reason: S, constant: &T) -> EqFact<T>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
 {
-    EqConstraint {
+    EqFact {
         reason: reason.to_string(),
         constant,
         op: EqOp::NotEqual,
@@ -42,28 +42,40 @@ where
 }
 
 /// Specifies a membership constraint
-pub fn in_iter<'a, I, S, T>(reason: S, iter: I) -> InConstraint<'a, T>
+pub fn in_iter<'a, I, S, T>(reason: S, iter: I) -> InFact<'a, T>
 where
     S: ToString,
     T: 'a + PartialEq + std::fmt::Debug,
     I: IntoIterator<Item = &'a T>,
 {
     use std::iter::FromIterator;
-    InConstraint {
+    InFact {
         reason: reason.to_string(),
         inner: Vec::from_iter(iter),
     }
 }
 
-/// Combines two constraints so that either one may be satisfied
-pub fn or<A, B, S, Item>(reason: S, a: A, b: B) -> OrConstraint<A, B, Item>
+/// Specifies an equality constraint
+pub fn consecutive_int<S, T>(reason: S, initial: T) -> ConsecutiveIntFact<T>
 where
     S: ToString,
-    A: Constraint<Item>,
-    B: Constraint<Item>,
+    T: std::fmt::Debug + PartialEq + num::PrimInt,
+{
+    ConsecutiveIntFact {
+        reason: reason.to_string(),
+        counter: initial,
+    }
+}
+
+/// Combines two constraints so that either one may be satisfied
+pub fn or<A, B, S, Item>(reason: S, a: A, b: B) -> OrFact<A, B, Item>
+where
+    S: ToString,
+    A: Fact<Item>,
+    B: Fact<Item>,
     Item: Bounds,
 {
-    OrConstraint {
+    OrFact {
         reason: reason.to_string(),
         a,
         b,
@@ -72,9 +84,9 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoolConstraint(bool);
+pub struct BoolFact(bool);
 
-impl<T> Constraint<T> for BoolConstraint
+impl<T> Fact<T> for BoolFact
 where
     T: Bounds + PartialEq,
 {
@@ -95,7 +107,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EqConstraint<'a, T> {
+pub struct EqFact<'a, T> {
     reason: String,
     op: EqOp,
     constant: &'a T,
@@ -107,7 +119,7 @@ pub enum EqOp {
     NotEqual,
 }
 
-impl<T> Constraint<T> for EqConstraint<'_, T>
+impl<T> Fact<T> for EqFact<'_, T>
 where
     T: Bounds + PartialEq,
 {
@@ -138,12 +150,12 @@ where
         }
         self.check(obj)
             .ok()
-            .expect("there's a bug in EqConstraint::mutate");
+            .expect("there's a bug in EqFact::mutate");
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InConstraint<'a, T>
+pub struct InFact<'a, T>
 where
     T: PartialEq + std::fmt::Debug,
 {
@@ -151,7 +163,7 @@ where
     inner: Vec<&'a T>,
 }
 
-impl<T> Constraint<T> for InConstraint<'_, T>
+impl<T> Fact<T> for InFact<'_, T>
 where
     T: Bounds,
 {
@@ -171,18 +183,44 @@ where
         *obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(obj)
             .ok()
-            .expect("there's a bug in InConstraint::mutate");
+            .expect("there's a bug in InFact::mutate");
     }
 }
 
-/// Constraint that combines two `Constraint`s, returning the OR of the results.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConsecutiveIntFact<T> {
+    reason: String,
+    counter: T,
+}
+
+impl<T> Fact<T> for ConsecutiveIntFact<T>
+where
+    T: Bounds + num::PrimInt,
+{
+    fn check(&mut self, obj: &T) -> CheckResult {
+        let result = if *obj == self.counter {
+            CheckResult::pass()
+        } else {
+            vec![self.reason.clone()].into()
+        };
+        self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
+        result
+    }
+
+    fn mutate(&mut self, obj: &mut T, _: &mut arbitrary::Unstructured<'static>) {
+        *obj = self.counter.clone();
+        self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
+    }
+}
+
+/// Fact that combines two `Fact`s, returning the OR of the results.
 ///
 /// This is created by the `or` function.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OrConstraint<M1, M2, Item>
+pub struct OrFact<M1, M2, Item>
 where
-    M1: Constraint<Item>,
-    M2: Constraint<Item>,
+    M1: Fact<Item>,
+    M2: Fact<Item>,
     Item: ?Sized + Bounds,
 {
     reason: String,
@@ -191,10 +229,10 @@ where
     _phantom: PhantomData<Item>,
 }
 
-impl<P1, P2, T> Constraint<T> for OrConstraint<P1, P2, T>
+impl<P1, P2, T> Fact<T> for OrFact<P1, P2, T>
 where
-    P1: Constraint<T> + Constraint<T>,
-    P2: Constraint<T> + Constraint<T>,
+    P1: Fact<T> + Fact<T>,
+    P2: Fact<T> + Fact<T>,
     T: Bounds,
 {
     fn check(&mut self, obj: &T) -> CheckResult {
@@ -220,14 +258,14 @@ condition 2: {:#?}",
         }
         self.check(obj)
             .ok()
-            .expect("there's a bug in OrConstraint::mutate");
+            .expect("there's a bug in OrFact::mutate");
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, Fact, NOISE};
+    use crate::{build_seq, check_seq, NOISE};
     use arbitrary::Unstructured;
 
     #[test]
@@ -235,7 +273,7 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let eq1 = eq("must be 1", &1).to_fact();
+        let eq1 = eq("must be 1", &1);
 
         let ones = build_seq(&mut u, 3, eq1.clone());
         check_seq(ones.as_slice(), eq1.clone()).unwrap();
@@ -250,12 +288,12 @@ mod tests {
 
         let eq1 = eq("must be 1", &1);
         let eq2 = eq("must be 2", &2);
-        let either = or("can be 1 or 2", eq1, eq2).to_fact();
+        let mut either = or("can be 1 or 2", eq1, eq2);
 
         let ones = build_seq(&mut u, 10, either.clone());
         check_seq(ones.as_slice(), either.clone()).unwrap();
         assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
-        assert_eq!(either.constraint().check(&3).ok().unwrap_err().len(), 1);
+        assert_eq!(either.check(&3).ok().unwrap_err().len(), 1);
     }
 }

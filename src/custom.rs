@@ -3,8 +3,8 @@ use std::sync::Arc;
 use arbitrary::Unstructured;
 
 use crate::{
-    constraint::{Bounds, CheckResult},
-    Constraint,
+    fact::{Bounds, CheckResult},
+    Fact,
 };
 
 /// A constraint defined by a custom predicate closure.
@@ -20,22 +20,22 @@ use crate::{
 /// constraints that were met by previous mutations.
 ///
 /// There is a fixed iteration limit, beyond which this will panic.
-pub fn custom<T, F, S>(reason: S, f: F) -> Box<CustomConstraint<'static, T>>
+pub fn custom<T, F, S>(reason: S, f: F) -> Box<CustomFact<'static, T>>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> bool,
 {
-    Box::new(CustomConstraint::new(reason.to_string(), f))
+    Box::new(CustomFact::new(reason.to_string(), f))
 }
 
 #[derive(Clone)]
-pub struct CustomConstraint<'a, T> {
+pub struct CustomFact<'a, T> {
     reason: String,
     f: Arc<dyn 'a + Fn(&T) -> bool>,
 }
 
-impl<'a, T> Constraint<T> for CustomConstraint<'a, T>
+impl<'a, T> Fact<T> for CustomFact<'a, T>
 where
     T: Bounds,
 {
@@ -59,14 +59,14 @@ where
         }
 
         panic!(
-            "Exceeded iteration limit of {} while attempting to meet a CustomConstraint",
+            "Exceeded iteration limit of {} while attempting to meet a CustomFact",
             ITERATION_LIMIT
         );
     }
 }
 
-impl<'a, T> CustomConstraint<'a, T> {
-    pub(crate) fn new<C: 'a + Fn(&T) -> bool>(reason: String, f: C) -> Self {
+impl<'a, T> CustomFact<'a, T> {
+    pub(crate) fn new<F: 'a + Fn(&T) -> bool>(reason: String, f: F) -> Self {
         Self {
             reason,
             f: Arc::new(f),

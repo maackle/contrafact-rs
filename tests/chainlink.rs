@@ -39,9 +39,9 @@ impl ChainFact {
     }
 }
 
-impl Fact<ChainLink> for ChainFact {
-    fn constraint(&self) -> ConstraintBox<ChainLink> {
-        let constraints: ConstraintVec<ChainLink> = vec![
+impl DerivedFact<ChainLink> for ChainFact {
+    fn fact(&self) -> FactBox<ChainLink> {
+        let constraints: FactVec<ChainLink> = vec![
             contrafact::lens(
                 "ChainLink::author",
                 |o: &mut ChainLink| &mut o.author,
@@ -50,7 +50,7 @@ impl Fact<ChainLink> for ChainFact {
             contrafact::lens(
                 "ChainLink::prev",
                 |o: &mut ChainLink| &mut o.prev,
-                predicate::eq("increasing prev", &self.prev),
+                predicate::consecutive_int("increasing prev", self.prev.clone()),
             ),
             contrafact::lens(
                 "ChainLink::color",
@@ -60,10 +60,6 @@ impl Fact<ChainLink> for ChainFact {
         ];
 
         Box::new(constraints)
-    }
-
-    fn advance(&mut self) {
-        self.prev += 1;
     }
 }
 
@@ -75,9 +71,9 @@ fn test() {
     const NUM: u32 = 10;
     let fact = || ChainFact::new("alice".into(), &[Color::Cyan, Color::Magenta]);
 
-    let mut chain = build_seq(&mut u, NUM as usize, fact());
+    let mut chain = build_seq(&mut u, NUM as usize, fact().fact());
     dbg!(&chain);
-    check_seq(chain.as_mut_slice(), fact()).unwrap();
+    check_seq(chain.as_mut_slice(), fact().fact()).unwrap();
 
     assert!(chain.iter().all(|c| c.author == "alice"));
     assert!(chain.iter().all(|c| c.color != Color::Black));
