@@ -16,28 +16,45 @@ enum Color {
 }
 
 #[derive(Arbitrary, Debug, PartialEq, Clone)]
-struct ChainLink {
+struct Link {
     prev: u32,
     author: String,
-    color: Color,
 }
 
-fn chain_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> FactBox<'a, ChainLink> {
-    let constraints: FactVec<ChainLink> = vec![
+#[derive(Arbitrary, Debug, PartialEq, Clone)]
+struct Wrapper {
+    color: Color,
+    link: Link,
+}
+
+fn link_fact<'a>(author: &'a String) -> FactBox<'a, Link> {
+    let constraints: FactVec<Link> = vec![
         contrafact::lens(
-            "ChainLink::author",
-            |o: &mut ChainLink| &mut o.author,
+            "Link::author",
+            |o: &mut Link| &mut o.author,
             predicate::eq("same author", author),
         ),
         contrafact::lens(
-            "ChainLink::prev",
-            |o: &mut ChainLink| &mut o.prev,
+            "Link::prev",
+            |o: &mut Link| &mut o.prev,
             predicate::consecutive_int("increasing prev", 0),
         ),
+    ];
+
+    Box::new(constraints)
+}
+
+fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> FactBox<'a, Wrapper> {
+    let constraints: FactVec<Wrapper> = vec![
         contrafact::lens(
-            "ChainLink::color",
-            |o: &mut ChainLink| &mut o.color,
+            "Wrapper::color",
+            |o: &mut Wrapper| &mut o.color,
             predicate::in_iter("valid color", valid_colors),
+        ),
+        contrafact::lens(
+            "Wrapper::link",
+            |o: &mut Wrapper| &mut o.link,
+            link_fact(author),
         ),
     ];
 
@@ -45,21 +62,38 @@ fn chain_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> FactBox<'a, 
 }
 
 #[test]
-fn test() {
+fn test_link() {
     observability::test_run().ok();
     let mut u = Unstructured::new(&NOISE);
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = || chain_fact(&author, &[Color::Cyan, Color::Magenta]);
+    let fact = || link_fact(&author);
 
     let mut chain = build_seq(&mut u, NUM as usize, fact());
     dbg!(&chain);
     check_seq(chain.as_mut_slice(), fact()).unwrap();
 
     assert!(chain.iter().all(|c| c.author == "alice"));
-    assert!(chain.iter().all(|c| c.color != Color::Black));
     assert_eq!(chain.iter().last().unwrap().prev, NUM - 1);
+}
+
+#[test]
+fn test_wrapper() {
+    observability::test_run().ok();
+    let mut u = Unstructured::new(&NOISE);
+
+    const NUM: u32 = 10;
+    let author = "alice".to_string();
+    let fact = || wrapper_fact(&author, &[Color::Cyan, Color::Magenta]);
+
+    let mut chain = build_seq(&mut u, NUM as usize, fact());
+    dbg!(&chain);
+    check_seq(chain.as_mut_slice(), fact()).unwrap();
+
+    assert!(chain.iter().all(|c| c.link.author == "alice"));
+    assert!(chain.iter().all(|c| c.color != Color::Black));
+    assert_eq!(chain.iter().last().unwrap().link.prev, NUM - 1);
 
     // there is a high probability that this will be true
     assert!(chain.iter().any(|c| c.color == Color::Magenta));
