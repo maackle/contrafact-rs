@@ -3,6 +3,7 @@
 
 #![warn(missing_docs)]
 
+mod conditional;
 mod custom;
 mod fact;
 mod lens;
@@ -10,6 +11,7 @@ mod predicates;
 mod prism;
 mod seq;
 
+pub use conditional::conditional;
 pub use custom::custom;
 pub use fact::{BoxFact, Fact, Facts};
 pub use lens::lens;
