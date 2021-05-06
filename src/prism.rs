@@ -76,7 +76,9 @@ where
             let o = o as *const O;
             let o = o as *mut O;
             if let Some(t) = (self.prism)(&mut *o) {
-                self.constraint.check(t)
+                self.constraint
+                    .check(t)
+                    .map(|err| format!("prism({}) > {}", self.label, err))
             } else {
                 Vec::with_capacity(0).into()
             }
@@ -94,7 +96,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::predicate;
     use crate::{build_seq, check_seq, NOISE};
     use arbitrary::*;
 
@@ -126,8 +127,8 @@ mod tests {
 
         let f = || {
             vec![
-                prism("E::x", E::x, predicate::eq("must be 1", &1)),
-                prism("E::y", E::y, predicate::eq("must be 2", &2)),
+                prism("E::x", E::x, crate::eq("must be 1", &1)),
+                prism("E::y", E::y, crate::eq("must be 2", &2)),
             ]
         };
 

@@ -9,7 +9,7 @@ use arbitrary::Unstructured;
 /// that constraint into a constraint about `O`.
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
-pub fn lens<O, T, F, L, S>(reason: S, lens: L, constraint: F) -> LensFact<O, T, F>
+pub fn lens<O, T, F, L, S>(label: S, lens: L, constraint: F) -> LensFact<O, T, F>
 where
     O: Bounds,
     T: Bounds,
@@ -17,7 +17,7 @@ where
     F: Fact<T>,
     L: 'static + Fn(&mut O) -> &mut T,
 {
-    LensFact::new(reason.to_string(), lens, constraint)
+    LensFact::new(label.to_string(), lens, constraint)
 }
 
 #[derive(Clone)]
@@ -27,7 +27,7 @@ where
     O: Bounds,
     F: Fact<T>,
 {
-    reason: String,
+    label: String,
 
     /// Function which maps outer structure to inner substructure
     lens: Arc<dyn 'static + Fn(&mut O) -> &mut T>,
@@ -45,7 +45,7 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a lens and an existing Fact to create a new Fact.
-    pub fn new<L>(reason: String, lens: L, constraint: F) -> Self
+    pub fn new<L>(label: String, lens: L, constraint: F) -> Self
     where
         T: Bounds,
         O: Bounds,
@@ -53,7 +53,7 @@ where
         L: 'static + Fn(&mut O) -> &mut T,
     {
         Self {
-            reason,
+            label,
             lens: Arc::new(lens),
             constraint,
             __phantom: PhantomData,
@@ -77,10 +77,7 @@ where
             let o = o as *mut O;
             self.constraint
                 .check((self.lens)(&mut *o))
-                .into_iter()
-                .map(|err| format!("lens {} > {}", self.reason, err))
-                .collect::<Vec<_>>()
-                .into()
+                .map(|err| format!("lens({}) > {}", self.label, err))
         }
     }
 
@@ -93,8 +90,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::predicate;
-    use crate::{build_seq, check_seq, NOISE};
+    use crate::{build_seq, check_seq, eq, NOISE};
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -108,7 +104,7 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let f = || lens("S::x", |s: &mut S| &mut s.x, predicate::eq("must be 1", &1));
+        let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", &1));
 
         let ones = build_seq(&mut u, 3, f());
         check_seq(ones.as_slice(), f()).unwrap();

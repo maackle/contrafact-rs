@@ -28,6 +28,14 @@ where
     }
 }
 
+/// Specifies an equality constraint with no reason
+pub fn eq_<T>(constant: &T) -> EqFact<T>
+where
+    T: std::fmt::Debug + PartialEq,
+{
+    eq("___", constant)
+}
+
 /// Specifies an inequality constraint
 pub fn ne<S, T>(reason: S, constant: &T) -> EqFact<T>
 where
@@ -39,6 +47,14 @@ where
         constant,
         op: EqOp::NotEqual,
     }
+}
+
+/// Specifies an inequality constraint with no reason
+pub fn ne_<T>(constant: &T) -> EqFact<T>
+where
+    T: std::fmt::Debug + PartialEq,
+{
+    ne("___", constant)
 }
 
 /// Specifies a membership constraint
@@ -55,7 +71,16 @@ where
     }
 }
 
-/// Specifies an equality constraint
+/// Specifies a membership constraint
+pub fn in_iter_<'a, I, T>(iter: I) -> InFact<'a, T>
+where
+    T: 'a + PartialEq + std::fmt::Debug,
+    I: IntoIterator<Item = &'a T>,
+{
+    in_iter("___", iter)
+}
+
+/// Specifies that a value should be increasing by 1 at every check/mutation
 pub fn consecutive_int<S, T>(reason: S, initial: T) -> ConsecutiveIntFact<T>
 where
     S: ToString,
@@ -65,6 +90,15 @@ where
         reason: reason.to_string(),
         counter: initial,
     }
+}
+
+/// Specifies that a value should be increasing by 1 at every check/mutation,
+/// with no reason supplied
+pub fn consecutive_int_<T>(initial: T) -> ConsecutiveIntFact<T>
+where
+    T: std::fmt::Debug + PartialEq + num::PrimInt,
+{
+    consecutive_int("___", initial)
 }
 
 /// Combines two constraints so that either one may be satisfied

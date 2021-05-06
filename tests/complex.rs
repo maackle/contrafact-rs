@@ -89,18 +89,10 @@ struct Beta {
 /// - all data must be set as specified
 fn omega_fact<'a>(id: &'a Id, data: &'a String) -> Facts<'a, Omega> {
     let alpha_fact = facts![
-        lens("Alpha::id", |a: &mut Alpha| a.id(), predicate::eq("id", id)),
-        lens(
-            "Alpha::data",
-            |a: &mut Alpha| a.data(),
-            predicate::eq("data", data)
-        ),
+        lens("Alpha::id", |a: &mut Alpha| a.id(), eq("id", id)),
+        lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
     ];
-    let beta_fact = lens(
-        "Beta::id",
-        |b: &mut Beta| &mut b.id,
-        predicate::eq("id", id),
-    );
+    let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, eq("id", id));
     let omega_fact = facts![
         custom("Omega variant matches Alpha variant", |o: &Omega| {
             match (o, o.alpha()) {
@@ -109,7 +101,7 @@ fn omega_fact<'a>(id: &'a Id, data: &'a String) -> Facts<'a, Omega> {
                 _ => false,
             }
         }),
-        lens("Omega::id", |o: &mut Omega| o.id(), predicate::eq("id", id)),
+        lens("Omega::id", |o: &mut Omega| o.id(), eq("id", id)),
     ];
 
     facts![

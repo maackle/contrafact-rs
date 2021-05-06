@@ -36,7 +36,9 @@ where
     T: Bounds,
 {
     fn check(&mut self, t: &T) -> CheckResult {
-        (self.f)(t).check(t)
+        (self.f)(t)
+            .check(t)
+            .map(|e| format!("conditional({}) > {}", self.reason, e))
     }
 
     fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
@@ -66,7 +68,7 @@ fn test_conditional_fact() {
     // and if the first element is odd,
     //     then the second element must be divisible by 4.
     let divisibility_fact = || {
-        conditional("", |t: &T| {
+        conditional("reason", |t: &T| {
             facts![lens(
                 "T.1",
                 |(_, n)| n,
@@ -83,10 +85,10 @@ fn test_conditional_fact() {
             .ok()
             .unwrap_err()),
         vec![
-            "item 0: lens T.1 > divisible by 4".to_string(),
-            "item 1: lens T.1 > divisible by 3".to_string(),
-            "item 2: lens T.1 > divisible by 4".to_string(),
-            "item 3: lens T.1 > divisible by 3".to_string(),
+            "item 0: conditional(reason) > lens T.1 > divisible by 4".to_string(),
+            "item 1: conditional(reason) > lens T.1 > divisible by 3".to_string(),
+            "item 2: conditional(reason) > lens T.1 > divisible by 4".to_string(),
+            "item 3: conditional(reason) > lens T.1 > divisible by 3".to_string(),
         ]
     );
 
@@ -94,11 +96,7 @@ fn test_conditional_fact() {
 
     let composite_fact = || {
         facts![
-            lens(
-                "T.0",
-                |(i, _)| i,
-                predicate::consecutive_int("increasing", 0)
-            ),
+            lens("T.0", |(i, _)| i, consecutive_int("increasing", 0)),
             divisibility_fact(),
         ]
     };

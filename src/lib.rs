@@ -13,16 +13,13 @@ mod seq;
 
 pub use conditional::conditional;
 pub use custom::custom;
-pub use fact::{BoxFact, Fact, Facts};
+pub use fact::{BoxFact, CheckResult, Fact, Facts};
 pub use lens::lens;
+pub use predicates::{
+    always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, or,
+};
 pub use prism::prism;
 pub use seq::*;
-
-/// The low-level building blocks of constraints
-// TODO: maybe put this in the same namespace as the rest.
-pub mod predicate {
-    pub use super::predicates::{always, consecutive_int, eq, in_iter, ne, never, or};
-}
 
 #[cfg(any(test, feature = "test"))]
 pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {

@@ -12,32 +12,58 @@ pub type Facts<'a, T> = Vec<BoxFact<'a, T>>;
 
 /// The result of a check operation, which contains an error message for every
 /// constraint which was not met
+// TODO: add ability to abort, so that further checks will not occur
 #[derive(derive_more::From, derive_more::IntoIterator)]
 #[must_use = "CheckResult should be used with either `.unwrap()` or `.ok()`"]
-pub struct CheckResult(Vec<String>);
+pub struct CheckResult {
+    errors: Vec<String>,
+}
 
 impl CheckResult {
+    /// Map over each error string
+    pub fn map<F>(self, f: F) -> Self
+    where
+        F: FnMut(String) -> String,
+    {
+        if let Err(errs) = self.ok() {
+            errs.into_iter().map(f).collect()
+        } else {
+            vec![]
+        }
+        .into()
+    }
+
+    /// Panic if there are any errors, and display those errors
     pub fn unwrap(self) {
-        if !self.0.is_empty() {
-            let msg = if self.0.len() == 1 {
-                format!("Check failed: {}", self.0[0])
+        if !self.errors.is_empty() {
+            let msg = if self.errors.len() == 1 {
+                format!("Check failed: {}", self.errors[0])
             } else {
-                format!("Check failed: {:#?}", self.0)
+                format!("Check failed: {:#?}", self.errors)
             };
             panic!(msg);
         }
     }
 
+    /// Convert to a Result: No errors => Ok
     pub fn ok(self) -> std::result::Result<(), Vec<String>> {
-        if self.0.is_empty() {
+        if self.errors.is_empty() {
             std::result::Result::Ok(())
         } else {
-            std::result::Result::Err(self.0)
+            std::result::Result::Err(self.errors)
         }
     }
 
+    /// Create an Ok result.
     pub fn pass() -> Self {
-        Self(Vec::with_capacity(0))
+        Self {
+            errors: Vec::with_capacity(0),
+        }
+    }
+
+    /// Create an Ok result.
+    pub fn fail(errors: Vec<String>) -> Self {
+        Self { errors }
     }
 }
 

@@ -32,12 +32,12 @@ fn link_fact<'a>(author: &'a String) -> Facts<'a, Link> {
         contrafact::lens(
             "Link::author",
             |o: &mut Link| &mut o.author,
-            predicate::eq("same author", author),
+            eq("same author", author),
         ),
         contrafact::lens(
             "Link::prev",
             |o: &mut Link| &mut o.prev,
-            predicate::consecutive_int("increasing prev", 0),
+            consecutive_int("increasing prev", 0),
         ),
     ]
 }
@@ -47,7 +47,7 @@ fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> Facts<'a, 
         contrafact::lens(
             "Wrapper::color",
             |o: &mut Wrapper| &mut o.color,
-            predicate::in_iter("valid color", valid_colors),
+            in_iter("valid color", valid_colors),
         ),
         contrafact::lens(
             "Wrapper::link",
