@@ -4,17 +4,17 @@
 #![warn(missing_docs)]
 
 mod custom;
-mod derived;
 mod fact;
 mod lens;
 mod predicates;
 mod prism;
+mod seq;
 
 pub use custom::custom;
-pub use derived::{build_seq, check_seq, DerivedFact};
 pub use fact::{Fact, FactBox, FactVec};
 pub use lens::lens;
 pub use prism::prism;
+pub use seq::*;
 
 /// The low-level building blocks of constraints
 // TODO: maybe put this in the same namespace as the rest.

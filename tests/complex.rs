@@ -1,5 +1,5 @@
 use arbitrary::{Arbitrary, Unstructured};
-use contrafact::{constraints, custom, lens, predicate, prism, DerivedFact, FactBox};
+use contrafact::{constraints, custom, lens, predicate, prism, FactBox};
 
 pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
     use rand::Rng;
@@ -87,55 +87,40 @@ struct Beta {
 /// - If Omega::AlphaBeta, then Alpha::Beta,
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
-struct OmegaFact {
-    id: Id,
-    data: String,
-}
+fn omega_fact<'a>(id: &'a Id, data: &'a String) -> FactBox<'a, Omega> {
+    let alpha_constraint = constraints![
+        lens("Alpha::id", |a: &mut Alpha| a.id(), predicate::eq("id", id)),
+        lens(
+            "Alpha::data",
+            |a: &mut Alpha| a.data(),
+            predicate::eq("data", data)
+        ),
+    ];
+    let beta_constraint = lens(
+        "Beta::id",
+        |b: &mut Beta| &mut b.id,
+        predicate::eq("id", id),
+    );
+    let omega_constraint = constraints![
+        custom("Omega variant matches Alpha variant", |o: &Omega| {
+            match (o, o.alpha()) {
+                (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
+                (Omega::Alpha { .. }, Alpha::Nil { .. }) => true,
+                _ => false,
+            }
+        }),
+        lens("Omega::id", |o: &mut Omega| o.id(), predicate::eq("id", id)),
+    ];
 
-impl DerivedFact<Omega> for OmegaFact {
-    fn fact(&self) -> FactBox<Omega> {
-        let alpha_constraint = constraints![
-            lens(
-                "Alpha::id",
-                |a: &mut Alpha| a.id(),
-                predicate::eq("id", &self.id)
-            ),
-            lens(
-                "Alpha::data",
-                |a: &mut Alpha| a.data(),
-                predicate::eq("data", &self.data)
-            ),
-        ];
-        let beta_constraint = lens(
-            "Beta::id",
-            |b: &mut Beta| &mut b.id,
-            predicate::eq("id", &self.id),
-        );
-        let omega_constraint = constraints![
-            custom("Omega variant matches Alpha variant", |o: &Omega| {
-                match (o, o.alpha()) {
-                    (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
-                    (Omega::Alpha { .. }, Alpha::Nil { .. }) => true,
-                    _ => false,
-                }
-            }),
-            lens(
-                "Omega::id",
-                |o: &mut Omega| o.id(),
-                predicate::eq("id", &self.id)
-            ),
-        ];
-
-        constraints![
-            omega_constraint,
-            lens(
-                "Omega::alpha",
-                |o: &mut Omega| o.alpha_mut(),
-                alpha_constraint
-            ),
-            prism("Omega::beta", |o: &mut Omega| o.beta_mut(), beta_constraint),
-        ]
-    }
+    constraints![
+        omega_constraint,
+        lens(
+            "Omega::alpha",
+            |o: &mut Omega| o.alpha_mut(),
+            alpha_constraint
+        ),
+        prism("Omega::beta", |o: &mut Omega| o.beta_mut(), beta_constraint),
+    ]
 }
 
 #[test]
@@ -143,10 +128,8 @@ fn test_omega_fact() {
     observability::test_run().ok();
     let mut u = Unstructured::new(&NOISE);
 
-    let fact = OmegaFact {
-        id: 11,
-        data: "spartacus".into(),
-    };
+    let data = "spartacus".into();
+    let mut fact = omega_fact(&11, &data);
 
     let beta = Beta::arbitrary(&mut u).unwrap();
 
@@ -167,11 +150,11 @@ fn test_omega_fact() {
         beta: beta.clone(),
     };
 
-    fact.fact().mutate(&mut valid1, &mut u);
-    fact.fact().check(dbg!(&valid1)).unwrap();
+    fact.mutate(&mut valid1, &mut u);
+    fact.check(dbg!(&valid1)).unwrap();
 
-    fact.fact().mutate(&mut valid2, &mut u);
-    fact.fact().check(dbg!(&valid2)).unwrap();
+    fact.mutate(&mut valid2, &mut u);
+    fact.check(dbg!(&valid2)).unwrap();
 
     let mut invalid1 = Omega::Alpha {
         id: 8,
@@ -192,18 +175,12 @@ fn test_omega_fact() {
     };
 
     // Ensure that check fails for invalid data
-    assert_eq!(
-        dbg!(fact.fact().check(dbg!(&invalid1)).ok().unwrap_err()).len(),
-        4,
-    );
-    fact.fact().mutate(&mut invalid1, &mut u);
-    fact.fact().check(dbg!(&invalid1)).unwrap();
+    assert_eq!(dbg!(fact.check(dbg!(&invalid1)).ok().unwrap_err()).len(), 4,);
+    fact.mutate(&mut invalid1, &mut u);
+    fact.check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
-    assert_eq!(
-        dbg!(fact.fact().check(dbg!(&invalid2)).ok().unwrap_err()).len(),
-        5,
-    );
-    fact.fact().mutate(&mut invalid2, &mut u);
-    fact.fact().check(dbg!(&invalid2)).unwrap();
+    assert_eq!(dbg!(fact.check(dbg!(&invalid2)).ok().unwrap_err()).len(), 5,);
+    fact.mutate(&mut invalid2, &mut u);
+    fact.check(dbg!(&invalid2)).unwrap();
 }

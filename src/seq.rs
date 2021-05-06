@@ -1,28 +1,8 @@
 use crate::{
-    fact::{Bounds, CheckResult, FactBox},
+    fact::{Bounds, CheckResult},
     Fact,
 };
 use arbitrary::Unstructured;
-
-/// A "DerivedFact" is simply a data type which can produce a `Fact`.
-/// When producing the constraint, there is an opportunity to mutate the DerivedFact's
-/// state, causing it to produce a different Fact next time `.constraint`
-/// is called. This allows for `fold()`-like application of a DerivedFact to a sequence
-/// of data.
-pub trait DerivedFact<T> {
-    /// Produce the constraint given the current state of this DerivedFact
-    fn fact(&self) -> FactBox<'_, T>;
-}
-
-impl<T, F> DerivedFact<T> for Vec<F>
-where
-    T: 'static + Bounds,
-    F: DerivedFact<T>,
-{
-    fn fact(&self) -> FactBox<'_, T> {
-        Box::new(self.iter().map(|f| f.fact()).collect::<Vec<_>>())
-    }
-}
 
 /// Check that all of the constraints of all Facts are satisfied for this sequence.
 #[tracing::instrument(skip(fact))]

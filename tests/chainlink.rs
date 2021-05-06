@@ -1,6 +1,5 @@
 use arbitrary::*;
 use contrafact::*;
-use std::collections::HashSet;
 
 pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
     use rand::Rng;
@@ -23,44 +22,26 @@ struct ChainLink {
     color: Color,
 }
 
-struct ChainFact {
-    prev: u32,
-    author: String,
-    valid_colors: HashSet<Color>,
-}
+fn chain_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> FactBox<'a, ChainLink> {
+    let constraints: FactVec<ChainLink> = vec![
+        contrafact::lens(
+            "ChainLink::author",
+            |o: &mut ChainLink| &mut o.author,
+            predicate::eq("same author", author),
+        ),
+        contrafact::lens(
+            "ChainLink::prev",
+            |o: &mut ChainLink| &mut o.prev,
+            predicate::consecutive_int("increasing prev", 0),
+        ),
+        contrafact::lens(
+            "ChainLink::color",
+            |o: &mut ChainLink| &mut o.color,
+            predicate::in_iter("valid color", valid_colors),
+        ),
+    ];
 
-impl ChainFact {
-    fn new(author: String, valid_colors: &[Color]) -> Self {
-        Self {
-            prev: 0,
-            author,
-            valid_colors: valid_colors.into_iter().cloned().collect(),
-        }
-    }
-}
-
-impl DerivedFact<ChainLink> for ChainFact {
-    fn fact(&self) -> FactBox<ChainLink> {
-        let constraints: FactVec<ChainLink> = vec![
-            contrafact::lens(
-                "ChainLink::author",
-                |o: &mut ChainLink| &mut o.author,
-                predicate::eq("same author", &self.author),
-            ),
-            contrafact::lens(
-                "ChainLink::prev",
-                |o: &mut ChainLink| &mut o.prev,
-                predicate::consecutive_int("increasing prev", self.prev.clone()),
-            ),
-            contrafact::lens(
-                "ChainLink::color",
-                |o: &mut ChainLink| &mut o.color,
-                predicate::in_iter("valid color", &self.valid_colors),
-            ),
-        ];
-
-        Box::new(constraints)
-    }
+    Box::new(constraints)
 }
 
 #[test]
@@ -69,11 +50,12 @@ fn test() {
     let mut u = Unstructured::new(&NOISE);
 
     const NUM: u32 = 10;
-    let fact = || ChainFact::new("alice".into(), &[Color::Cyan, Color::Magenta]);
+    let author = "alice".to_string();
+    let fact = || chain_fact(&author, &[Color::Cyan, Color::Magenta]);
 
-    let mut chain = build_seq(&mut u, NUM as usize, fact().fact());
+    let mut chain = build_seq(&mut u, NUM as usize, fact());
     dbg!(&chain);
-    check_seq(chain.as_mut_slice(), fact().fact()).unwrap();
+    check_seq(chain.as_mut_slice(), fact()).unwrap();
 
     assert!(chain.iter().all(|c| c.author == "alice"));
     assert!(chain.iter().all(|c| c.color != Color::Black));
