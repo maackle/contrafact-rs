@@ -9,7 +9,7 @@ use arbitrary::Unstructured;
 /// that constraint into a constraint about `O`.
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
-pub fn lens<O, T, F, L, S>(reason: S, lens: L, constraint: F) -> Box<LensFact<O, T, F>>
+pub fn lens<O, T, F, L, S>(reason: S, lens: L, constraint: F) -> LensFact<O, T, F>
 where
     O: Bounds,
     T: Bounds,
@@ -17,7 +17,7 @@ where
     F: Fact<T>,
     L: 'static + Fn(&mut O) -> &mut T,
 {
-    Box::new(LensFact::new(reason.to_string(), lens, constraint))
+    LensFact::new(reason.to_string(), lens, constraint)
 }
 
 #[derive(Clone)]

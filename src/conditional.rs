@@ -16,13 +16,13 @@ use crate::{
 /// or when wanting to set some subset of data to match some other subset of
 /// data, without caring what the value actually is, and without having to
 /// explicitly construct the value.
-pub fn conditional<'a, T, F, S>(reason: S, f: F) -> Box<ConditionalFact<'a, T>>
+pub fn conditional<'a, T, F, S>(reason: S, f: F) -> ConditionalFact<'a, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> Facts<'a, T>,
 {
-    Box::new(ConditionalFact::new(reason.to_string(), f))
+    ConditionalFact::new(reason.to_string(), f)
 }
 
 #[derive(Clone)]
@@ -96,7 +96,7 @@ fn test_conditional_fact() {
         facts![
             lens(
                 "T.0",
-                |(i, _): &mut T| i,
+                |(i, _)| i,
                 predicate::consecutive_int("increasing", 0)
             ),
             divisibility_fact(),

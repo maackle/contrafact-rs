@@ -14,7 +14,7 @@ use arbitrary::Unstructured;
 ///
 /// If the prism returns Some, then the constraint will be checked, and mutation
 /// will be possible. If it returns None, then checks and mutations will not occur.
-pub fn prism<O, T, F, P, S>(label: S, prism: P, constraint: F) -> Box<PrismFact<O, T, F>>
+pub fn prism<O, T, F, P, S>(label: S, prism: P, constraint: F) -> PrismFact<O, T, F>
 where
     O: Bounds,
     S: ToString,
@@ -22,7 +22,7 @@ where
     F: Fact<T>,
     P: 'static + Fn(&mut O) -> Option<&mut T>,
 {
-    Box::new(PrismFact::new(label.to_string(), prism, constraint))
+    PrismFact::new(label.to_string(), prism, constraint)
 }
 
 #[derive(Clone)]

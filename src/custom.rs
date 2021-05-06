@@ -20,13 +20,13 @@ use crate::{
 /// constraints that were met by previous mutations.
 ///
 /// There is a fixed iteration limit, beyond which this will panic.
-pub fn custom<T, F, S>(reason: S, f: F) -> Box<CustomFact<'static, T>>
+pub fn custom<T, F, S>(reason: S, f: F) -> CustomFact<'static, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> bool,
 {
-    Box::new(CustomFact::new(reason.to_string(), f))
+    CustomFact::new(reason.to_string(), f)
 }
 
 #[derive(Clone)]

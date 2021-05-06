@@ -28,7 +28,7 @@ struct Wrapper {
 }
 
 fn link_fact<'a>(author: &'a String) -> Facts<'a, Link> {
-    vec![
+    facts![
         contrafact::lens(
             "Link::author",
             |o: &mut Link| &mut o.author,
@@ -43,7 +43,7 @@ fn link_fact<'a>(author: &'a String) -> Facts<'a, Link> {
 }
 
 fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> Facts<'a, Wrapper> {
-    vec![
+    facts![
         contrafact::lens(
             "Wrapper::color",
             |o: &mut Wrapper| &mut o.color,
