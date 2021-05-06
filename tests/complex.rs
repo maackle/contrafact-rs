@@ -1,5 +1,5 @@
 use arbitrary::{Arbitrary, Unstructured};
-use contrafact::{constraints, custom, lens, predicate, prism, FactBox};
+use contrafact::*;
 
 pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
     use rand::Rng;
@@ -87,8 +87,8 @@ struct Beta {
 /// - If Omega::AlphaBeta, then Alpha::Beta,
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
-fn omega_fact<'a>(id: &'a Id, data: &'a String) -> FactBox<'a, Omega> {
-    let alpha_constraint = constraints![
+fn omega_fact<'a>(id: &'a Id, data: &'a String) -> Facts<'a, Omega> {
+    let alpha_fact = facts![
         lens("Alpha::id", |a: &mut Alpha| a.id(), predicate::eq("id", id)),
         lens(
             "Alpha::data",
@@ -96,12 +96,12 @@ fn omega_fact<'a>(id: &'a Id, data: &'a String) -> FactBox<'a, Omega> {
             predicate::eq("data", data)
         ),
     ];
-    let beta_constraint = lens(
+    let beta_fact = lens(
         "Beta::id",
         |b: &mut Beta| &mut b.id,
         predicate::eq("id", id),
     );
-    let omega_constraint = constraints![
+    let omega_fact = facts![
         custom("Omega variant matches Alpha variant", |o: &Omega| {
             match (o, o.alpha()) {
                 (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
@@ -112,14 +112,10 @@ fn omega_fact<'a>(id: &'a Id, data: &'a String) -> FactBox<'a, Omega> {
         lens("Omega::id", |o: &mut Omega| o.id(), predicate::eq("id", id)),
     ];
 
-    constraints![
-        omega_constraint,
-        lens(
-            "Omega::alpha",
-            |o: &mut Omega| o.alpha_mut(),
-            alpha_constraint
-        ),
-        prism("Omega::beta", |o: &mut Omega| o.beta_mut(), beta_constraint),
+    facts![
+        omega_fact,
+        lens("Omega::alpha", |o: &mut Omega| o.alpha_mut(), alpha_fact),
+        prism("Omega::beta", |o: &mut Omega| o.beta_mut(), beta_fact),
     ]
 }
 

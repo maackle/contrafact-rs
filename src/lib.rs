@@ -11,7 +11,7 @@ mod prism;
 mod seq;
 
 pub use custom::custom;
-pub use fact::{Fact, FactBox, FactVec};
+pub use fact::{BoxFact, Fact, Facts};
 pub use lens::lens;
 pub use prism::prism;
 pub use seq::*;

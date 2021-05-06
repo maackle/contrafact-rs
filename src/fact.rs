@@ -5,10 +5,10 @@ pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 
 /// Type alias for a boxed Fact
-pub type FactBox<'a, T> = Box<dyn 'a + Fact<T>>;
+pub type BoxFact<'a, T> = Box<dyn 'a + Fact<T>>;
 
 /// Type alias for a Vec of boxed Facts
-pub type FactVec<'a, T> = Vec<FactBox<'a, T>>;
+pub type Facts<'a, T> = Vec<BoxFact<'a, T>>;
 
 /// The result of a check operation, which contains an error message for every
 /// constraint which was not met
@@ -96,7 +96,7 @@ where
 impl<T, F> Fact<T> for Vec<F>
 where
     T: Bounds,
-    F: Fact<T> + Sized,
+    F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&mut self, obj: &T) -> CheckResult {
@@ -112,17 +112,4 @@ where
             f.mutate(obj, u)
         }
     }
-}
-
-/// Convenience macro for creating a collection of `Fact`s of different types.
-/// The resulting value also implements `Fact`.
-#[macro_export]
-macro_rules! constraints {
-    ( $( $fact:expr ,)+ ) => {{
-        let mut cs: $crate::FactVec<_> = Vec::new();
-        $(
-            cs.push(Box::new($fact));
-        )+
-        Box::new(cs)
-    }};
 }

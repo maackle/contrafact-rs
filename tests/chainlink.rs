@@ -27,8 +27,8 @@ struct Wrapper {
     link: Link,
 }
 
-fn link_fact<'a>(author: &'a String) -> FactBox<'a, Link> {
-    let constraints: FactVec<Link> = vec![
+fn link_fact<'a>(author: &'a String) -> Facts<'a, Link> {
+    vec![
         contrafact::lens(
             "Link::author",
             |o: &mut Link| &mut o.author,
@@ -39,13 +39,11 @@ fn link_fact<'a>(author: &'a String) -> FactBox<'a, Link> {
             |o: &mut Link| &mut o.prev,
             predicate::consecutive_int("increasing prev", 0),
         ),
-    ];
-
-    Box::new(constraints)
+    ]
 }
 
-fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> FactBox<'a, Wrapper> {
-    let constraints: FactVec<Wrapper> = vec![
+fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> Facts<'a, Wrapper> {
+    vec![
         contrafact::lens(
             "Wrapper::color",
             |o: &mut Wrapper| &mut o.color,
@@ -56,9 +54,7 @@ fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> FactBox<'a
             |o: &mut Wrapper| &mut o.link,
             link_fact(author),
         ),
-    ];
-
-    Box::new(constraints)
+    ]
 }
 
 #[test]

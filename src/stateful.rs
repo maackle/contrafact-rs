@@ -1,11 +1,11 @@
 //! This doesn't do anything useful, because the State cannot inform the Facts.
 
-use crate::{fact::Bounds, Fact, FactVec};
+use crate::{fact::Bounds, Fact, Facts};
 
 pub struct StatefulFact<'a, S, T> {
     state: S,
     update: Box<dyn Fn(&mut S)>,
-    facts: FactVec<'a, T>,
+    facts: Facts<'a, T>,
 }
 
 impl<'a, S, T> Fact<T> for StatefulFact<'a, S, T>

@@ -40,12 +40,13 @@ where
     return seq;
 }
 
-/// Convenience macro for creating a collection of `Facts`s of different types.
-/// The resulting value also implements `DerivedFact`.
+/// Convenience macro for creating a collection of `Fact`s of different types.
+/// Each Fact will be boxed and added to a Vec.
+/// The resulting value also implements `Fact`.
 #[macro_export]
 macro_rules! facts {
     ( $( $fact:expr ,)+ ) => {{
-        let mut fs = Vec::new();
+        let mut fs: $crate::Facts<_> = Vec::new();
         $(
             fs.push(Box::new($fact));
         )+
