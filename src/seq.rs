@@ -34,7 +34,7 @@ where
     for _i in 0..num {
         let mut obj = T::arbitrary(u).unwrap();
         tracing::trace!("i: {}", _i);
-        fact.mutate(&mut obj, u);
+        fact.satisfy(&mut obj, u);
         seq.push(obj);
     }
     return seq;
@@ -45,7 +45,7 @@ where
 /// The resulting value also implements `Fact`.
 #[macro_export]
 macro_rules! facts {
-    ( $( $fact:expr ,)+ ) => {{
+    ( $( $fact:expr ),+ $(,)?) => {{
         let mut fs: $crate::Facts<_> = Vec::new();
         $(
             fs.push(Box::new($fact));

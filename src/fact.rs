@@ -1,5 +1,7 @@
 use arbitrary::*;
 
+pub(crate) const SATISFY_ATTEMPTS: usize = 10;
+
 /// The trait bounds for the subject of a Fact
 pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
@@ -77,8 +79,34 @@ where
     /// Assert that the constraint is satisfied (panic if not).
     fn check(&mut self, obj: &T) -> CheckResult;
 
-    /// Mutate a value such that it satisfies the constraint.
+    /// Apply a mutation which moves the obj closer to satisfying the overall
+    /// constraint.
     fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>);
+
+    /// Mutate a value such that it satisfies the constraint.
+    /// If the constraint cannot be satisfied, panic.
+    fn satisfy(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
+        let mut last_failure: Vec<String> = vec![];
+        for _i in 0..SATISFY_ATTEMPTS {
+            self.mutate(obj, u);
+            if let Err(errs) = self.check(obj).ok() {
+                last_failure = errs;
+            } else {
+                return;
+            }
+        }
+        panic!(format!(
+            "Could not satisfy a constraint even after {} iterations. Last check failure: {:?}",
+            SATISFY_ATTEMPTS, last_failure
+        ));
+    }
+
+    /// Build a new value such that it satisfies the constraint
+    fn build(&mut self, u: &mut Unstructured<'static>) -> T {
+        let mut obj = T::arbitrary(u).unwrap();
+        self.satisfy(&mut obj, u);
+        obj
+    }
 }
 
 impl<T, F> Fact<T> for Box<F>
@@ -126,16 +154,11 @@ where
 {
     #[tracing::instrument(skip(self))]
     fn check(&mut self, obj: &T) -> CheckResult {
-        self.iter_mut()
-            .flat_map(|f| f.check(obj))
-            .collect::<Vec<_>>()
-            .into()
+        self.as_mut_slice().check(obj)
     }
 
     #[tracing::instrument(skip(self, u))]
     fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
-        for f in self.iter_mut() {
-            f.mutate(obj, u)
-        }
+        self.as_mut_slice().mutate(obj, u)
     }
 }

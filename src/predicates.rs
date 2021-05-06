@@ -1,9 +1,9 @@
 //! Some predicates borrowed from predicates-rs
 //! https://github.com/assert-rs/predicates-rs
 
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker::PhantomData};
 
-use crate::fact::*;
+use crate::{custom::ITERATION_LIMIT, fact::*};
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {
@@ -16,43 +16,49 @@ pub fn never() -> BoolFact {
 }
 
 /// Specifies an equality constraint
-pub fn eq<S, T>(reason: S, constant: &T) -> EqFact<T>
+pub fn eq<S, T, B>(reason: S, constant: B) -> EqFact<T, B>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
+    B: Borrow<T>,
 {
     EqFact {
         reason: reason.to_string(),
         constant,
         op: EqOp::Equal,
+        _phantom: PhantomData,
     }
 }
 
 /// Specifies an equality constraint with no reason
-pub fn eq_<T>(constant: &T) -> EqFact<T>
+pub fn eq_<T, B>(constant: B) -> EqFact<T, B>
 where
     T: std::fmt::Debug + PartialEq,
+    B: Borrow<T>,
 {
     eq("___", constant)
 }
 
 /// Specifies an inequality constraint
-pub fn ne<S, T>(reason: S, constant: &T) -> EqFact<T>
+pub fn ne<S, T, B>(reason: S, constant: B) -> EqFact<T, B>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
+    B: Borrow<T>,
 {
     EqFact {
         reason: reason.to_string(),
         constant,
         op: EqOp::NotEqual,
+        _phantom: PhantomData,
     }
 }
 
 /// Specifies an inequality constraint with no reason
-pub fn ne_<T>(constant: &T) -> EqFact<T>
+pub fn ne_<T, B>(constant: B) -> EqFact<T, B>
 where
     T: std::fmt::Debug + PartialEq,
+    B: Borrow<T>,
 {
     ne("___", constant)
 }
@@ -117,6 +123,32 @@ where
     }
 }
 
+/// Negates a fact
+pub fn not<'a, F, S, T>(reason: S, fact: F) -> NotFact<F, T>
+where
+    S: ToString,
+    F: Fact<T>,
+    T: Bounds,
+{
+    NotFact {
+        reason: reason.to_string(),
+        fact,
+        _phantom: PhantomData,
+    }
+}
+
+/// Negates a fact, with no reason
+// TODO: `not` in particular would really benefit from Facts having accessible
+// labels, since currently you can only get context about why a `not` fact passed,
+// not why it fails.
+pub fn not_<'a, F, T>(fact: F) -> NotFact<F, T>
+where
+    F: Fact<T>,
+    T: Bounds,
+{
+    not("___", fact)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoolFact(bool);
 
@@ -141,10 +173,11 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EqFact<'a, T> {
+pub struct EqFact<T, B> {
     reason: String,
     op: EqOp,
-    constant: &'a T,
+    constant: B,
+    _phantom: PhantomData<T>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,19 +186,21 @@ pub enum EqOp {
     NotEqual,
 }
 
-impl<T> Fact<T> for EqFact<'_, T>
+impl<T, B> Fact<T> for EqFact<T, B>
 where
     T: Bounds + PartialEq,
+    B: Borrow<T>,
 {
     fn check(&mut self, obj: &T) -> CheckResult {
+        let constant = self.constant.borrow();
         match self.op {
-            EqOp::Equal if obj != self.constant => vec![format!(
+            EqOp::Equal if obj != constant => vec![format!(
                 "{}: expected {:?} == {:?}",
-                self.reason, obj, self.constant
+                self.reason, obj, constant
             )],
-            EqOp::NotEqual if obj == self.constant => vec![format!(
+            EqOp::NotEqual if obj == constant => vec![format!(
                 "{}: expected {:?} != {:?}",
-                self.reason, obj, self.constant
+                self.reason, obj, constant
             )],
             _ => Vec::with_capacity(0),
         }
@@ -173,11 +208,12 @@ where
     }
 
     fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+        let constant = self.constant.borrow();
         match self.op {
-            EqOp::Equal => *obj = self.constant.clone(),
+            EqOp::Equal => *obj = constant.clone(),
             EqOp::NotEqual => loop {
                 *obj = T::arbitrary(u).unwrap();
-                if obj != self.constant {
+                if obj != constant {
                     break;
                 }
             },
@@ -296,6 +332,40 @@ condition 2: {:#?}",
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct NotFact<F, T>
+where
+    F: Fact<T>,
+    T: Bounds,
+{
+    reason: String,
+    fact: F,
+    _phantom: PhantomData<T>,
+}
+
+impl<F, T> Fact<T> for NotFact<F, T>
+where
+    F: Fact<T>,
+    T: Bounds,
+{
+    fn check(&mut self, obj: &T) -> CheckResult {
+        if self.fact.check(obj).ok().is_err() {
+            CheckResult::pass()
+        } else {
+            vec![format!("not({})", self.reason.clone())].into()
+        }
+    }
+
+    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+        for _ in 0..ITERATION_LIMIT {
+            if self.fact.check(obj).ok().is_err() {
+                break;
+            }
+            *obj = T::arbitrary(u).unwrap();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -307,7 +377,7 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let eq1 = eq("must be 1", &1);
+        let eq1 = eq("must be 1", 1);
 
         let ones = build_seq(&mut u, 3, eq1.clone());
         check_seq(ones.as_slice(), eq1.clone()).unwrap();
@@ -320,8 +390,8 @@ mod tests {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
-        let eq1 = eq("must be 1", &1);
-        let eq2 = eq("must be 2", &2);
+        let eq1 = eq("must be 1", 1);
+        let eq2 = eq("must be 2", 2);
         let mut either = or("can be 1 or 2", eq1, eq2);
 
         let ones = build_seq(&mut u, 10, either.clone());
@@ -329,5 +399,19 @@ mod tests {
         assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
         assert_eq!(either.check(&3).ok().unwrap_err().len(), 1);
+    }
+
+    #[test]
+    fn test_not() {
+        observability::test_run().ok();
+        let mut u = Unstructured::new(&NOISE);
+
+        let eq1 = eq("must be 1", 1);
+        let not1 = not_(eq1);
+
+        let nums = build_seq(&mut u, 10, not1.clone());
+        check_seq(nums.as_slice(), not1.clone()).unwrap();
+
+        assert!(nums.iter().all(|x| *x != 1));
     }
 }

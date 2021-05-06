@@ -16,7 +16,8 @@ pub use custom::custom;
 pub use fact::{BoxFact, CheckResult, Fact, Facts};
 pub use lens::lens;
 pub use predicates::{
-    always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, or,
+    always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,
+    not_, or,
 };
 pub use prism::prism;
 pub use seq::*;

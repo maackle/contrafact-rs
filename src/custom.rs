@@ -7,6 +7,8 @@ use crate::{
     Fact,
 };
 
+pub(crate) const ITERATION_LIMIT: usize = 100;
+
 /// A constraint defined by a custom predicate closure.
 ///
 /// NOTE: When doing mutationation, this constraint can do no better than
@@ -49,8 +51,6 @@ where
     }
 
     fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
-        const ITERATION_LIMIT: usize = 100;
-
         for _ in 0..ITERATION_LIMIT {
             if (self.f)(t) {
                 return;
