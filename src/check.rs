@@ -63,3 +63,53 @@ impl Check {
         Self { errors }
     }
 }
+
+pub type CheckResult = anyhow::Result<Check>;
+
+impl From<CheckResult> for Check {
+    fn from(result: CheckResult) -> Check {
+        match result {
+            Ok(check) => check,
+            Err(err) => vec![err.to_string()].into(),
+        }
+    }
+}
+
+/// Run a check which may produce a Result, mapping any Err into
+/// a normal Check error string
+macro_rules! check_fallible {
+    ($blk:block) => {{
+        let result: CheckResult = (|| $blk)();
+        Check::from(result)
+    }};
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Fact;
+
+    use super::*;
+
+    #[test]
+    fn test_check_fallible() {
+        struct F;
+        impl Fact<()> for F {
+            fn check(&mut self, _: &()) -> Check {
+                check_fallible! {{
+                    let x = 1;
+                    Ok(if x == 1 {
+                        Err(anyhow::Error::msg("oh no"))?
+                    } else {
+                        Check::pass()
+                    })
+                }}
+            }
+
+            fn mutate(&mut self, _: &mut (), _: &mut arbitrary::Unstructured<'static>) {
+                unimplemented!()
+            }
+        }
+
+        assert_eq!(F.check(&()).ok().unwrap_err(), vec!["oh no"]);
+    }
+}
