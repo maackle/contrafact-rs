@@ -53,3 +53,17 @@ macro_rules! facts {
         fs
     }};
 }
+
+// /// Attempt to give better type hints, but doesn't actually do anything.
+// #[macro_export]
+// macro_rules! facts_typed {
+//     ( $t:ty; $( $fact:expr ),+ $(,)?) => {{
+//         let mut fs: $crate::Facts<$t> = Vec::new();
+//         fn id<F: Fact<$t>>(x: F) -> F { x }
+//         $({
+//             let fact = id($fact);
+//             fs.push(Box::new(fact));
+//         })+
+//         fs
+//     }};
+// }

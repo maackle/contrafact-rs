@@ -7,11 +7,10 @@ use crate::{
     Fact, Facts,
 };
 
-/// A conditionally defined constraint, defined by a closure which returns
-/// Facts.
+/// A constraint where the data to be constrained determines which constraint
+/// to apply.
 ///
-/// The Facts to be checked/mutated by are determined by the value to be
-/// checked/mutated. This can be useful for "piecewise" functions, where the
+/// This can be useful for "piecewise" functions, where the
 /// constraint is fundamentally different depending on the shape of the data,
 /// or when wanting to set some subset of data to match some other subset of
 /// data, without caring what the value actually is, and without having to

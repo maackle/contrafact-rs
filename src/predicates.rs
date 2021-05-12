@@ -268,11 +268,7 @@ where
     T: Bounds + num::PrimInt,
 {
     fn check(&mut self, obj: &T) -> CheckResult {
-        let result = if *obj == self.counter {
-            CheckResult::pass()
-        } else {
-            vec![self.reason.clone()].into()
-        };
+        let result = CheckResult::single(*obj == self.counter, self.reason.clone());
         self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
         result
     }
@@ -349,11 +345,10 @@ where
     T: Bounds,
 {
     fn check(&mut self, obj: &T) -> CheckResult {
-        if self.fact.check(obj).ok().is_err() {
-            CheckResult::pass()
-        } else {
-            vec![format!("not({})", self.reason.clone())].into()
-        }
+        CheckResult::single(
+            self.fact.check(obj).ok().is_err(),
+            format!("not({})", self.reason.clone()),
+        )
     }
 
     fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {

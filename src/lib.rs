@@ -11,6 +11,8 @@ mod predicates;
 mod prism;
 mod seq;
 
+pub use arbitrary;
+
 pub use conditional::conditional;
 pub use custom::custom;
 pub use fact::{BoxFact, CheckResult, Fact, Facts};

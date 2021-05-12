@@ -9,9 +9,12 @@ use crate::{
 
 pub(crate) const ITERATION_LIMIT: usize = 100;
 
-/// A constraint defined by a custom predicate closure.
+/// A constraint defined only by a custom predicate closure.
+/// This is appropriate to use when the space of possible values is small, and
+/// you can rely on randomness to eventually find a value that matches the
+/// constraint, e.g. when requiring a particular enum variant.
 ///
-/// NOTE: When doing mutationation, this constraint can do no better than
+/// NOTE: When doing mutation, this constraint can do no better than
 /// brute force when finding data that satisfies the constraint. Therefore,
 /// if the predicate is unlikely to return `true` given arbitrary data,
 /// this constraint is a bad choice!
@@ -28,7 +31,7 @@ where
     T: Bounds,
     F: 'static + Fn(&T) -> bool,
 {
-    CustomFact::new(reason.to_string(), f)
+    CustomFact::<'static, T>::new(reason.to_string(), f)
 }
 
 #[derive(Clone)]
