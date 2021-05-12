@@ -2,7 +2,17 @@ use std::sync::Arc;
 
 use arbitrary::Unstructured;
 
-use crate::{fact::Bounds, Check, Fact, Facts};
+use crate::{check_fallible, fact::Bounds, Check, Fact, Facts};
+
+/// A version of `conditional` whose closure returns a Result
+pub fn conditional_fallible<'a, T, F, S>(reason: S, f: F) -> ConditionalFact<'a, T>
+where
+    S: ToString,
+    T: Bounds,
+    F: 'static + Fn(&T) -> crate::Result<Facts<'a, T>>,
+{
+    ConditionalFact::new(reason.to_string(), f)
+}
 
 /// A constraint where the data to be constrained determines which constraint
 /// to apply.
@@ -12,19 +22,19 @@ use crate::{fact::Bounds, Check, Fact, Facts};
 /// or when wanting to set some subset of data to match some other subset of
 /// data, without caring what the value actually is, and without having to
 /// explicitly construct the value.
-pub fn conditional<'a, T, F, S>(reason: S, f: F) -> ConditionalFact<'a, T>
+pub fn conditional<T, F, S>(reason: S, f: F) -> ConditionalFact<'static, T>
 where
     S: ToString,
     T: Bounds,
-    F: 'static + Fn(&T) -> Facts<'a, T>,
+    F: 'static + Fn(&T) -> Facts<'static, T>,
 {
-    ConditionalFact::new(reason.to_string(), f)
+    ConditionalFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
 #[derive(Clone)]
 pub struct ConditionalFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Fn(&T) -> Facts<'a, T>>,
+    f: Arc<dyn 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>,
 }
 
 impl<'a, T> Fact<T> for ConditionalFact<'a, T>
@@ -32,18 +42,20 @@ where
     T: Bounds,
 {
     fn check(&mut self, t: &T) -> Check {
-        (self.f)(t)
+        check_fallible! {{
+            Ok((self.f)(t)?
             .check(t)
-            .map(|e| format!("conditional({}) > {}", self.reason, e))
+            .map(|e| format!("conditional({}) > {}", self.reason, e)))
+        }}
     }
 
     fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
-        (self.f)(t).mutate(t, u)
+        (self.f)(t).expect("TODO: fallible mutation").mutate(t, u)
     }
 }
 
 impl<'a, T> ConditionalFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> Facts<'a, T>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>(reason: String, f: F) -> Self {
         Self {
             reason,
             f: Arc::new(f),
@@ -81,10 +93,10 @@ fn test_conditional_fact() {
             .ok()
             .unwrap_err()),
         vec![
-            "item 0: conditional(reason) > lens T.1 > divisible by 4".to_string(),
-            "item 1: conditional(reason) > lens T.1 > divisible by 3".to_string(),
-            "item 2: conditional(reason) > lens T.1 > divisible by 4".to_string(),
-            "item 3: conditional(reason) > lens T.1 > divisible by 3".to_string(),
+            "item 0: conditional(reason) > lens(T.1) > divisible by 4".to_string(),
+            "item 1: conditional(reason) > lens(T.1) > divisible by 3".to_string(),
+            "item 2: conditional(reason) > lens(T.1) > divisible by 4".to_string(),
+            "item 3: conditional(reason) > lens(T.1) > divisible by 3".to_string(),
         ]
     );
 

@@ -15,8 +15,8 @@ mod seq;
 pub use arbitrary;
 
 pub use check::Check;
-pub use conditional::conditional;
-pub use custom::custom;
+pub use conditional::{conditional, conditional_fallible};
+pub use custom::{custom, custom_fallible};
 pub use fact::{BoxFact, Fact, Facts};
 pub use lens::lens;
 pub use predicates::{
@@ -25,6 +25,9 @@ pub use predicates::{
 };
 pub use prism::prism;
 pub use seq::*;
+
+/// The Result type returnable when using `check_fallible!`
+pub type Result<T> = anyhow::Result<T>;
 
 #[cfg(any(test, feature = "test"))]
 pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {

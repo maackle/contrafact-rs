@@ -2,9 +2,19 @@ use std::sync::Arc;
 
 use arbitrary::Unstructured;
 
-use crate::{fact::Bounds, Check, Fact};
+use crate::{check_fallible, fact::Bounds, Check, Fact};
 
 pub(crate) const ITERATION_LIMIT: usize = 100;
+
+/// A version of `custom` whose closure returns a Result
+pub fn custom_fallible<T, F, S>(reason: S, f: F) -> CustomFact<'static, T>
+where
+    S: ToString,
+    T: Bounds,
+    F: 'static + Fn(&T) -> crate::Result<bool>,
+{
+    CustomFact::<'static, T>::new(reason.to_string(), f)
+}
 
 /// A constraint defined only by a custom predicate closure.
 /// This is appropriate to use when the space of possible values is small, and
@@ -28,13 +38,13 @@ where
     T: Bounds,
     F: 'static + Fn(&T) -> bool,
 {
-    CustomFact::<'static, T>::new(reason.to_string(), f)
+    CustomFact::<'static, T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
 #[derive(Clone)]
 pub struct CustomFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Fn(&T) -> bool>,
+    f: Arc<dyn 'a + Fn(&T) -> crate::Result<bool>>,
 }
 
 impl<'a, T> Fact<T> for CustomFact<'a, T>
@@ -42,17 +52,12 @@ where
     T: Bounds,
 {
     fn check(&mut self, t: &T) -> Check {
-        if (self.f)(t) {
-            Vec::with_capacity(0)
-        } else {
-            vec![self.reason.clone()]
-        }
-        .into()
+        check_fallible!({ Ok(Check::single((self.f)(t)?, self.reason.clone())) })
     }
 
     fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
         for _ in 0..ITERATION_LIMIT {
-            if (self.f)(t) {
+            if (self.f)(t).expect("TODO: fallible mutation") {
                 return;
             }
             *t = T::arbitrary(u).unwrap();
@@ -66,7 +71,7 @@ where
 }
 
 impl<'a, T> CustomFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> bool>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<bool>>(reason: String, f: F) -> Self {
         Self {
             reason,
             f: Arc::new(f),

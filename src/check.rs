@@ -64,7 +64,7 @@ impl Check {
     }
 }
 
-pub type CheckResult = anyhow::Result<Check>;
+type CheckResult = crate::Result<Check>;
 
 impl From<CheckResult> for Check {
     fn from(result: CheckResult) -> Check {
@@ -77,9 +77,10 @@ impl From<CheckResult> for Check {
 
 /// Run a check which may produce a Result, mapping any Err into
 /// a normal Check error string
+#[macro_export]
 macro_rules! check_fallible {
     ($blk:block) => {{
-        let result: CheckResult = (|| $blk)();
+        let result: $crate::Result<Check> = (|| $blk)();
         Check::from(result)
     }};
 }
