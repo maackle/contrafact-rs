@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use arbitrary::Unstructured;
 
-use crate::{
-    fact::{Bounds, CheckResult},
-    Fact,
-};
+use crate::{fact::Bounds, Check, Fact};
 
 pub(crate) const ITERATION_LIMIT: usize = 100;
 
@@ -44,7 +41,7 @@ impl<'a, T> Fact<T> for CustomFact<'a, T>
 where
     T: Bounds,
 {
-    fn check(&mut self, t: &T) -> CheckResult {
+    fn check(&mut self, t: &T) -> Check {
         if (self.f)(t) {
             Vec::with_capacity(0)
         } else {

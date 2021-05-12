@@ -3,6 +3,7 @@
 
 #![warn(missing_docs)]
 
+mod check;
 mod conditional;
 mod custom;
 mod fact;
@@ -13,9 +14,10 @@ mod seq;
 
 pub use arbitrary;
 
+pub use check::Check;
 pub use conditional::conditional;
 pub use custom::custom;
-pub use fact::{BoxFact, CheckResult, Fact, Facts};
+pub use fact::{BoxFact, Fact, Facts};
 pub use lens::lens;
 pub use predicates::{
     always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,

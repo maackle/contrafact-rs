@@ -1,12 +1,9 @@
-use crate::{
-    fact::{Bounds, CheckResult},
-    Fact,
-};
+use crate::{fact::Bounds, Check, Fact};
 use arbitrary::Unstructured;
 
 /// Check that all of the constraints of all Facts are satisfied for this sequence.
 #[tracing::instrument(skip(fact))]
-pub fn check_seq<T, F>(seq: &[T], mut fact: F) -> CheckResult
+pub fn check_seq<T, F>(seq: &[T], mut fact: F) -> Check
 where
     F: Fact<T>,
     T: Bounds,

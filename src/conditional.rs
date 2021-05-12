@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use arbitrary::Unstructured;
 
-use crate::{
-    fact::{Bounds, CheckResult},
-    Fact, Facts,
-};
+use crate::{fact::Bounds, Check, Fact, Facts};
 
 /// A constraint where the data to be constrained determines which constraint
 /// to apply.
@@ -34,7 +31,7 @@ impl<'a, T> Fact<T> for ConditionalFact<'a, T>
 where
     T: Bounds,
 {
-    fn check(&mut self, t: &T) -> CheckResult {
+    fn check(&mut self, t: &T) -> Check {
         (self.f)(t)
             .check(t)
             .map(|e| format!("conditional({}) > {}", self.reason, e))

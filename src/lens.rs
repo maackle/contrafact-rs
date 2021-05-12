@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::fact::*;
+use crate::{fact::*, Check};
 use arbitrary::Unstructured;
 
 /// Applies a Fact to a subset of some data by means of a lens-like closure
@@ -68,7 +68,7 @@ where
     F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&mut self, o: &O) -> CheckResult {
+    fn check(&mut self, o: &O) -> Check {
         unsafe {
             // We can convert the immutable ref to a mutable one because `check`
             // never mutates the value, but we need `lens` to return a mutable

@@ -3,7 +3,7 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use crate::{custom::ITERATION_LIMIT, fact::*};
+use crate::{custom::ITERATION_LIMIT, fact::*, Check};
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {
@@ -156,7 +156,7 @@ impl<T> Fact<T> for BoolFact
 where
     T: Bounds + PartialEq,
 {
-    fn check(&mut self, _: &T) -> CheckResult {
+    fn check(&mut self, _: &T) -> Check {
         if self.0 {
             Vec::with_capacity(0)
         } else {
@@ -191,7 +191,7 @@ where
     T: Bounds + PartialEq,
     B: Borrow<T>,
 {
-    fn check(&mut self, obj: &T) -> CheckResult {
+    fn check(&mut self, obj: &T) -> Check {
         let constant = self.constant.borrow();
         match self.op {
             EqOp::Equal if obj != constant => vec![format!(
@@ -237,7 +237,7 @@ impl<T> Fact<T> for InFact<'_, T>
 where
     T: Bounds,
 {
-    fn check(&mut self, obj: &T) -> CheckResult {
+    fn check(&mut self, obj: &T) -> Check {
         if self.inner.contains(&obj) {
             Vec::with_capacity(0)
         } else {
@@ -267,8 +267,8 @@ impl<T> Fact<T> for ConsecutiveIntFact<T>
 where
     T: Bounds + num::PrimInt,
 {
-    fn check(&mut self, obj: &T) -> CheckResult {
-        let result = CheckResult::single(*obj == self.counter, self.reason.clone());
+    fn check(&mut self, obj: &T) -> Check {
+        let result = Check::single(*obj == self.counter, self.reason.clone());
         self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
         result
     }
@@ -301,7 +301,7 @@ where
     P2: Fact<T> + Fact<T>,
     T: Bounds,
 {
-    fn check(&mut self, obj: &T) -> CheckResult {
+    fn check(&mut self, obj: &T) -> Check {
         let a = self.a.check(obj).ok();
         let b = self.b.check(obj).ok();
         match (a, b) {
@@ -312,7 +312,7 @@ condition 2: {:#?}",
                 a, b
             )]
             .into(),
-            _ => CheckResult::pass(),
+            _ => Check::pass(),
         }
     }
 
@@ -344,8 +344,8 @@ where
     F: Fact<T>,
     T: Bounds,
 {
-    fn check(&mut self, obj: &T) -> CheckResult {
-        CheckResult::single(
+    fn check(&mut self, obj: &T) -> Check {
+        Check::single(
             self.fact.check(obj).ok().is_err(),
             format!("not({})", self.reason.clone()),
         )

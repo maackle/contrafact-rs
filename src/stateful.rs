@@ -12,7 +12,7 @@ impl<'a, S, T> Fact<T> for StatefulFact<'a, S, T>
 where
     T: Bounds,
 {
-    fn check(&mut self, obj: &T) -> crate::fact::CheckResult {
+    fn check(&mut self, obj: &T) -> crate::fact::Check {
         let result = self.facts.check(obj);
         (self.update)(&mut self.state);
         result
