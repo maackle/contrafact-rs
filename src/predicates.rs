@@ -171,7 +171,7 @@ where
         }
     }
 
-    fn advance(&mut self) {}
+    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -225,7 +225,7 @@ where
             .expect("there's a bug in EqFact::mutate");
     }
 
-    fn advance(&mut self) {}
+    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -260,7 +260,7 @@ where
             .expect("there's a bug in InFact::mutate");
     }
 
-    fn advance(&mut self) {}
+    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -281,7 +281,7 @@ where
         *obj = self.counter.clone();
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self, _: &T) {
         self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
     }
 }
@@ -334,7 +334,7 @@ condition 2: {:#?}",
             .expect("there's a bug in OrFact::mutate");
     }
 
-    fn advance(&mut self) {}
+    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone)]
@@ -369,7 +369,7 @@ where
         }
     }
 
-    fn advance(&mut self) {}
+    fn advance(&mut self, _: &T) {}
 }
 
 #[cfg(test)]

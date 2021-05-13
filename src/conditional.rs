@@ -53,7 +53,7 @@ where
         (self.f)(t).expect("TODO: fallible mutation").mutate(t, u)
     }
 
-    fn advance(&mut self) {}
+    fn advance(&mut self, _: &T) {}
 }
 
 impl<'a, T> ConditionalFact<'a, T> {

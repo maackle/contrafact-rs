@@ -110,7 +110,7 @@ mod tests {
                 unimplemented!()
             }
 
-            fn advance(&mut self) {}
+            fn advance(&mut self, _: &()) {}
         }
 
         assert_eq!(F.check(&()).ok().unwrap_err(), vec!["oh no"]);

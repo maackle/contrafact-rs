@@ -30,7 +30,7 @@ where
 
     /// When checking or mutating a sequence of items, this gets called after
     /// each item to modify the state to get ready for the next item.
-    fn advance(&mut self);
+    fn advance(&mut self, obj: &T);
 
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
@@ -75,8 +75,8 @@ where
     }
 
     #[tracing::instrument(skip(self))]
-    fn advance(&mut self) {
-        (*self).as_mut().advance()
+    fn advance(&mut self, obj: &T) {
+        (*self).as_mut().advance(obj)
     }
 }
 
@@ -101,9 +101,9 @@ where
     }
 
     #[tracing::instrument(skip(self))]
-    fn advance(&mut self) {
+    fn advance(&mut self, obj: &T) {
         for f in self.iter_mut() {
-            f.advance()
+            f.advance(obj)
         }
     }
 }
@@ -129,9 +129,9 @@ where
     }
 
     #[tracing::instrument(skip(self))]
-    fn advance(&mut self) {
+    fn advance(&mut self, obj: &T) {
         for f in self.iter_mut() {
-            f.advance()
+            f.advance(obj)
         }
     }
 }

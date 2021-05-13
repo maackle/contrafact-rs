@@ -16,7 +16,7 @@ where
                 .map(|reason| format!("item {}: {}", i, reason))
                 .collect::<Vec<_>>(),
         );
-        fact.advance();
+        fact.advance(obj);
     }
     reasons.into()
 }
@@ -31,8 +31,9 @@ where
     let mut seq = Vec::new();
     for _i in 0..num {
         tracing::trace!("i: {}", _i);
-        seq.push(fact.build(u));
-        fact.advance();
+        let obj = fact.build(u);
+        fact.advance(&obj);
+        seq.push(obj);
     }
     return seq;
 }

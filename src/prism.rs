@@ -93,8 +93,17 @@ where
     }
 
     #[tracing::instrument(skip(self))]
-    fn advance(&mut self) {
-        self.inner_fact.advance()
+    fn advance(&mut self, obj: &O) {
+        unsafe {
+            // We can convert the immutable ref to a mutable one because `advance`
+            // never mutates the value, but we need `prism` to return a mutable
+            // reference so it can be reused in `mutate`
+            let o = obj as *const O;
+            let o = o as *mut O;
+            if let Some(t) = (self.prism)(&mut *o) {
+                self.inner_fact.advance(t)
+            }
+        }
     }
 }
 

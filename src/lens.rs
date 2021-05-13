@@ -68,12 +68,12 @@ where
     F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, o: &O) -> Check {
+    fn check(&self, obj: &O) -> Check {
         unsafe {
             // We can convert the immutable ref to a mutable one because `check`
             // never mutates the value, but we need `lens` to return a mutable
             // reference so it can be reused in `mutate`
-            let o = o as *const O;
+            let o = obj as *const O;
             let o = o as *mut O;
             self.inner_fact
                 .check((self.lens)(&mut *o))
@@ -87,8 +87,15 @@ where
     }
 
     #[tracing::instrument(skip(self))]
-    fn advance(&mut self) {
-        self.inner_fact.advance()
+    fn advance(&mut self, obj: &O) {
+        unsafe {
+            // We can convert the immutable ref to a mutable one because `advance`
+            // never mutates the value, but we need `lens` to return a mutable
+            // reference so it can be reused in `mutate`
+            let o = obj as *const O;
+            let o = o as *mut O;
+            self.inner_fact.advance((self.lens)(&mut *o))
+        }
     }
 }
 
