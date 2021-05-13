@@ -51,11 +51,11 @@ impl<'a, T> Fact<T> for CustomFact<'a, T>
 where
     T: Bounds,
 {
-    fn check(&mut self, t: &T) -> Check {
+    fn check(&self, t: &T) -> Check {
         check_fallible!({ Ok(Check::single((self.f)(t)?, self.reason.clone())) })
     }
 
-    fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
+    fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
         for _ in 0..ITERATION_LIMIT {
             if (self.f)(t).expect("TODO: fallible mutation") {
                 return;

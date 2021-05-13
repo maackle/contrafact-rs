@@ -41,7 +41,7 @@ impl<'a, T> Fact<T> for ConditionalFact<'a, T>
 where
     T: Bounds,
 {
-    fn check(&mut self, t: &T) -> Check {
+    fn check(&self, t: &T) -> Check {
         check_fallible! {{
             Ok((self.f)(t)?
             .check(t)
@@ -49,7 +49,7 @@ where
         }}
     }
 
-    fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
+    fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
         (self.f)(t).expect("TODO: fallible mutation").mutate(t, u)
     }
 

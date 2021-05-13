@@ -22,11 +22,11 @@ where
     T: Bounds,
 {
     /// Assert that the constraint is satisfied (panic if not).
-    fn check(&mut self, obj: &T) -> Check;
+    fn check(&self, obj: &T) -> Check;
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
     /// constraint.
-    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>);
+    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>);
 
     /// When checking or mutating a sequence of items, this gets called after
     /// each item to modify the state to get ready for the next item.
@@ -58,58 +58,20 @@ where
     }
 }
 
-// pub trait Fact2<A, B>
-// where
-//     A: Bounds,
-//     B: Bounds,
-// {
-//     /// Assert that the constraint is satisfied (panic if not).
-//     fn check(&mut self, obj: (&A, &B)) -> Check;
-
-//     /// Apply a mutation which moves the obj closer to satisfying the overall
-//     /// constraint.
-//     fn mutate(&mut self, obj: (&mut A, &mut B), u: &mut Unstructured<'static>);
-
-//     /// Mutate a value such that it satisfies the constraint.
-//     /// If the constraint cannot be satisfied, panic.
-//     fn satisfy(&mut self, obj: (&mut A, &mut B), u: &mut Unstructured<'static>) {
-//         let mut last_failure: Vec<String> = vec![];
-//         for _i in 0..SATISFY_ATTEMPTS {
-//             self.mutate(obj, u);
-//             if let Err(errs) = self.check(obj).ok() {
-//                 last_failure = errs;
-//             } else {
-//                 return;
-//             }
-//         }
-//         panic!(format!(
-//             "Could not satisfy a constraint even after {} iterations. Last check failure: {:?}",
-//             SATISFY_ATTEMPTS, last_failure
-//         ));
-//     }
-
-//     /// Build a new value such that it satisfies the constraint
-//     fn build(&mut self, u: &mut Unstructured<'static>) -> A {
-//         let mut obj = A::arbitrary(u).unwrap();
-//         self.satisfy(&mut obj, u);
-//         obj
-//     }
-// }
-
 impl<T, F> Fact<T> for Box<F>
 where
     T: Bounds,
     F: Fact<T> + ?Sized,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&mut self, obj: &T) -> Check {
+    fn check(&self, obj: &T) -> Check {
         tracing::trace!("check");
-        (*self).as_mut().check(obj)
+        (*self).as_ref().check(obj)
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
-        (*self).as_mut().mutate(obj, u);
+    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
+        (*self).as_ref().mutate(obj, u);
     }
 
     #[tracing::instrument(skip(self))]
@@ -124,16 +86,16 @@ where
     F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&mut self, obj: &T) -> Check {
-        self.iter_mut()
+    fn check(&self, obj: &T) -> Check {
+        self.iter()
             .flat_map(|f| f.check(obj))
             .collect::<Vec<_>>()
             .into()
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
-        for f in self.iter_mut() {
+    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
+        for f in self.iter() {
             f.mutate(obj, u)
         }
     }
@@ -152,17 +114,24 @@ where
     F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&mut self, obj: &T) -> Check {
-        self.as_mut_slice().check(obj)
+    fn check(&self, obj: &T) -> Check {
+        self.iter()
+            .flat_map(|f| f.check(obj))
+            .collect::<Vec<_>>()
+            .into()
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
-        self.as_mut_slice().mutate(obj, u)
+    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
+        for f in self.iter() {
+            f.mutate(obj, u)
+        }
     }
 
     #[tracing::instrument(skip(self))]
     fn advance(&mut self) {
-        self.as_mut_slice().advance()
+        for f in self.iter_mut() {
+            f.advance()
+        }
     }
 }

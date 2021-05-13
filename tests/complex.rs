@@ -117,7 +117,7 @@ fn test_omega_fact() {
     let mut u = Unstructured::new(&NOISE);
 
     let data = "spartacus".into();
-    let mut fact = omega_fact(&11, &data);
+    let fact = omega_fact(&11, &data);
 
     let beta = Beta::arbitrary(&mut u).unwrap();
 

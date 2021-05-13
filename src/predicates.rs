@@ -156,7 +156,7 @@ impl<T> Fact<T> for BoolFact
 where
     T: Bounds + PartialEq,
 {
-    fn check(&mut self, _: &T) -> Check {
+    fn check(&self, _: &T) -> Check {
         if self.0 {
             Vec::with_capacity(0)
         } else {
@@ -165,7 +165,7 @@ where
         .into()
     }
 
-    fn mutate(&mut self, _: &mut T, _: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, _: &mut T, _: &mut arbitrary::Unstructured<'static>) {
         if !self.0 {
             panic!("never() cannot be used for mutation.")
         }
@@ -193,7 +193,7 @@ where
     T: Bounds + PartialEq,
     B: Borrow<T>,
 {
-    fn check(&mut self, obj: &T) -> Check {
+    fn check(&self, obj: &T) -> Check {
         let constant = self.constant.borrow();
         match self.op {
             EqOp::Equal if obj != constant => vec![format!(
@@ -209,7 +209,7 @@ where
         .into()
     }
 
-    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         let constant = self.constant.borrow();
         match self.op {
             EqOp::Equal => *obj = constant.clone(),
@@ -241,7 +241,7 @@ impl<T> Fact<T> for InFact<'_, T>
 where
     T: Bounds,
 {
-    fn check(&mut self, obj: &T) -> Check {
+    fn check(&self, obj: &T) -> Check {
         if self.inner.contains(&obj) {
             Vec::with_capacity(0)
         } else {
@@ -253,7 +253,7 @@ where
         .into()
     }
 
-    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         *obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(obj)
             .ok()
@@ -273,11 +273,11 @@ impl<T> Fact<T> for ConsecutiveIntFact<T>
 where
     T: Bounds + num::PrimInt,
 {
-    fn check(&mut self, obj: &T) -> Check {
+    fn check(&self, obj: &T) -> Check {
         Check::single(*obj == self.counter, self.reason.clone())
     }
 
-    fn mutate(&mut self, obj: &mut T, _: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, obj: &mut T, _: &mut arbitrary::Unstructured<'static>) {
         *obj = self.counter.clone();
     }
 
@@ -308,7 +308,7 @@ where
     P2: Fact<T> + Fact<T>,
     T: Bounds,
 {
-    fn check(&mut self, obj: &T) -> Check {
+    fn check(&self, obj: &T) -> Check {
         let a = self.a.check(obj).ok();
         let b = self.b.check(obj).ok();
         match (a, b) {
@@ -323,7 +323,7 @@ condition 2: {:#?}",
         }
     }
 
-    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         if *u.choose(&[true, false]).unwrap() {
             self.a.mutate(obj, u);
         } else {
@@ -353,14 +353,14 @@ where
     F: Fact<T>,
     T: Bounds,
 {
-    fn check(&mut self, obj: &T) -> Check {
+    fn check(&self, obj: &T) -> Check {
         Check::single(
             self.fact.check(obj).ok().is_err(),
             format!("not({})", self.reason.clone()),
         )
     }
 
-    fn mutate(&mut self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         for _ in 0..ITERATION_LIMIT {
             if self.fact.check(obj).ok().is_err() {
                 break;
@@ -398,7 +398,7 @@ mod tests {
 
         let eq1 = eq("must be 1", 1);
         let eq2 = eq("must be 2", 2);
-        let mut either = or("can be 1 or 2", eq1, eq2);
+        let either = or("can be 1 or 2", eq1, eq2);
 
         let ones = build_seq(&mut u, 10, either.clone());
         check_seq(ones.as_slice(), either.clone()).unwrap();
