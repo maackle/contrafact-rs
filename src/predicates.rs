@@ -7,12 +7,12 @@ use crate::{custom::ITERATION_LIMIT, fact::*, Check};
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {
-    BoolFact(true)
+    BoolFact(true, "always".to_string())
 }
 
 /// A constraint which is never met
-pub fn never() -> BoolFact {
-    BoolFact(false)
+pub fn never<S: ToString>(reason: S) -> BoolFact {
+    BoolFact(false, reason.to_string())
 }
 
 /// Specifies an equality constraint
@@ -150,7 +150,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoolFact(bool);
+pub struct BoolFact(bool, String);
 
 impl<T> Fact<T> for BoolFact
 where
@@ -160,7 +160,7 @@ where
         if self.0 {
             Vec::with_capacity(0)
         } else {
-            vec![format!("never() always fails")]
+            vec![format!("never() encountered: {}", self.1)]
         }
         .into()
     }

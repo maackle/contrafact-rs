@@ -5,7 +5,6 @@ Readme coming soon.
 ## TODO
 
 - [ ] write readme
-- [ ] add reason for `never()`
 - [ ] add `Fact::label` method
 - [ ] add ability to short-circuit a failing Check
 - [ ] consider using [lens-rs](https://github.com/TOETOE55/lens-rs) for optics instead of closures over mut refs
