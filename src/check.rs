@@ -109,6 +109,8 @@ mod tests {
             fn mutate(&mut self, _: &mut (), _: &mut arbitrary::Unstructured<'static>) {
                 unimplemented!()
             }
+
+            fn advance(&mut self) {}
         }
 
         assert_eq!(F.check(&()).ok().unwrap_err(), vec!["oh no"]);

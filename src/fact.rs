@@ -28,6 +28,10 @@ where
     /// constraint.
     fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>);
 
+    /// When checking or mutating a sequence of items, this gets called after
+    /// each item to modify the state to get ready for the next item.
+    fn advance(&mut self);
+
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
     fn satisfy(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
@@ -107,6 +111,11 @@ where
     fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
         (*self).as_mut().mutate(obj, u);
     }
+
+    #[tracing::instrument(skip(self))]
+    fn advance(&mut self) {
+        (*self).as_mut().advance()
+    }
 }
 
 impl<T, F> Fact<T> for &mut [F]
@@ -128,6 +137,13 @@ where
             f.mutate(obj, u)
         }
     }
+
+    #[tracing::instrument(skip(self))]
+    fn advance(&mut self) {
+        for f in self.iter_mut() {
+            f.advance()
+        }
+    }
 }
 
 impl<T, F> Fact<T> for Vec<F>
@@ -143,5 +159,10 @@ where
     #[tracing::instrument(skip(self, u))]
     fn mutate(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
         self.as_mut_slice().mutate(obj, u)
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn advance(&mut self) {
+        self.as_mut_slice().advance()
     }
 }

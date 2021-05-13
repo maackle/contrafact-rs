@@ -52,6 +52,8 @@ where
     fn mutate(&mut self, t: &mut T, u: &mut Unstructured<'static>) {
         (self.f)(t).expect("TODO: fallible mutation").mutate(t, u)
     }
+
+    fn advance(&mut self) {}
 }
 
 impl<'a, T> ConditionalFact<'a, T> {

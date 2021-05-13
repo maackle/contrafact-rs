@@ -170,6 +170,8 @@ where
             panic!("never() cannot be used for mutation.")
         }
     }
+
+    fn advance(&mut self) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -222,6 +224,8 @@ where
             .ok()
             .expect("there's a bug in EqFact::mutate");
     }
+
+    fn advance(&mut self) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -255,6 +259,8 @@ where
             .ok()
             .expect("there's a bug in InFact::mutate");
     }
+
+    fn advance(&mut self) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -268,13 +274,14 @@ where
     T: Bounds + num::PrimInt,
 {
     fn check(&mut self, obj: &T) -> Check {
-        let result = Check::single(*obj == self.counter, self.reason.clone());
-        self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
-        result
+        Check::single(*obj == self.counter, self.reason.clone())
     }
 
     fn mutate(&mut self, obj: &mut T, _: &mut arbitrary::Unstructured<'static>) {
         *obj = self.counter.clone();
+    }
+
+    fn advance(&mut self) {
         self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
     }
 }
@@ -326,6 +333,8 @@ condition 2: {:#?}",
             .ok()
             .expect("there's a bug in OrFact::mutate");
     }
+
+    fn advance(&mut self) {}
 }
 
 #[derive(Debug, Clone)]
@@ -359,6 +368,8 @@ where
             *obj = T::arbitrary(u).unwrap();
         }
     }
+
+    fn advance(&mut self) {}
 }
 
 #[cfg(test)]

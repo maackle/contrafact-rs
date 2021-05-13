@@ -68,6 +68,7 @@ where
             ITERATION_LIMIT
         );
     }
+    fn advance(&mut self) {}
 }
 
 impl<'a, T> CustomFact<'a, T> {

@@ -9,7 +9,7 @@ use arbitrary::Unstructured;
 /// that constraint into a constraint about `O`.
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
-pub fn lens<O, T, F, L, S>(label: S, lens: L, constraint: F) -> LensFact<O, T, F>
+pub fn lens<O, T, F, L, S>(label: S, lens: L, inner_fact: F) -> LensFact<O, T, F>
 where
     O: Bounds,
     T: Bounds,
@@ -17,7 +17,7 @@ where
     F: Fact<T>,
     L: 'static + Fn(&mut O) -> &mut T,
 {
-    LensFact::new(label.to_string(), lens, constraint)
+    LensFact::new(label.to_string(), lens, inner_fact)
 }
 
 #[derive(Clone)]
@@ -32,8 +32,8 @@ where
     /// Function which maps outer structure to inner substructure
     lens: Arc<dyn 'static + Fn(&mut O) -> &mut T>,
 
-    /// The constraint about the inner substructure
-    constraint: F,
+    /// The inner_fact about the inner substructure
+    inner_fact: F,
 
     __phantom: PhantomData<F>,
 }
@@ -45,7 +45,7 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a lens and an existing Fact to create a new Fact.
-    pub fn new<L>(label: String, lens: L, constraint: F) -> Self
+    pub fn new<L>(label: String, lens: L, inner_fact: F) -> Self
     where
         T: Bounds,
         O: Bounds,
@@ -55,7 +55,7 @@ where
         Self {
             label,
             lens: Arc::new(lens),
-            constraint,
+            inner_fact,
             __phantom: PhantomData,
         }
     }
@@ -75,7 +75,7 @@ where
             // reference so it can be reused in `mutate`
             let o = o as *const O;
             let o = o as *mut O;
-            self.constraint
+            self.inner_fact
                 .check((self.lens)(&mut *o))
                 .map(|err| format!("lens({}) > {}", self.label, err))
         }
@@ -83,7 +83,12 @@ where
 
     #[tracing::instrument(skip(self, u))]
     fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
-        self.constraint.mutate((self.lens)(obj), u)
+        self.inner_fact.mutate((self.lens)(obj), u)
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn advance(&mut self) {
+        self.inner_fact.advance()
     }
 }
 

@@ -14,7 +14,7 @@ use arbitrary::Unstructured;
 ///
 /// If the prism returns Some, then the constraint will be checked, and mutation
 /// will be possible. If it returns None, then checks and mutations will not occur.
-pub fn prism<O, T, F, P, S>(label: S, prism: P, constraint: F) -> PrismFact<O, T, F>
+pub fn prism<O, T, F, P, S>(label: S, prism: P, inner_fact: F) -> PrismFact<O, T, F>
 where
     O: Bounds,
     S: ToString,
@@ -22,7 +22,7 @@ where
     F: Fact<T>,
     P: 'static + Fn(&mut O) -> Option<&mut T>,
 {
-    PrismFact::new(label.to_string(), prism, constraint)
+    PrismFact::new(label.to_string(), prism, inner_fact)
 }
 
 #[derive(Clone)]
@@ -34,7 +34,7 @@ where
 {
     label: String,
     prism: Arc<dyn 'static + Fn(&mut O) -> Option<&mut T>>,
-    constraint: F,
+    inner_fact: F,
     __phantom: PhantomData<F>,
 }
 
@@ -45,7 +45,7 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a prism and an existing Fact to create a new Fact.
-    pub fn new<P>(label: String, prism: P, constraint: F) -> Self
+    pub fn new<P>(label: String, prism: P, inner_fact: F) -> Self
     where
         T: Bounds,
         O: Bounds,
@@ -55,7 +55,7 @@ where
         Self {
             label,
             prism: Arc::new(prism),
-            constraint,
+            inner_fact,
             __phantom: PhantomData,
         }
     }
@@ -76,7 +76,7 @@ where
             let o = o as *const O;
             let o = o as *mut O;
             if let Some(t) = (self.prism)(&mut *o) {
-                self.constraint
+                self.inner_fact
                     .check(t)
                     .map(|err| format!("prism({}) > {}", self.label, err))
             } else {
@@ -88,8 +88,13 @@ where
     #[tracing::instrument(skip(self, u))]
     fn mutate(&mut self, obj: &mut O, u: &mut Unstructured<'static>) {
         if let Some(t) = (self.prism)(obj) {
-            self.constraint.mutate(t, u)
+            self.inner_fact.mutate(t, u)
         }
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn advance(&mut self) {
+        self.inner_fact.advance()
     }
 }
 
