@@ -1,5 +1,9 @@
 //! Composable constraints ("facts") for coercing data into a certain shape,
-//! or for verifying the shape of existing data
+//! or for verifying the shape of existing data.
+//!
+//! ## Motivation
+//!
+//! When testing,
 
 #![warn(missing_docs)]
 

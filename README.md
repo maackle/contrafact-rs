@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/maackle/contrafact-rs/actions/workflows/rust.yml/badge.svg)
 
-A framework for defining highly composable constraints which can be used both for verification and for generating arbitrary data which satisfies the constraints
+A trait for highly composable constraints ("facts") which can be used both to verify data and to generate arbitrary data within those constraints
 
 ## TODO
 

@@ -8,7 +8,9 @@ pub struct Check {
 }
 
 impl Check {
-    /// Map over each error string
+    /// Map over each error string.
+    /// Useful for combinators which add additional context to errors produced
+    /// by inner facts.
     pub fn map<F>(self, f: F) -> Self
     where
         F: FnMut(String) -> String,
@@ -21,7 +23,7 @@ impl Check {
         .into()
     }
 
-    /// Panic if there are any errors, and display those errors
+    /// Panic if there are any errors, and display those errors.
     pub fn unwrap(self) {
         if !self.errors.is_empty() {
             let msg = if self.errors.len() == 1 {

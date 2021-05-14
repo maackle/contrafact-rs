@@ -9,7 +9,7 @@ pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(||
 
 type Id = u32;
 
-// Similar to Holochain DhtOp
+// Similar to Holochain's DhtOp
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 enum Omega {
     AlphaBeta { id: Id, alpha: Alpha, beta: Beta },
@@ -53,7 +53,7 @@ impl Omega {
     }
 }
 
-// Similar to Holochain Header
+// Similar to Holochain's Header
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 enum Alpha {
     Beta { id: Id, beta: Beta, data: String },
@@ -75,7 +75,7 @@ impl Alpha {
     }
 }
 
-// Similar to Holochain Entry
+// Similar to Holochain's Entry
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 struct Beta {
     id: u32,
