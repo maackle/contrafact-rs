@@ -6,17 +6,17 @@ use crate::{check_fallible, fact::Bounds, Check, Fact};
 
 pub(crate) const ITERATION_LIMIT: usize = 100;
 
-/// A version of `custom` whose closure returns a Result
-pub fn custom_fallible<T, F, S>(reason: S, f: F) -> CustomFact<'static, T>
+/// A version of `brute` whose closure returns a Result
+pub fn brute_fallible<T, F, S>(reason: S, f: F) -> BruteFact<'static, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> crate::Result<bool>,
 {
-    CustomFact::<'static, T>::new(reason.to_string(), f)
+    BruteFact::<'static, T>::new(reason.to_string(), f)
 }
 
-/// A constraint defined by a custom predicate.
+/// A constraint defined only by a predicate closure.
 ///
 /// This is appropriate to use when the space of possible values is small, and
 /// you can rely on randomness to eventually find a value that matches the
@@ -33,23 +33,22 @@ where
 /// constraints that were met by previous mutations.
 ///
 /// There is a fixed iteration limit, beyond which this will panic.
-pub fn custom<T, F, S>(reason: S, f: F) -> CustomFact<'static, T>
+pub fn brute<T, F, S>(reason: S, f: F) -> BruteFact<'static, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> bool,
 {
-    todo!("maybe rename to predicate/filter/search/find/brute");
-    CustomFact::<'static, T>::new(reason.to_string(), move |x| Ok(f(x)))
+    BruteFact::<'static, T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
 #[derive(Clone)]
-pub struct CustomFact<'a, T> {
+pub struct BruteFact<'a, T> {
     reason: String,
     f: Arc<dyn 'a + Fn(&T) -> crate::Result<bool>>,
 }
 
-impl<'a, T> Fact<T> for CustomFact<'a, T>
+impl<'a, T> Fact<T> for BruteFact<'a, T>
 where
     T: Bounds,
 {
@@ -66,14 +65,14 @@ where
         }
 
         panic!(
-            "Exceeded iteration limit of {} while attempting to meet a CustomFact",
+            "Exceeded iteration limit of {} while attempting to meet a PredicateFact",
             ITERATION_LIMIT
         );
     }
     fn advance(&mut self, _: &T) {}
 }
 
-impl<'a, T> CustomFact<'a, T> {
+impl<'a, T> BruteFact<'a, T> {
     pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<bool>>(reason: String, f: F) -> Self {
         Self {
             reason,

@@ -94,7 +94,7 @@ fn omega_fact<'a>(id: &'a Id, data: &'a String) -> Facts<'a, Omega> {
     ];
     let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, eq("id", id));
     let omega_fact = facts![
-        custom("Omega variant matches Alpha variant", |o: &Omega| {
+        predicate("Omega variant matches Alpha variant", |o: &Omega| {
             match (o, o.alpha()) {
                 (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
                 (Omega::Alpha { .. }, Alpha::Nil { .. }) => true,

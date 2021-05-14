@@ -3,7 +3,7 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use crate::{custom::ITERATION_LIMIT, fact::*, Check};
+use crate::{brute::ITERATION_LIMIT, fact::*, Check};
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {

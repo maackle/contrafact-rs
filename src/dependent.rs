@@ -4,14 +4,14 @@ use arbitrary::Unstructured;
 
 use crate::{check_fallible, fact::Bounds, Check, Fact, Facts};
 
-/// A version of `conditional` whose closure returns a Result
-pub fn conditional_fallible<'a, T, F, S>(reason: S, f: F) -> ConditionalFact<'a, T>
+/// A version of `dependent` whose closure returns a Result
+pub fn dependent_fallible<'a, T, F, S>(reason: S, f: F) -> DependentFact<'a, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> crate::Result<Facts<'a, T>>,
 {
-    ConditionalFact::new(reason.to_string(), f)
+    DependentFact::new(reason.to_string(), f)
 }
 
 /// A constraint where the data to be constrained determines which constraint
@@ -22,23 +22,22 @@ where
 /// or when wanting to set some subset of data to match some other subset of
 /// data, without caring what the value actually is, and without having to
 /// explicitly construct the value.
-pub fn conditional<T, F, S>(reason: S, f: F) -> ConditionalFact<'static, T>
+pub fn dependent<T, F, S>(reason: S, f: F) -> DependentFact<'static, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> Facts<'static, T>,
 {
-    todo!("maybe rename to map/mapped/dependent/etc?");
-    ConditionalFact::new(reason.to_string(), move |x| Ok(f(x)))
+    DependentFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
 #[derive(Clone)]
-pub struct ConditionalFact<'a, T> {
+pub struct DependentFact<'a, T> {
     reason: String,
     f: Arc<dyn 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>,
 }
 
-impl<'a, T> Fact<T> for ConditionalFact<'a, T>
+impl<'a, T> Fact<T> for DependentFact<'a, T>
 where
     T: Bounds,
 {
@@ -46,7 +45,7 @@ where
         check_fallible! {{
             Ok((self.f)(t)?
             .check(t)
-            .map(|e| format!("conditional({}) > {}", self.reason, e)))
+            .map(|e| format!("dependent({}) > {}", self.reason, e)))
         }}
     }
 
@@ -57,7 +56,7 @@ where
     fn advance(&mut self, _: &T) {}
 }
 
-impl<'a, T> ConditionalFact<'a, T> {
+impl<'a, T> DependentFact<'a, T> {
     pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>(reason: String, f: F) -> Self {
         Self {
             reason,
@@ -67,7 +66,7 @@ impl<'a, T> ConditionalFact<'a, T> {
 }
 
 #[test]
-fn test_conditional_fact() {
+fn test_dependent_fact() {
     use crate::*;
     type T = (u8, u8);
 
@@ -79,14 +78,14 @@ fn test_conditional_fact() {
     // and if the first element is odd,
     //     then the second element must be divisible by 4.
     let divisibility_fact = || {
-        conditional("reason", |t: &T| {
+        dependent("reason", |t: &T| {
             facts![lens(
                 "T.1",
                 |(_, n)| n,
                 if t.0 % 2 == 0 {
-                    custom("divisible by 3", |n: &u8| n % 3 == 0)
+                    brute("divisible by 3", |n: &u8| n % 3 == 0)
                 } else {
-                    custom("divisible by 4", |n: &u8| n % 4 == 0)
+                    brute("divisible by 4", |n: &u8| n % 4 == 0)
                 }
             ),]
         })
@@ -96,10 +95,10 @@ fn test_conditional_fact() {
             .ok()
             .unwrap_err()),
         vec![
-            "item 0: conditional(reason) > lens(T.1) > divisible by 4".to_string(),
-            "item 1: conditional(reason) > lens(T.1) > divisible by 3".to_string(),
-            "item 2: conditional(reason) > lens(T.1) > divisible by 4".to_string(),
-            "item 3: conditional(reason) > lens(T.1) > divisible by 3".to_string(),
+            "item 0: dependent(reason) > lens(T.1) > divisible by 4".to_string(),
+            "item 1: dependent(reason) > lens(T.1) > divisible by 3".to_string(),
+            "item 2: dependent(reason) > lens(T.1) > divisible by 4".to_string(),
+            "item 3: dependent(reason) > lens(T.1) > divisible by 3".to_string(),
         ]
     );
 

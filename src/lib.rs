@@ -3,12 +3,12 @@
 
 #![warn(missing_docs)]
 
+mod brute;
 mod check;
-mod conditional;
-mod custom;
+mod dependent;
 mod fact;
 mod lens;
-mod predicates;
+mod primitives;
 mod prism;
 mod seq;
 
@@ -16,10 +16,10 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use conditional::{conditional, conditional_fallible};
-pub use custom::{custom, custom_fallible};
 pub use fact::{BoxFact, Fact, Facts};
 pub use lens::lens;
-pub use predicates::{
+pub use predicate::{brute_fallible, predicate};
+pub use primitives::{
     always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,
     not_, or,
 };
