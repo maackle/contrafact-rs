@@ -4,7 +4,7 @@ use arbitrary::Unstructured;
 
 use crate::{check_fallible, fact::Bounds, Check, Fact, Facts};
 
-/// A version of `dependent` whose closure returns a Result
+/// A version of [`dependent`] whose closure returns a Result
 pub fn dependent_fallible<'a, T, F, S>(reason: S, f: F) -> DependentFact<'a, T>
 where
     S: ToString,

@@ -7,31 +7,31 @@
 
 #![warn(missing_docs)]
 
-mod brute;
 mod check;
-mod dependent;
 mod fact;
-mod lens;
-mod primitives;
-mod prism;
+mod impls;
 mod seq;
 
 pub use arbitrary;
 
-pub use brute::{brute, brute_fallible};
 pub use check::Check;
-pub use dependent::{dependent, dependent_fallible};
 pub use fact::{BoxFact, Fact, Facts};
-pub use lens::lens;
-pub use primitives::{
+pub use seq::*;
+
+pub use impls::primitives::{
     always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,
     not_, or,
 };
-pub use prism::prism;
-pub use seq::*;
 
-/// The Result type returnable when using `check_fallible!`
+pub use impls::brute::{brute, brute_fallible, BruteFact};
+pub use impls::dependent::{dependent, dependent_fallible, DependentFact};
+pub use impls::lens::{lens, LensFact};
+pub use impls::prism::{prism, PrismFact};
+
+/// The Result type returnable when using [`check_fallible!`]
 pub type Result<T> = anyhow::Result<T>;
+
+pub(crate) const BRUTE_ITERATION_LIMIT: usize = 100;
 
 #[cfg(any(test, feature = "test"))]
 pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {

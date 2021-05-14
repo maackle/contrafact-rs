@@ -3,7 +3,7 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use crate::{brute::ITERATION_LIMIT, fact::*, Check};
+use crate::{fact::*, Check, BRUTE_ITERATION_LIMIT};
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {
@@ -274,7 +274,7 @@ where
     T: Bounds + num::PrimInt,
 {
     fn check(&self, obj: &T) -> Check {
-        Check::single(*obj == self.counter, self.reason.clone())
+        Check::check(*obj == self.counter, self.reason.clone())
     }
 
     fn mutate(&self, obj: &mut T, _: &mut arbitrary::Unstructured<'static>) {
@@ -354,14 +354,14 @@ where
     T: Bounds,
 {
     fn check(&self, obj: &T) -> Check {
-        Check::single(
+        Check::check(
             self.fact.check(obj).ok().is_err(),
             format!("not({})", self.reason.clone()),
         )
     }
 
     fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
-        for _ in 0..ITERATION_LIMIT {
+        for _ in 0..BRUTE_ITERATION_LIMIT {
             if self.fact.check(obj).ok().is_err() {
                 break;
             }

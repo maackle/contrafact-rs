@@ -32,6 +32,7 @@ where
     PrismFact::new(label.to_string(), prism, inner_fact)
 }
 
+/// A fact which uses a prism to apply another fact. Use [`prism()`] to construct.
 #[derive(Clone)]
 pub struct PrismFact<O, T, F>
 where

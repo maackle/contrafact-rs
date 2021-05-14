@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use arbitrary::Unstructured;
 
-use crate::{check_fallible, fact::Bounds, Check, Fact};
+use crate::{check_fallible, fact::Bounds, Check, Fact, BRUTE_ITERATION_LIMIT};
 
-pub(crate) const ITERATION_LIMIT: usize = 100;
-
-/// A version of `brute` whose closure returns a Result
+/// A version of [`brute`] whose closure returns a Result
 pub fn brute_fallible<T, F, S>(reason: S, f: F) -> BruteFact<'static, T>
 where
     S: ToString,
@@ -20,14 +18,15 @@ where
 ///
 /// This is appropriate to use when the space of possible values is small, and
 /// you can rely on randomness to eventually find a value that matches the
-/// constraint, e.g. when requiring a particular enum variant.
+/// constraint through sheer brute force, e.g. when requiring a particular
+/// enum variant.
 ///
 /// NOTE: When doing mutation, this constraint can do no better than
 /// brute force when finding data that satisfies the constraint. Therefore,
 /// if the predicate is unlikely to return `true` given arbitrary data,
 /// this constraint is a bad choice!
 ///
-/// ALSO NOTE: It is probably best to place this constraint at the beginning
+/// ALSO NOTE: It is usually best to place this constraint at the beginning
 /// of a chain when doing mutation, because if the closure specifies a weak
 /// constraint, the mutation may drastically alter the data, potentially undoing
 /// constraints that were met by previous mutations.
@@ -42,6 +41,7 @@ where
     BruteFact::<'static, T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
+/// A brute-force fact. Use [`brute()`] to construct.
 #[derive(Clone)]
 pub struct BruteFact<'a, T> {
     reason: String,
@@ -53,11 +53,11 @@ where
     T: Bounds,
 {
     fn check(&self, t: &T) -> Check {
-        check_fallible!({ Ok(Check::single((self.f)(t)?, self.reason.clone())) })
+        check_fallible!({ Ok(Check::check((self.f)(t)?, self.reason.clone())) })
     }
 
     fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
-        for _ in 0..ITERATION_LIMIT {
+        for _ in 0..BRUTE_ITERATION_LIMIT {
             if (self.f)(t).expect("TODO: fallible mutation") {
                 return;
             }
@@ -66,7 +66,7 @@ where
 
         panic!(
             "Exceeded iteration limit of {} while attempting to meet a PredicateFact",
-            ITERATION_LIMIT
+            BRUTE_ITERATION_LIMIT
         );
     }
     fn advance(&mut self, _: &T) {}

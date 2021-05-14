@@ -2,16 +2,18 @@ use arbitrary::*;
 
 use crate::Check;
 
-pub(crate) const SATISFY_ATTEMPTS: usize = 10;
+/// When running `Fact::satisfy`, repeat mutate+check this many times, in case
+/// repetition helps ease into the constraint.
+pub(crate) const SATISFY_ATTEMPTS: usize = 3;
 
 /// The trait bounds for the subject of a Fact
 pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
 
-/// Type alias for a boxed Fact
+/// Type alias for a boxed Fact. Implements [`Fact`] itself.
 pub type BoxFact<'a, T> = Box<dyn 'a + Fact<T>>;
 
-/// Type alias for a Vec of boxed Facts
+/// Type alias for a Vec of boxed Facts. Implements [`Fact`] itself.
 pub type Facts<'a, T> = Vec<BoxFact<'a, T>>;
 
 /// A declarative representation of a constraint on some data, which can be

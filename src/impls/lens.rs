@@ -10,7 +10,7 @@ use arbitrary::Unstructured;
 ///
 /// The `lens` closure provides a mutable view into the subset of data.
 /// There must be a way to specify a mutable reference to the subset of data.
-/// If this is not always possible, consider using a [[prism]] instead.
+/// If this is not always possible, consider using [`prism()`](crate::prism) instead.
 ///
 /// This is a lazy way to provide a lens in the traditional optics sense.
 /// We may consider using a true lens library for this in the future.
@@ -27,6 +27,7 @@ where
     LensFact::new(label.to_string(), lens, inner_fact)
 }
 
+/// A fact which uses a lens to apply another fact. Use [`lens()`] to construct.
 #[derive(Clone)]
 pub struct LensFact<O, T, F>
 where

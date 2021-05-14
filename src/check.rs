@@ -1,7 +1,8 @@
 /// The result of a check operation, which contains an error message for every
-/// constraint which was not met
+/// constraint which was not met.
+//
 // TODO: add ability to abort, so that further checks will not occur
-#[derive(derive_more::From, derive_more::IntoIterator)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::IntoIterator)]
 #[must_use = "Check should be used with either `.unwrap()` or `.ok()`"]
 pub struct Check {
     errors: Vec<String>,
@@ -36,6 +37,12 @@ impl Check {
     }
 
     /// Convert to a Result: No errors => Ok
+    ///
+    /// ```
+    /// use contrafact::*;
+    /// assert_eq!(Check::pass().ok(), Ok(()));
+    /// assert_eq!(Check::fail("message").ok(), Err(vec!["message".to_string()]));
+    /// ```
     pub fn ok(self) -> std::result::Result<(), Vec<String>> {
         if self.errors.is_empty() {
             std::result::Result::Ok(())
@@ -45,24 +52,42 @@ impl Check {
     }
 
     /// Create a single-error failure if predicate is false, otherwise pass
-    pub fn single<S: ToString>(ok: bool, err: S) -> Self {
+    ///
+    /// ```
+    /// use contrafact::*;
+    /// assert_eq!(Check::check(true, "message"), Check::pass());
+    /// assert_eq!(Check::check(false, "message"), Check::fail("message"));
+    /// ```
+    pub fn check<S: ToString>(ok: bool, err: S) -> Self {
         if ok {
             Self::pass()
         } else {
-            Self::fail(vec![err.to_string()])
+            Self::fail(err)
         }
     }
 
     /// Create an ok result.
+    ///
+    /// ```
+    /// use contrafact::*;
+    /// assert_eq!(Check::pass(), vec![].into())
+    /// ```
     pub fn pass() -> Self {
         Self {
             errors: Vec::with_capacity(0),
         }
     }
 
-    /// Create a failure result.
-    pub fn fail(errors: Vec<String>) -> Self {
-        Self { errors }
+    /// Create a failure result with a single error.
+    ///
+    /// ```
+    /// use contrafact::*;
+    /// assert_eq!(Check::fail("message"), vec!["message".to_string()].into())
+    /// ```
+    pub fn fail<S: ToString>(error: S) -> Self {
+        Self {
+            errors: vec![error.to_string()],
+        }
     }
 }
 
@@ -77,8 +102,19 @@ impl From<CheckResult> for Check {
     }
 }
 
-/// Run a check which may produce a Result, mapping any Err into
-/// a normal Check error string
+/// Helper macro to run a check which may produce a Result, mapping any Err into
+/// a normal Check error string.
+///
+/// ```
+/// use contrafact::*;
+///
+/// // This is most useful when implementing [`Fact::check`]
+/// let check: Check = check_fallible! {{
+///     Err(anyhow::Error::msg("message"))?;
+///     Ok(Check::pass())
+/// }};
+/// assert_eq!(check, Check::fail("message"));
+/// ```
 #[macro_export]
 macro_rules! check_fallible {
     ($blk:block) => {{
