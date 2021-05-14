@@ -4,40 +4,61 @@ use arbitrary::Unstructured;
 
 use crate::{check_fallible, fact::Bounds, Check, Fact, Facts};
 
-/// A version of [`dependent`] whose closure returns a Result
-pub fn dependent_fallible<'a, T, F, S>(reason: S, f: F) -> DependentFact<'a, T>
+/// A version of [`mapped`] whose closure returns a Result
+pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> crate::Result<Facts<'a, T>>,
 {
-    DependentFact::new(reason.to_string(), f)
+    MappedFact::new(reason.to_string(), f)
 }
 
-/// A constraint where the data to be constrained determines which constraint
-/// to apply.
+/// A fact which is defined based on the data to which it is applied. It maps
+/// the data into a fact to be applied.
 ///
 /// This can be useful for "piecewise" functions, where the
 /// constraint is fundamentally different depending on the shape of the data,
 /// or when wanting to set some subset of data to match some other subset of
 /// data, without caring what the value actually is, and without having to
 /// explicitly construct the value.
-pub fn dependent<T, F, S>(reason: S, f: F) -> DependentFact<'static, T>
+/// ```
+/// use contrafact::*;
+///
+/// // This contrived fact reads:
+/// // "if the number is greater than 9000, ensure that it's also divisible by 9,
+/// //  and otherwise, ensure that it's divisible by 10"
+/// let fact = mapped("reason", |n: &u32| {
+///     if *n > 9000 {
+///         facts![ brute("divisible by 9", |n| *n % 9 == 0) ]
+///     } else {
+///         facts![ brute("divisible by 10", |n| *n % 10 == 0) ]
+///     }
+/// });
+///
+/// assert!(fact.check(&50).ok().is_ok());
+/// assert!(fact.check(&99).ok().is_err());
+/// assert!(fact.check(&9009).ok().is_ok());
+/// assert!(fact.check(&9010).ok().is_err());
+/// ```
+pub fn mapped<T, F, S>(reason: S, f: F) -> MappedFact<'static, T>
 where
     S: ToString,
     T: Bounds,
     F: 'static + Fn(&T) -> Facts<'static, T>,
 {
-    DependentFact::new(reason.to_string(), move |x| Ok(f(x)))
+    MappedFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
+/// A fact which is mapped from the data to be checked/mutated.
+/// Use [`mapped`] to construct.
 #[derive(Clone)]
-pub struct DependentFact<'a, T> {
+pub struct MappedFact<'a, T> {
     reason: String,
     f: Arc<dyn 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>,
 }
 
-impl<'a, T> Fact<T> for DependentFact<'a, T>
+impl<'a, T> Fact<T> for MappedFact<'a, T>
 where
     T: Bounds,
 {
@@ -45,7 +66,7 @@ where
         check_fallible! {{
             Ok((self.f)(t)?
             .check(t)
-            .map(|e| format!("dependent({}) > {}", self.reason, e)))
+            .map(|e| format!("mapped({}) > {}", self.reason, e)))
         }}
     }
 
@@ -56,7 +77,7 @@ where
     fn advance(&mut self, _: &T) {}
 }
 
-impl<'a, T> DependentFact<'a, T> {
+impl<'a, T> MappedFact<'a, T> {
     pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>(reason: String, f: F) -> Self {
         Self {
             reason,
@@ -66,7 +87,7 @@ impl<'a, T> DependentFact<'a, T> {
 }
 
 #[test]
-fn test_dependent_fact() {
+fn test_mapped_fact() {
     use crate::*;
     type T = (u8, u8);
 
@@ -78,7 +99,7 @@ fn test_dependent_fact() {
     // and if the first element is odd,
     //     then the second element must be divisible by 4.
     let divisibility_fact = || {
-        dependent("reason", |t: &T| {
+        mapped("reason", |t: &T| {
             facts![lens(
                 "T.1",
                 |(_, n)| n,
@@ -95,10 +116,10 @@ fn test_dependent_fact() {
             .ok()
             .unwrap_err()),
         vec![
-            "item 0: dependent(reason) > lens(T.1) > divisible by 4".to_string(),
-            "item 1: dependent(reason) > lens(T.1) > divisible by 3".to_string(),
-            "item 2: dependent(reason) > lens(T.1) > divisible by 4".to_string(),
-            "item 3: dependent(reason) > lens(T.1) > divisible by 3".to_string(),
+            "item 0: mapped(reason) > lens(T.1) > divisible by 4".to_string(),
+            "item 1: mapped(reason) > lens(T.1) > divisible by 3".to_string(),
+            "item 2: mapped(reason) > lens(T.1) > divisible by 4".to_string(),
+            "item 3: mapped(reason) > lens(T.1) > divisible by 3".to_string(),
         ]
     );
 
@@ -114,4 +135,9 @@ fn test_dependent_fact() {
     let built = build_seq(&mut u, 12, composite_fact());
     dbg!(&built);
     check_seq(built.as_slice(), composite_fact()).unwrap();
+}
+
+#[test]
+fn stateful() {
+    todo!()
 }

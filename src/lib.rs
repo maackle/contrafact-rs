@@ -24,8 +24,8 @@ pub use impls::primitives::{
 };
 
 pub use impls::brute::{brute, brute_fallible, BruteFact};
-pub use impls::dependent::{dependent, dependent_fallible, DependentFact};
 pub use impls::lens::{lens, LensFact};
+pub use impls::mapped::{mapped, mapped_fallible, MappedFact};
 pub use impls::prism::{prism, PrismFact};
 
 /// The Result type returnable when using [`check_fallible!`]

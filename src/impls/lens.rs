@@ -14,6 +14,26 @@ use arbitrary::Unstructured;
 ///
 /// This is a lazy way to provide a lens in the traditional optics sense.
 /// We may consider using a true lens library for this in the future.
+///
+/// ```
+/// use contrafact::*;
+/// use arbitrary::*;
+///
+/// #[derive(Debug, Clone, PartialEq, Arbitrary)]
+/// struct S {
+///     x: u32,
+///     y: u32,
+/// }
+///
+/// let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", &1));
+///
+/// assert!(fact.check(&S {x: 1, y: 333}).ok().is_ok());
+/// assert!(fact.check(&S {x: 2, y: 333}).ok().is_err());
+///
+/// let mut u = Unstructured::new(&[0; 9999]);
+/// let a = fact.build(&mut u);
+/// assert_eq!(a.x, 1);
+/// ```
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
 pub fn lens<O, T, F, L, S>(label: S, lens: L, inner_fact: F) -> LensFact<O, T, F>

@@ -18,6 +18,45 @@ use arbitrary::Unstructured;
 /// It is typically used for enums, or any structure where data may or may not
 /// be present.
 ///
+/// ```
+/// use contrafact::*;
+/// use arbitrary::{Arbitrary, Unstructured};
+///
+/// #[derive(Debug, Clone, PartialEq, Arbitrary)]
+/// enum E {
+///     X(u32),
+///     Y(u32),
+/// }
+///
+/// impl E {
+///     fn x(&mut self) -> Option<&mut u32> {
+///         match self {
+///             E::X(x) => Some(x),
+///             _ => None,
+///         }
+///     }
+///     fn y(&mut self) -> Option<&mut u32> {
+///         match self {
+///             E::Y(y) => Some(y),
+///             _ => None,
+///         }
+///     }
+/// }
+///
+/// let mut fact = prism("E::x", E::x, eq("must be 1", &1));
+///
+/// assert!(fact.check(&E::X(1)).ok().is_ok());
+/// assert!(fact.check(&E::X(2)).ok().is_err());
+/// assert!(fact.check(&E::Y(99)).ok().is_ok());
+///
+/// let mut u = Unstructured::new(&[0; 9999]);
+/// let e = fact.build(&mut u);
+/// match e {
+///     E::X(x) => assert_eq!(x, 1),
+///     _ => (),  // Y is not defined by the prism, so it can take on any value.
+/// };
+/// ```
+///
 /// The `prism` closure is a rather lazy way to provide a prism in the
 /// traditional optics sense. We may consider using a true lens library for
 /// this in the future.
