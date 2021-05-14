@@ -28,6 +28,7 @@ where
     T: Bounds,
     F: 'static + Fn(&T) -> Facts<'static, T>,
 {
+    todo!("maybe rename to map/mapped/dependent/etc?");
     ConditionalFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
 

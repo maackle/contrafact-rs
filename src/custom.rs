@@ -16,7 +16,8 @@ where
     CustomFact::<'static, T>::new(reason.to_string(), f)
 }
 
-/// A constraint defined only by a custom predicate closure.
+/// A constraint defined by a custom predicate.
+///
 /// This is appropriate to use when the space of possible values is small, and
 /// you can rely on randomness to eventually find a value that matches the
 /// constraint, e.g. when requiring a particular enum variant.
@@ -38,6 +39,7 @@ where
     T: Bounds,
     F: 'static + Fn(&T) -> bool,
 {
+    todo!("maybe rename to predicate/filter/search/find/brute");
     CustomFact::<'static, T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 

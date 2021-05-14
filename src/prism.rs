@@ -3,17 +3,24 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::{fact::*, Check};
 use arbitrary::Unstructured;
 
-/// Applies a Fact to a subset of some data by means of a prism-like closure
-/// which specifies the mutable subset to operate on. In other words, if type `O`
-/// contains a `T`, and you have a `Fact<T>`, `PrismFact` lets you lift that constraint
-/// into a constraint about `O`.
+/// Lifts a Fact about some *optional* subset of data into a Fact about the
+/// superset.
+///
+/// In other words, if type `O` contains a `Option<T>`, and you have a `Fact<T>`,
+/// `PrismFact` lets you lift that fact into a `Fact<O>`.
+///
+/// The `prism` closure provides an optional mutable view into the subset.
+/// If the prism returns None during any fact application, the fact will
+/// effectively be skipped for this item: no check or mutation will be performed,
+/// and the state will not advance.
 ///
 /// A prism is like a lens, except that the target value may or may not exist.
 /// It is typically used for enums, or any structure where data may or may not
 /// be present.
 ///
-/// If the prism returns Some, then the constraint will be checked, and mutation
-/// will be possible. If it returns None, then checks and mutations will not occur.
+/// The `prism` closure is a rather lazy way to provide a prism in the
+/// traditional optics sense. We may consider using a true lens library for
+/// this in the future.
 pub fn prism<O, T, F, P, S>(label: S, prism: P, inner_fact: F) -> PrismFact<O, T, F>
 where
     O: Bounds,
@@ -153,5 +160,10 @@ mod tests {
             E::X(x) => *x == 1,
             E::Y(y) => *y == 2,
         }))
+    }
+
+    #[test]
+    fn test_stateful_fact_under_prism() {
+        todo!()
     }
 }

@@ -3,10 +3,17 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::{fact::*, Check};
 use arbitrary::Unstructured;
 
-/// Applies a Fact to a subset of some data by means of a lens-like closure
-/// which specifies the mutable subset to operate on. In other words, if type `O`
-/// contains a `T`, and you have a `Fact<T>`, `LensFact` lets you lift
-/// that constraint into a constraint about `O`.
+/// Lifts a Fact about a subset of some data into a Fact about the superset.
+///
+/// In other words, if type `O` contains a `T`, and you have a `Fact<T>`,
+/// `LensFact` lets you lift that fact into a `Fact<O>`.
+///
+/// The `lens` closure provides a mutable view into the subset of data.
+/// There must be a way to specify a mutable reference to the subset of data.
+/// If this is not always possible, consider using a [[prism]] instead.
+///
+/// This is a lazy way to provide a lens in the traditional optics sense.
+/// We may consider using a true lens library for this in the future.
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
 pub fn lens<O, T, F, L, S>(label: S, lens: L, inner_fact: F) -> LensFact<O, T, F>
