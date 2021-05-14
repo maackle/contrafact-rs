@@ -1,6 +1,8 @@
-# contrafact
+# contrafact-rs
 
-Readme coming soon.
+![CI](https://github.com/maackle/contrafact-rs/actions/workflows/rust.yml/badge.svg)
+
+A framework for defining highly composable constraints which can be used both for verification and for generating arbitrary data which satisfies the constraints
 
 ## TODO
 
