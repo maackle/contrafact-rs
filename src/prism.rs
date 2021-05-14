@@ -142,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn test() {
+    fn stateless() {
         observability::test_run().ok();
         let mut u = Unstructured::new(&NOISE);
 
@@ -163,7 +163,35 @@ mod tests {
     }
 
     #[test]
-    fn test_stateful_fact_under_prism() {
-        todo!()
+    fn stateful() {
+        use itertools::*;
+        observability::test_run().ok();
+        let mut u = Unstructured::new(&NOISE);
+
+        let f = || {
+            vec![
+                prism(
+                    "E::x",
+                    E::x,
+                    crate::consecutive_int("must be increasing", 0),
+                ),
+                prism(
+                    "E::y",
+                    E::y,
+                    crate::consecutive_int("must be increasing", 0),
+                ),
+            ]
+        };
+
+        let seq = build_seq(&mut u, 10, f());
+        check_seq(seq.as_slice(), f()).unwrap();
+
+        // Assert that each variant of E is independently increasing
+        let (xs, ys): (Vec<_>, Vec<_>) = seq.into_iter().partition_map(|e| match e {
+            E::X(x) => Either::Left(x),
+            E::Y(y) => Either::Right(y),
+        });
+        check_seq(xs.as_slice(), crate::facts![crate::consecutive_int_(0u32)]).unwrap();
+        check_seq(ys.as_slice(), crate::facts![crate::consecutive_int_(0u32)]).unwrap();
     }
 }

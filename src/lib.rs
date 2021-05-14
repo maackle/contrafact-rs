@@ -14,11 +14,11 @@ mod seq;
 
 pub use arbitrary;
 
+pub use brute::{brute, brute_fallible};
 pub use check::Check;
-pub use conditional::{conditional, conditional_fallible};
+pub use dependent::{dependent, dependent_fallible};
 pub use fact::{BoxFact, Fact, Facts};
 pub use lens::lens;
-pub use predicate::{brute_fallible, predicate};
 pub use primitives::{
     always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,
     not_, or,
