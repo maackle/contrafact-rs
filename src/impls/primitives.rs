@@ -334,6 +334,55 @@ condition 2: {:#?}",
     fn advance(&mut self, _: &T) {}
 }
 
+/// Fact that combines two `Fact`s, returning the OR of the results.
+///
+/// This is created by the [`any`] function.
+
+pub struct AnyFact<Item>
+where
+    Item: ?Sized + Bounds,
+{
+    context: String,
+    pub(crate) facts: Facts<'static, Item>,
+    _phantom: PhantomData<Item>,
+}
+
+impl<T> Fact<T> for AnyFact<T>
+where
+    T: Bounds,
+{
+    fn check(&self, obj: &T) -> Check {
+        let checks: Vec<Check> = self
+            .facts
+            .iter()
+            .map(|f| f.check(obj))
+            .take_while(|c| c.is_err())
+            .collect();
+        if checks.len() == self.facts.len() {
+            let cases: Vec<String> = checks
+                .into_iter()
+                .enumerate()
+                .map(|(i, check)| format!("fact {}: {:#?}", i, check))
+                .collect();
+
+            Check::fail(format!(
+                "{}: expected at least one fact to pass, but all failed:\n{}",
+                self.context,
+                cases.join("\n")
+            ))
+        } else {
+            Check::pass()
+        }
+    }
+
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+        let fact = u.choose(self.facts.as_slice()).unwrap();
+        fact.mutate(obj, u);
+    }
+
+    fn advance(&mut self, _: &T) {}
+}
+
 #[derive(Debug, Clone)]
 pub struct NotFact<F, T>
 where
