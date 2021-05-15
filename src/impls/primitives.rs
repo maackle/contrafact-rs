@@ -352,14 +352,14 @@ where
 {
     fn check(&self, obj: &T) -> Check {
         Check::check(
-            self.fact.check(obj).result().is_err(),
+            self.fact.check(obj).is_err(),
             format!("not({})", self.context.clone()),
         )
     }
 
     fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if self.fact.check(obj).result().is_err() {
+            if self.fact.check(obj).is_err() {
                 break;
             }
             *obj = T::arbitrary(u).unwrap();

@@ -22,6 +22,12 @@ where
 /// or when wanting to set some subset of data to match some other subset of
 /// data, without caring what the value actually is, and without having to
 /// explicitly construct the value.
+///
+/// **NOTE**: since the returned Facts are generated brand-new on-the-fly,
+/// these Facts must be stateless. State changes cannot be carried over to
+/// subsequent calls when running over a sequence.
+/// (TODO: add `StatelessFact` trait to give type-level protection here.)
+///
 /// ```
 /// use contrafact::*;
 ///
@@ -37,10 +43,10 @@ where
 ///     }
 /// });
 ///
-/// assert!(fact.check(&50).result().is_ok());
-/// assert!(fact.check(&99).result().is_err());
-/// assert!(fact.check(&9009).result().is_ok());
-/// assert!(fact.check(&9010).result().is_err());
+/// assert!(fact.check(&50).is_ok());
+/// assert!(fact.check(&99).is_err());
+/// assert!(fact.check(&9009).is_ok());
+/// assert!(fact.check(&9010).is_err());
 /// ```
 pub fn mapped<T, F, S>(reason: S, f: F) -> MappedFact<'static, T>
 where
@@ -136,9 +142,4 @@ fn test_mapped_fact() {
     let built = build_seq(&mut u, 12, composite_fact());
     dbg!(&built);
     check_seq(built.as_slice(), composite_fact()).unwrap();
-}
-
-#[test]
-fn stateful() {
-    todo!()
 }

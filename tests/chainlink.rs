@@ -27,14 +27,16 @@ struct Wrapper {
     link: Link,
 }
 
-fn link_fact<'a>(author: &'a String) -> Facts<'a, Link> {
+/// Fact: all Links in a chain are by the same `author`, and any chain link has
+/// consecutive `prev` values starting with 0.
+fn chain_fact<'a>(author: &'a String) -> Facts<'a, Link> {
     facts![
-        contrafact::lens(
+        lens(
             "Link::author",
             |o: &mut Link| &mut o.author,
             eq("same author", author),
         ),
-        contrafact::lens(
+        lens(
             "Link::prev",
             |o: &mut Link| &mut o.prev,
             consecutive_int("increasing prev", 0),
@@ -42,17 +44,19 @@ fn link_fact<'a>(author: &'a String) -> Facts<'a, Link> {
     ]
 }
 
+/// Fact: the Links within each wrapper form a valid chain, and the color
+/// of the wrapper is in the given set.
 fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> Facts<'a, Wrapper> {
     facts![
-        contrafact::lens(
+        lens(
             "Wrapper::color",
             |o: &mut Wrapper| &mut o.color,
             in_iter("valid color", valid_colors),
         ),
-        contrafact::lens(
+        lens(
             "Wrapper::link",
             |o: &mut Wrapper| &mut o.link,
-            link_fact(author),
+            chain_fact(author),
         ),
     ]
 }
@@ -64,7 +68,7 @@ fn test_link() {
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = || link_fact(&author);
+    let fact = || chain_fact(&author);
 
     let mut chain = build_seq(&mut u, NUM as usize, fact());
     dbg!(&chain);
