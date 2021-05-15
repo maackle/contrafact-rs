@@ -11,26 +11,26 @@ pub fn always() -> BoolFact {
 }
 
 /// A constraint which is never met
-pub fn never<S: ToString>(reason: S) -> BoolFact {
-    BoolFact(false, reason.to_string())
+pub fn never<S: ToString>(context: S) -> BoolFact {
+    BoolFact(false, context.to_string())
 }
 
 /// Specifies an equality constraint
-pub fn eq<S, T, B>(reason: S, constant: B) -> EqFact<T, B>
+pub fn eq<S, T, B>(context: S, constant: B) -> EqFact<T, B>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
     B: Borrow<T>,
 {
     EqFact {
-        reason: reason.to_string(),
+        context: context.to_string(),
         constant,
         op: EqOp::Equal,
         _phantom: PhantomData,
     }
 }
 
-/// Specifies an equality constraint with no reason
+/// Specifies an equality constraint with no context
 pub fn eq_<T, B>(constant: B) -> EqFact<T, B>
 where
     T: std::fmt::Debug + PartialEq,
@@ -40,21 +40,21 @@ where
 }
 
 /// Specifies an inequality constraint
-pub fn ne<S, T, B>(reason: S, constant: B) -> EqFact<T, B>
+pub fn ne<S, T, B>(context: S, constant: B) -> EqFact<T, B>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
     B: Borrow<T>,
 {
     EqFact {
-        reason: reason.to_string(),
+        context: context.to_string(),
         constant,
         op: EqOp::NotEqual,
         _phantom: PhantomData,
     }
 }
 
-/// Specifies an inequality constraint with no reason
+/// Specifies an inequality constraint with no context
 pub fn ne_<T, B>(constant: B) -> EqFact<T, B>
 where
     T: std::fmt::Debug + PartialEq,
@@ -64,7 +64,7 @@ where
 }
 
 /// Specifies a membership constraint
-pub fn in_iter<'a, I, S, T>(reason: S, iter: I) -> InFact<'a, T>
+pub fn in_iter<'a, I, S, T>(context: S, iter: I) -> InFact<'a, T>
 where
     S: ToString,
     T: 'a + PartialEq + std::fmt::Debug,
@@ -72,7 +72,7 @@ where
 {
     use std::iter::FromIterator;
     InFact {
-        reason: reason.to_string(),
+        context: context.to_string(),
         inner: Vec::from_iter(iter),
     }
 }
@@ -87,19 +87,19 @@ where
 }
 
 /// Specifies that a value should be increasing by 1 at every check/mutation
-pub fn consecutive_int<S, T>(reason: S, initial: T) -> ConsecutiveIntFact<T>
+pub fn consecutive_int<S, T>(context: S, initial: T) -> ConsecutiveIntFact<T>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq + num::PrimInt,
 {
     ConsecutiveIntFact {
-        reason: reason.to_string(),
+        context: context.to_string(),
         counter: initial,
     }
 }
 
 /// Specifies that a value should be increasing by 1 at every check/mutation,
-/// with no reason supplied
+/// with no context given
 pub fn consecutive_int_<T>(initial: T) -> ConsecutiveIntFact<T>
 where
     T: std::fmt::Debug + PartialEq + num::PrimInt,
@@ -108,7 +108,7 @@ where
 }
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<A, B, S, Item>(reason: S, a: A, b: B) -> OrFact<A, B, Item>
+pub fn or<A, B, S, Item>(context: S, a: A, b: B) -> OrFact<A, B, Item>
 where
     S: ToString,
     A: Fact<Item>,
@@ -116,7 +116,7 @@ where
     Item: Bounds,
 {
     OrFact {
-        reason: reason.to_string(),
+        context: context.to_string(),
         a,
         b,
         _phantom: PhantomData,
@@ -124,23 +124,23 @@ where
 }
 
 /// Negates a fact
-pub fn not<'a, F, S, T>(reason: S, fact: F) -> NotFact<F, T>
+// TODO: `not` in particular would really benefit from Facts having accessible
+// labels, since currently you can only get context about why a `not` fact passed,
+// not why it fails.
+pub fn not<'a, F, S, T>(context: S, fact: F) -> NotFact<F, T>
 where
     S: ToString,
     F: Fact<T>,
     T: Bounds,
 {
     NotFact {
-        reason: reason.to_string(),
+        context: context.to_string(),
         fact,
         _phantom: PhantomData,
     }
 }
 
-/// Negates a fact, with no reason
-// TODO: `not` in particular would really benefit from Facts having accessible
-// labels, since currently you can only get context about why a `not` fact passed,
-// not why it fails.
+/// Negates a fact, with no context given
 pub fn not_<'a, F, T>(fact: F) -> NotFact<F, T>
 where
     F: Fact<T>,
@@ -176,7 +176,7 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EqFact<T, B> {
-    reason: String,
+    context: String,
     op: EqOp,
     constant: B,
     _phantom: PhantomData<T>,
@@ -198,11 +198,11 @@ where
         match self.op {
             EqOp::Equal if obj != constant => vec![format!(
                 "{}: expected {:?} == {:?}",
-                self.reason, obj, constant
+                self.context, obj, constant
             )],
             EqOp::NotEqual if obj == constant => vec![format!(
                 "{}: expected {:?} != {:?}",
-                self.reason, obj, constant
+                self.context, obj, constant
             )],
             _ => Vec::with_capacity(0),
         }
@@ -233,7 +233,7 @@ pub struct InFact<'a, T>
 where
     T: PartialEq + std::fmt::Debug,
 {
-    reason: String,
+    context: String,
     inner: Vec<&'a T>,
 }
 
@@ -247,7 +247,7 @@ where
         } else {
             vec![format!(
                 "{}: expected {:?} to be contained in {:?}",
-                self.reason, obj, self.inner
+                self.context, obj, self.inner
             )]
         }
         .into()
@@ -265,7 +265,7 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConsecutiveIntFact<T> {
-    reason: String,
+    context: String,
     counter: T,
 }
 
@@ -274,7 +274,7 @@ where
     T: Bounds + num::PrimInt,
 {
     fn check(&self, obj: &T) -> Check {
-        Check::check(*obj == self.counter, self.reason.clone())
+        Check::check(*obj == self.counter, self.context.clone())
     }
 
     fn mutate(&self, obj: &mut T, _: &mut arbitrary::Unstructured<'static>) {
@@ -296,7 +296,7 @@ where
     M2: Fact<Item>,
     Item: ?Sized + Bounds,
 {
-    reason: String,
+    context: String,
     pub(crate) a: M1,
     pub(crate) b: M2,
     _phantom: PhantomData<Item>,
@@ -343,7 +343,7 @@ where
     F: Fact<T>,
     T: Bounds,
 {
-    reason: String,
+    context: String,
     fact: F,
     _phantom: PhantomData<T>,
 }
@@ -356,7 +356,7 @@ where
     fn check(&self, obj: &T) -> Check {
         Check::check(
             self.fact.check(obj).ok().is_err(),
-            format!("not({})", self.reason.clone()),
+            format!("not({})", self.context.clone()),
         )
     }
 
