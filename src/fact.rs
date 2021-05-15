@@ -40,7 +40,7 @@ where
         let mut last_failure: Vec<String> = vec![];
         for _i in 0..SATISFY_ATTEMPTS {
             self.mutate(obj, u);
-            if let Err(errs) = self.check(obj).ok() {
+            if let Err(errs) = self.check(obj).result() {
                 last_failure = errs;
             } else {
                 return;

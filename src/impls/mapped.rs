@@ -37,10 +37,10 @@ where
 ///     }
 /// });
 ///
-/// assert!(fact.check(&50).ok().is_ok());
-/// assert!(fact.check(&99).ok().is_err());
-/// assert!(fact.check(&9009).ok().is_ok());
-/// assert!(fact.check(&9010).ok().is_err());
+/// assert!(fact.check(&50).result().is_ok());
+/// assert!(fact.check(&99).result().is_err());
+/// assert!(fact.check(&9009).result().is_ok());
+/// assert!(fact.check(&9010).result().is_err());
 /// ```
 pub fn mapped<T, F, S>(reason: S, f: F) -> MappedFact<'static, T>
 where
@@ -114,7 +114,7 @@ fn test_mapped_fact() {
     };
     assert_eq!(
         dbg!(check_seq(numbers.as_slice(), divisibility_fact())
-            .ok()
+            .result()
             .unwrap_err()),
         vec![
             "item 0: mapped(reason) > lens(T.1) > divisible by 4".to_string(),

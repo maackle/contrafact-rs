@@ -10,13 +10,13 @@
 mod check;
 mod fact;
 mod impls;
-mod seq;
+mod satisfy;
 
 pub use arbitrary;
 
 pub use check::Check;
 pub use fact::{BoxFact, Fact, Facts};
-pub use seq::*;
+pub use satisfy::*;
 
 pub use impls::primitives::{
     always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,

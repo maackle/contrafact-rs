@@ -3,7 +3,7 @@
 //
 // TODO: add ability to abort, so that further checks will not occur
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::IntoIterator)]
-#[must_use = "Check should be used with either `.unwrap()` or `.ok()`"]
+#[must_use = "Check should be used with either `.unwrap()` or `.result()`"]
 pub struct Check {
     errors: Vec<String>,
 }
@@ -16,7 +16,7 @@ impl Check {
     where
         F: FnMut(String) -> String,
     {
-        if let Err(errs) = self.ok() {
+        if let Err(errs) = self.result() {
             errs.into_iter().map(f).collect()
         } else {
             vec![]
@@ -36,15 +36,25 @@ impl Check {
         }
     }
 
+    /// There are no errors.
+    pub fn is_ok(&self) -> bool {
+        self.errors.is_empty()
+    }
+
+    /// There is at least one error.
+    pub fn is_err(&self) -> bool {
+        !self.is_ok()
+    }
+
     /// Convert to a Result: No errors => Ok
     ///
     /// ```
     /// use contrafact::*;
-    /// assert_eq!(Check::pass().ok(), Ok(()));
-    /// assert_eq!(Check::fail("message").ok(), Err(vec!["message".to_string()]));
+    /// assert_eq!(Check::pass().result(), Ok(()));
+    /// assert_eq!(Check::fail("message").result(), Err(vec!["message".to_string()]));
     /// ```
-    pub fn ok(self) -> std::result::Result<(), Vec<String>> {
-        if self.errors.is_empty() {
+    pub fn result(self) -> std::result::Result<(), Vec<String>> {
+        if self.is_ok() {
             std::result::Result::Ok(())
         } else {
             std::result::Result::Err(self.errors)
@@ -151,6 +161,6 @@ mod tests {
             fn advance(&mut self, _: &()) {}
         }
 
-        assert_eq!(F.check(&()).ok().unwrap_err(), vec!["oh no"]);
+        assert_eq!(F.check(&()).result().unwrap_err(), vec!["oh no"]);
     }
 }

@@ -163,12 +163,18 @@ fn test_omega_fact() {
     };
 
     // Ensure that check fails for invalid data
-    assert_eq!(dbg!(fact.check(dbg!(&invalid1)).ok().unwrap_err()).len(), 4,);
+    assert_eq!(
+        dbg!(fact.check(dbg!(&invalid1)).result().unwrap_err()).len(),
+        4,
+    );
     fact.mutate(&mut invalid1, &mut u);
     fact.check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
-    assert_eq!(dbg!(fact.check(dbg!(&invalid2)).ok().unwrap_err()).len(), 5,);
+    assert_eq!(
+        dbg!(fact.check(dbg!(&invalid2)).result().unwrap_err()).len(),
+        5,
+    );
     fact.mutate(&mut invalid2, &mut u);
     fact.check(dbg!(&invalid2)).unwrap();
 }

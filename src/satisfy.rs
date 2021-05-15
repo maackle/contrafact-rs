@@ -38,9 +38,19 @@ where
     return seq;
 }
 
-/// Convenience macro for creating a collection of `Fact`s of different types.
-/// Each Fact will be boxed and added to a Vec.
+/// Convenience macro for creating a collection of [`Fact`](crate::Fact)s
+/// of different types.
+/// Each Fact will be boxed and added to a Vec as a trait object, with their
+/// types erased.
 /// The resulting value also implements `Fact`.
+///
+/// ```
+/// use contrafact::{always, eq_, facts, not_};
+///
+/// let eq1 = eq_(1);
+/// let not2 = not_(eq_(2));
+/// todo!()
+/// ```
 #[macro_export]
 macro_rules! facts {
     ( $( $fact:expr ),+ $(,)?) => {{
@@ -51,17 +61,3 @@ macro_rules! facts {
         fs
     }};
 }
-
-// /// Attempt to give better type hints, but doesn't actually do anything.
-// #[macro_export]
-// macro_rules! facts_typed {
-//     ( $t:ty; $( $fact:expr ),+ $(,)?) => {{
-//         let mut fs: $crate::Facts<$t> = Vec::new();
-//         fn id<F: Fact<$t>>(x: F) -> F { x }
-//         $({
-//             let fact = id($fact);
-//             fs.push(Box::new(fact));
-//         })+
-//         fs
-//     }};
-// }

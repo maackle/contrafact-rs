@@ -27,8 +27,8 @@ use arbitrary::Unstructured;
 ///
 /// let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", &1));
 ///
-/// assert!(fact.check(&S {x: 1, y: 333}).ok().is_ok());
-/// assert!(fact.check(&S {x: 2, y: 333}).ok().is_err());
+/// assert!(fact.check(&S {x: 1, y: 333}).result().is_ok());
+/// assert!(fact.check(&S {x: 2, y: 333}).result().is_err());
 ///
 /// let mut u = Unstructured::new(&[0; 9999]);
 /// let a = fact.build(&mut u);

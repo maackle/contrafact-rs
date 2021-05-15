@@ -221,7 +221,7 @@ where
             },
         }
         self.check(obj)
-            .ok()
+            .result()
             .expect("there's a bug in EqFact::mutate");
     }
 
@@ -256,7 +256,7 @@ where
     fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         *obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(obj)
-            .ok()
+            .result()
             .expect("there's a bug in InFact::mutate");
     }
 
@@ -309,8 +309,8 @@ where
     T: Bounds,
 {
     fn check(&self, obj: &T) -> Check {
-        let a = self.a.check(obj).ok();
-        let b = self.b.check(obj).ok();
+        let a = self.a.check(obj).result();
+        let b = self.b.check(obj).result();
         match (a, b) {
             (Err(a), Err(b)) => vec![format!(
                 "expected either one of the following conditions to be met:
@@ -329,9 +329,6 @@ condition 2: {:#?}",
         } else {
             self.b.mutate(obj, u);
         }
-        self.check(obj)
-            .ok()
-            .expect("there's a bug in OrFact::mutate");
     }
 
     fn advance(&mut self, _: &T) {}
@@ -355,14 +352,14 @@ where
 {
     fn check(&self, obj: &T) -> Check {
         Check::check(
-            self.fact.check(obj).ok().is_err(),
+            self.fact.check(obj).result().is_err(),
             format!("not({})", self.context.clone()),
         )
     }
 
     fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if self.fact.check(obj).ok().is_err() {
+            if self.fact.check(obj).result().is_err() {
                 break;
             }
             *obj = T::arbitrary(u).unwrap();
@@ -404,7 +401,7 @@ mod tests {
         check_seq(ones.as_slice(), either.clone()).unwrap();
         assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
-        assert_eq!(either.check(&3).ok().unwrap_err().len(), 1);
+        assert_eq!(either.check(&3).result().unwrap_err().len(), 1);
     }
 
     #[test]
