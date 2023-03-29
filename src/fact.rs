@@ -46,10 +46,10 @@ where
                 return;
             }
         }
-        panic!(format!(
+        panic!(
             "Could not satisfy a constraint even after {} iterations. Last check failure: {:?}",
             SATISFY_ATTEMPTS, last_failure
-        ));
+        );
     }
 
     /// Build a new value such that it satisfies the constraint

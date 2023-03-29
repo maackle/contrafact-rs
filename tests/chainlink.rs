@@ -1,11 +1,5 @@
 use arbitrary::*;
-use contrafact::*;
-
-pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    std::iter::repeat_with(|| rng.gen()).take(999999).collect()
-});
+use contrafact::{utils::unstructured_noise, *};
 
 #[derive(Arbitrary, Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 enum Color {
@@ -64,7 +58,7 @@ fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> Facts<'a, 
 #[test]
 fn test_link() {
     observability::test_run().ok();
-    let mut u = Unstructured::new(&NOISE);
+    let mut u = unstructured_noise();
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
@@ -81,7 +75,7 @@ fn test_link() {
 #[test]
 fn test_wrapper() {
     observability::test_run().ok();
-    let mut u = Unstructured::new(&NOISE);
+    let mut u = unstructured_noise();
 
     const NUM: u32 = 10;
     let author = "alice".to_string();

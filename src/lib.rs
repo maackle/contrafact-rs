@@ -62,6 +62,9 @@ mod fact;
 mod impls;
 mod satisfy;
 
+#[cfg(feature = "utils")]
+pub mod utils;
+
 pub use arbitrary;
 
 pub use check::Check;
@@ -82,10 +85,3 @@ pub use impls::prism::{prism, PrismFact};
 pub type Result<T> = anyhow::Result<T>;
 
 pub(crate) const BRUTE_ITERATION_LIMIT: usize = 100;
-
-#[cfg(any(test, feature = "test"))]
-pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    std::iter::repeat_with(|| rng.gen()).take(999999).collect()
-});

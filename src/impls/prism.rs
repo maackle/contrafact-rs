@@ -157,7 +157,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, NOISE};
+    use crate::{build_seq, check_seq, utils};
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn stateless() {
         observability::test_run().ok();
-        let mut u = Unstructured::new(&NOISE);
+        let mut u = utils::unstructured_noise();
 
         let f = || {
             vec![
@@ -206,7 +206,7 @@ mod tests {
     fn stateful() {
         use itertools::*;
         observability::test_run().ok();
-        let mut u = Unstructured::new(&NOISE);
+        let mut u = utils::unstructured_noise();
 
         let f = || {
             vec![

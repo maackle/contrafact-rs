@@ -1,11 +1,5 @@
-use arbitrary::{Arbitrary, Unstructured};
+use arbitrary::Arbitrary;
 use contrafact::*;
-
-pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    std::iter::repeat_with(|| rng.gen()).take(999999).collect()
-});
 
 type Id = u32;
 
@@ -114,7 +108,7 @@ fn omega_fact<'a>(id: &'a Id, data: &'a String) -> Facts<'a, Omega> {
 #[test]
 fn test_omega_fact() {
     observability::test_run().ok();
-    let mut u = Unstructured::new(&NOISE);
+    let mut u = utils::unstructured_noise();
 
     let data = "spartacus".into();
     let fact = omega_fact(&11, &data);

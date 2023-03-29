@@ -372,13 +372,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, NOISE};
-    use arbitrary::Unstructured;
+    use crate::{build_seq, check_seq, utils};
 
     #[test]
     fn test_eq() {
         observability::test_run().ok();
-        let mut u = Unstructured::new(&NOISE);
+        let mut u = utils::unstructured_noise();
 
         let eq1 = eq("must be 1", 1);
 
@@ -391,7 +390,7 @@ mod tests {
     #[test]
     fn test_or() {
         observability::test_run().ok();
-        let mut u = Unstructured::new(&NOISE);
+        let mut u = utils::unstructured_noise();
 
         let eq1 = eq("must be 1", 1);
         let eq2 = eq("must be 2", 2);
@@ -407,7 +406,7 @@ mod tests {
     #[test]
     fn test_not() {
         observability::test_run().ok();
-        let mut u = Unstructured::new(&NOISE);
+        let mut u = utils::unstructured_noise();
 
         let eq1 = eq("must be 1", 1);
         let not1 = not_(eq1);

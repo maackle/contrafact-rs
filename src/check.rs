@@ -27,12 +27,11 @@ impl Check {
     /// Panic if there are any errors, and display those errors.
     pub fn unwrap(self) {
         if !self.errors.is_empty() {
-            let msg = if self.errors.len() == 1 {
-                format!("Check failed: {}", self.errors[0])
+            if self.errors.len() == 1 {
+                panic!("Check failed: {}", self.errors[0])
             } else {
-                format!("Check failed: {:#?}", self.errors)
+                panic!("Check failed: {:#?}", self.errors)
             };
-            panic!(msg);
         }
     }
 

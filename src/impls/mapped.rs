@@ -130,7 +130,7 @@ fn test_mapped_fact() {
         ]
     );
 
-    let mut u = Unstructured::new(&NOISE);
+    let mut u = utils::unstructured_noise();
 
     let composite_fact = || {
         facts![

@@ -130,7 +130,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, eq, NOISE};
+    use crate::{build_seq, check_seq, eq, utils};
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn test() {
         observability::test_run().ok();
-        let mut u = Unstructured::new(&NOISE);
+        let mut u = utils::unstructured_noise();
 
         let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", &1));
 
