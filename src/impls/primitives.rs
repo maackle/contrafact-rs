@@ -67,7 +67,7 @@ where
 pub fn in_iter<'a, I, S, T>(context: S, iter: I) -> InFact<'a, T>
 where
     S: ToString,
-    T: 'a + PartialEq + std::fmt::Debug,
+    T: 'a + PartialEq + std::fmt::Debug + Clone,
     I: IntoIterator<Item = &'a T>,
 {
     use std::iter::FromIterator;
@@ -80,7 +80,7 @@ where
 /// Specifies a membership constraint
 pub fn in_iter_<'a, I, T>(iter: I) -> InFact<'a, T>
 where
-    T: 'a + PartialEq + std::fmt::Debug,
+    T: 'a + PartialEq + std::fmt::Debug + Clone,
     I: IntoIterator<Item = &'a T>,
 {
     in_iter("___", iter)
@@ -154,7 +154,7 @@ pub struct BoolFact(bool, String);
 
 impl<T> Fact<T> for BoolFact
 where
-    T: Bounds + PartialEq,
+    T: Bounds + PartialEq + Clone,
 {
     fn check(&self, _: &T) -> Check {
         if self.0 {
@@ -190,7 +190,7 @@ pub enum EqOp {
 
 impl<T, B> Fact<T> for EqFact<T, B>
 where
-    T: Bounds + PartialEq,
+    T: Bounds + PartialEq + Clone,
     B: Borrow<T>,
 {
     fn check(&self, obj: &T) -> Check {
@@ -231,7 +231,7 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InFact<'a, T>
 where
-    T: PartialEq + std::fmt::Debug,
+    T: PartialEq + std::fmt::Debug + Clone,
 {
     context: String,
     inner: Vec<&'a T>,
@@ -239,7 +239,7 @@ where
 
 impl<T> Fact<T> for InFact<'_, T>
 where
-    T: Bounds,
+    T: Bounds + Clone,
 {
     fn check(&self, obj: &T) -> Check {
         if self.inner.contains(&obj) {

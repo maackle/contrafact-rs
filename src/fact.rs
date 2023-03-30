@@ -7,8 +7,8 @@ use crate::Check;
 pub(crate) const SATISFY_ATTEMPTS: usize = 3;
 
 /// The trait bounds for the subject of a Fact
-pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
-impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> + Clone {}
+pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> {}
+impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> {}
 
 /// Type alias for a boxed Fact. Implements [`Fact`] itself.
 pub type BoxFact<'a, T> = Box<dyn 'a + Fact<T>>;
