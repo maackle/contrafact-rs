@@ -16,11 +16,10 @@ pub fn never<S: ToString>(context: S) -> BoolFact {
 }
 
 /// Specifies an equality constraint
-pub fn eq<S, T, B>(context: S, constant: B) -> EqFact<T, B>
+pub fn eq<S, T>(context: S, constant: T) -> EqFact<T>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
-    B: Borrow<T>,
 {
     EqFact {
         context: context.to_string(),
@@ -31,20 +30,18 @@ where
 }
 
 /// Specifies an equality constraint with no context
-pub fn eq_<T, B>(constant: B) -> EqFact<T, B>
+pub fn eq_<T>(constant: T) -> EqFact<T>
 where
     T: std::fmt::Debug + PartialEq,
-    B: Borrow<T>,
 {
     eq("___", constant)
 }
 
 /// Specifies an inequality constraint
-pub fn ne<S, T, B>(context: S, constant: B) -> EqFact<T, B>
+pub fn ne<S, T>(context: S, constant: T) -> EqFact<T>
 where
     S: ToString,
     T: std::fmt::Debug + PartialEq,
-    B: Borrow<T>,
 {
     EqFact {
         context: context.to_string(),
@@ -55,10 +52,9 @@ where
 }
 
 /// Specifies an inequality constraint with no context
-pub fn ne_<T, B>(constant: B) -> EqFact<T, B>
+pub fn ne_<T>(constant: T) -> EqFact<T>
 where
     T: std::fmt::Debug + PartialEq,
-    B: Borrow<T>,
 {
     ne("___", constant)
 }
@@ -108,11 +104,11 @@ where
 }
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<A, B, S, Item>(context: S, a: A, b: B) -> OrFact<A, B, Item>
+pub fn or<A, T, S, Item>(context: S, a: A, b: T) -> OrFact<A, T, Item>
 where
     S: ToString,
     A: Fact<Item>,
-    B: Fact<Item>,
+    T: Fact<Item>,
     Item: Bounds,
 {
     OrFact {
@@ -165,20 +161,21 @@ where
         .into()
     }
 
-    fn mutate(&self, _: &mut T, _: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, t: T, _: &mut arbitrary::Unstructured<'static>) -> T {
         if !self.0 {
             panic!("never() cannot be used for mutation.")
         }
+        t
     }
 
     fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EqFact<T, B> {
+pub struct EqFact<T> {
     context: String,
     op: EqOp,
-    constant: B,
+    constant: T,
     _phantom: PhantomData<T>,
 }
 
@@ -188,10 +185,9 @@ pub enum EqOp {
     NotEqual,
 }
 
-impl<T, B> Fact<T> for EqFact<T, B>
+impl<T> Fact<T> for EqFact<T>
 where
     T: Bounds + PartialEq + Clone,
-    B: Borrow<T>,
 {
     fn check(&self, obj: &T) -> Check {
         let constant = self.constant.borrow();
@@ -209,20 +205,22 @@ where
         .into()
     }
 
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
-        let constant = self.constant.borrow();
+    #[allow(unused_assignments)]
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+        let constant = self.constant.clone();
         match self.op {
-            EqOp::Equal => *obj = constant.clone(),
+            EqOp::Equal => obj = constant,
             EqOp::NotEqual => loop {
-                *obj = T::arbitrary(u).unwrap();
+                obj = T::arbitrary(u).unwrap();
                 if obj != constant {
                     break;
                 }
             },
         }
-        self.check(obj)
+        self.check(&obj)
             .result()
             .expect("there's a bug in EqFact::mutate");
+        obj
     }
 
     fn advance(&mut self, _: &T) {}
@@ -253,11 +251,12 @@ where
         .into()
     }
 
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
-        *obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
-        self.check(obj)
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+        obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
+        self.check(&obj)
             .result()
             .expect("there's a bug in InFact::mutate");
+        obj
     }
 
     fn advance(&mut self, _: &T) {}
@@ -277,8 +276,9 @@ where
         Check::check(*obj == self.counter, self.context.clone())
     }
 
-    fn mutate(&self, obj: &mut T, _: &mut arbitrary::Unstructured<'static>) {
-        *obj = self.counter.clone();
+    fn mutate(&self, mut obj: T, _: &mut arbitrary::Unstructured<'static>) -> T {
+        obj = self.counter.clone();
+        obj
     }
 
     fn advance(&mut self, _: &T) {
@@ -323,11 +323,11 @@ condition 2: {:#?}",
         }
     }
 
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
         if *u.choose(&[true, false]).unwrap() {
-            self.a.mutate(obj, u);
+            self.a.mutate(obj, u)
         } else {
-            self.b.mutate(obj, u);
+            self.b.mutate(obj, u)
         }
     }
 
@@ -357,13 +357,14 @@ where
         )
     }
 
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'static>) {
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if self.fact.check(obj).is_err() {
+            if self.fact.check(&obj).is_err() {
                 break;
             }
-            *obj = T::arbitrary(u).unwrap();
+            obj = T::arbitrary(u).unwrap();
         }
+        obj
     }
 
     fn advance(&mut self, _: &T) {}

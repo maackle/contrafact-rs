@@ -68,17 +68,17 @@ where
     F: Fact<T>,
     P: 'static + Fn(&mut O) -> Option<&mut T>,
 {
-    let getter = |o| prism(&mut o).cloned();
-    let setter = |o, t| {
-        let some = if let Some(i) = prism(&mut o) {
-            *i = t;
-            true
-        } else {
-            false
-        };
-        some.then_some(o)
-    };
-    PrismFact::new(label.to_string(), getter, setter, inner_fact)
+    // let getter = |o| prism(&mut o).cloned();
+    // let setter = |o, t| {
+    //     let some = if let Some(i) = prism(&mut o) {
+    //         *i = t;
+    //         true
+    //     } else {
+    //         false
+    //     };
+    //     some.then_some(o)
+    // };
+    PrismFact::new(label.to_string(), prism, inner_fact)
 }
 
 /// A fact which uses a prism to apply another fact. Use [`prism()`] to construct.
@@ -90,8 +90,9 @@ where
     F: Fact<T>,
 {
     label: String,
-    getter: Arc<dyn 'static + Fn(O) -> Option<T>>,
-    setter: Arc<dyn 'static + Fn(O, T) -> Option<O>>,
+    // getter: Arc<dyn 'static + Fn(O) -> Option<T>>,
+    // setter: Arc<dyn 'static + Fn(O, T) -> Option<O>>,
+    prism: Arc<dyn 'static + Fn(&mut O) -> Option<&mut T>>,
     inner_fact: F,
     __phantom: PhantomData<F>,
 }
@@ -103,19 +104,21 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a prism and an existing Fact to create a new Fact.
-    pub fn new<G, S>(label: String, getter: G, setter: S, inner_fact: F) -> Self
+    pub fn new<P>(label: String, prism: P, /*getter: G, setter: S,*/ inner_fact: F) -> Self
     where
         T: Bounds,
         O: Bounds,
         F: Fact<T>,
-        G: Fn(O) -> Option<T>,
-        S: Fn(O, T) -> Option<O>,
+        P: 'static + Fn(&mut O) -> Option<&mut T>,
+        // G: Fn(O) -> Option<T>,
+        // S: Fn(O, T) -> Option<O>,
     {
         Self {
             label,
             inner_fact,
-            getter: Arc::new(getter),
-            setter: Arc::new(setter),
+            prism: Arc::new(prism),
+            // getter: Arc::new(getter),
+            // setter: Arc::new(setter),
             __phantom: PhantomData,
         }
     }
@@ -123,26 +126,34 @@ where
 
 impl<O, T, F> Fact<O> for PrismFact<O, T, F>
 where
-    T: Bounds,
+    T: Bounds + Clone,
     O: Bounds,
     F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, o: &O) -> Check {
-        if let Some(t) = (self.getter)(o.clone()) {
-            self.inner_fact
-                .check(&t)
-                .map(|err| format!("prism({}) > {}", self.label, err))
-        } else {
-            Vec::with_capacity(0).into()
+        unsafe {
+            // We can convert the immutable ref to a mutable one because `check`
+            // never mutates the value, but we need `prism` to return a mutable
+            // reference so it can be reused in `mutate`
+            let o = o as *const O;
+            let o = o as *mut O;
+            if let Some(t) = (self.prism)(&mut *o) {
+                self.inner_fact
+                    .check(t)
+                    .map(|err| format!("prism({}) > {}", self.label, err))
+            } else {
+                Vec::with_capacity(0).into()
+            }
         }
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: O, u: &mut Unstructured<'static>) {
-        if let Some(t) = (self.setter)(obj) {
-            self.inner_fact.mutate(t, u)
+    fn mutate(&self, mut obj: O, u: &mut Unstructured<'static>) -> O {
+        if let Some(t) = (self.prism)(&mut obj) {
+            *t = self.inner_fact.mutate(t.clone(), u);
         }
+        obj
     }
 
     #[tracing::instrument(skip(self))]
@@ -194,8 +205,8 @@ mod tests {
 
         let f = || {
             vec![
-                prism("E::x", E::x, crate::eq("must be 1", &1)),
-                prism("E::y", E::y, crate::eq("must be 2", &2)),
+                prism("E::x", E::x, crate::eq("must be 1", 1)),
+                prism("E::y", E::y, crate::eq("must be 2", 2)),
             ]
         };
 

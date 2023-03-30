@@ -81,7 +81,7 @@ struct Beta {
 /// - If Omega::AlphaBeta, then Alpha::Beta,
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
-fn omega_fact<'a>(id: &'a Id, data: &'a String) -> Facts<'a, Omega> {
+fn omega_fact(id: Id, data: String) -> Facts<'static, Omega> {
     let alpha_fact = facts![
         lens("Alpha::id", |a: &mut Alpha| a.id(), eq("id", id)),
         lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
@@ -111,7 +111,7 @@ fn test_omega_fact() {
     let mut u = utils::unstructured_noise();
 
     let data = "spartacus".into();
-    let fact = omega_fact(&11, &data);
+    let fact = omega_fact(11, data);
 
     let beta = Beta::arbitrary(&mut u).unwrap();
 
@@ -132,10 +132,10 @@ fn test_omega_fact() {
         beta: beta.clone(),
     };
 
-    fact.mutate(&mut valid1, &mut u);
+    valid1 = fact.mutate(valid1, &mut u);
     fact.check(dbg!(&valid1)).unwrap();
 
-    fact.mutate(&mut valid2, &mut u);
+    valid2 = fact.mutate(valid2, &mut u);
     fact.check(dbg!(&valid2)).unwrap();
 
     let mut invalid1 = Omega::Alpha {
@@ -161,7 +161,7 @@ fn test_omega_fact() {
         dbg!(fact.check(dbg!(&invalid1)).result().unwrap_err()).len(),
         4,
     );
-    fact.mutate(&mut invalid1, &mut u);
+    invalid1 = fact.mutate(invalid1, &mut u);
     fact.check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
@@ -169,6 +169,6 @@ fn test_omega_fact() {
         dbg!(fact.check(dbg!(&invalid2)).result().unwrap_err()).len(),
         5,
     );
-    fact.mutate(&mut invalid2, &mut u);
+    invalid2 = fact.mutate(invalid2, &mut u);
     fact.check(dbg!(&invalid2)).unwrap();
 }

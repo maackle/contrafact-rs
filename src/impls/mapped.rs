@@ -77,8 +77,8 @@ where
         }}
     }
 
-    fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
-        (self.f)(t).expect("TODO: fallible mutation").mutate(t, u)
+    fn mutate(&self, t: T, u: &mut Unstructured<'static>) -> T {
+        (self.f)(&t).expect("TODO: fallible mutation").mutate(t, u)
     }
 
     fn advance(&mut self, _: &T) {}

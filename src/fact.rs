@@ -54,9 +54,8 @@ where
 
     /// Build a new value such that it satisfies the constraint
     fn build(&mut self, u: &mut Unstructured<'static>) -> T {
-        let mut obj = T::arbitrary(u).unwrap();
-        self.satisfy(obj, u);
-        obj
+        let obj = T::arbitrary(u).unwrap();
+        self.satisfy(obj, u)
     }
 }
 

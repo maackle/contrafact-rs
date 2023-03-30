@@ -39,12 +39,19 @@ use arbitrary::Unstructured;
 pub fn lens<O, T, F, L, S>(label: S, lens: L, inner_fact: F) -> LensFact<O, T, F>
 where
     O: Bounds,
-    T: Bounds,
+    T: Bounds + Clone,
     S: ToString,
     F: Fact<T>,
-    L: 'static + Fn(&mut O) -> &mut T,
+    L: 'static + Clone + Fn(&mut O) -> &mut T,
 {
-    LensFact::new(label.to_string(), lens, inner_fact)
+    let lens2 = lens.clone();
+    let getter = move |mut o| lens(&mut o).clone();
+    let setter = move |mut o, t: T| {
+        let r = lens2(&mut o);
+        *r = t;
+        o
+    };
+    LensFact::new(label.to_string(), getter, setter, inner_fact)
 }
 
 /// A fact which uses a lens to apply another fact. Use [`lens()`] to construct.
@@ -73,13 +80,13 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a lens and an existing Fact to create a new Fact.
-    pub fn new<G, S>(label: String, inner_fact: F, getter: G, setter: S) -> Self
+    pub fn new<G, S>(label: String, getter: G, setter: S, inner_fact: F) -> Self
     where
         T: Bounds,
         O: Bounds,
         F: Fact<T>,
-        G: Fn(O) -> T,
-        S: Fn(O, T) -> O,
+        G: 'static + Fn(O) -> T,
+        S: 'static + Fn(O, T) -> O,
     {
         Self {
             label,
@@ -94,31 +101,26 @@ where
 impl<O, T, F> Fact<O> for LensFact<O, T, F>
 where
     T: Bounds,
-    O: Bounds,
+    O: Bounds + Clone,
     F: Fact<T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &O) -> Check {
         self.inner_fact
-            .check(&(self.getter)(o))
+            .check(&(self.getter)(obj.clone()))
             .map(|err| format!("lens({}) > {}", self.label, err))
     }
 
     #[tracing::instrument(skip(self, u))]
     fn mutate(&self, obj: O, u: &mut Unstructured<'static>) -> O {
-        self.inner_fact.mutate((self.lens)(obj), u)
+        let t = (self.getter)(obj.clone());
+        let t = self.inner_fact.mutate(t, u);
+        (self.setter)(obj, t)
     }
 
     #[tracing::instrument(skip(self))]
     fn advance(&mut self, obj: &O) {
-        unsafe {
-            // We can convert the immutable ref to a mutable one because `advance`
-            // never mutates the value, but we need `lens` to return a mutable
-            // reference so it can be reused in `mutate`
-            let o = obj as *const O;
-            let o = o as *mut O;
-            self.inner_fact.advance((self.lens)(&mut *o))
-        }
+        self.inner_fact.advance(&(self.getter)(obj.clone()))
     }
 }
 
@@ -139,7 +141,7 @@ mod tests {
         observability::test_run().ok();
         let mut u = utils::unstructured_noise();
 
-        let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", &1));
+        let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
 
         let ones = build_seq(&mut u, 3, f());
         check_seq(ones.as_slice(), f()).unwrap();
