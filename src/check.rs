@@ -153,7 +153,7 @@ mod tests {
                 }}
             }
 
-            fn mutate(&self, _: &mut (), _: &mut arbitrary::Unstructured<'static>) {
+            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'static>) {
                 unimplemented!()
             }
 

@@ -57,8 +57,8 @@ where
 {
     label: String,
 
-    /// Function which maps outer structure to inner substructure
-    lens: Arc<dyn 'static + Fn(&mut O) -> &mut T>,
+    getter: Arc<dyn 'static + Fn(O) -> T>,
+    setter: Arc<dyn 'static + Fn(O, T) -> O>,
 
     /// The inner_fact about the inner substructure
     inner_fact: F,
@@ -73,16 +73,18 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a lens and an existing Fact to create a new Fact.
-    pub fn new<L>(label: String, lens: L, inner_fact: F) -> Self
+    pub fn new<G, S>(label: String, inner_fact: F, getter: G, setter: S) -> Self
     where
         T: Bounds,
         O: Bounds,
         F: Fact<T>,
-        L: 'static + Fn(&mut O) -> &mut T,
+        G: Fn(O) -> T,
+        S: Fn(O, T) -> O,
     {
         Self {
             label,
-            lens: Arc::new(lens),
+            getter: Arc::new(getter),
+            setter: Arc::new(setter),
             inner_fact,
             __phantom: PhantomData,
         }
@@ -97,20 +99,13 @@ where
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &O) -> Check {
-        unsafe {
-            // We can convert the immutable ref to a mutable one because `check`
-            // never mutates the value, but we need `lens` to return a mutable
-            // reference so it can be reused in `mutate`
-            let o = obj as *const O;
-            let o = o as *mut O;
-            self.inner_fact
-                .check((self.lens)(&mut *o))
-                .map(|err| format!("lens({}) > {}", self.label, err))
-        }
+        self.inner_fact
+            .check(&(self.getter)(o))
+            .map(|err| format!("lens({}) > {}", self.label, err))
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut O, u: &mut Unstructured<'static>) {
+    fn mutate(&self, obj: O, u: &mut Unstructured<'static>) -> O {
         self.inner_fact.mutate((self.lens)(obj), u)
     }
 

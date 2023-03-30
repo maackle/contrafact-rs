@@ -28,7 +28,7 @@ where
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
     /// constraint.
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>);
+    fn mutate(&self, obj: T, u: &mut Unstructured<'static>) -> T;
 
     /// When checking or mutating a sequence of items, this gets called after
     /// each item to modify the state to get ready for the next item.
@@ -36,14 +36,14 @@ where
 
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
-    fn satisfy(&mut self, obj: &mut T, u: &mut Unstructured<'static>) {
+    fn satisfy(&mut self, mut obj: T, u: &mut Unstructured<'static>) -> T {
         let mut last_failure: Vec<String> = vec![];
         for _i in 0..SATISFY_ATTEMPTS {
-            self.mutate(obj, u);
-            if let Err(errs) = self.check(obj).result() {
+            obj = self.mutate(obj, u);
+            if let Err(errs) = self.check(&obj).result() {
                 last_failure = errs;
             } else {
-                return;
+                return obj;
             }
         }
         panic!(
@@ -55,7 +55,7 @@ where
     /// Build a new value such that it satisfies the constraint
     fn build(&mut self, u: &mut Unstructured<'static>) -> T {
         let mut obj = T::arbitrary(u).unwrap();
-        self.satisfy(&mut obj, u);
+        self.satisfy(obj, u);
         obj
     }
 }
@@ -72,8 +72,8 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
-        (*self).as_ref().mutate(obj, u);
+    fn mutate(&self, obj: T, u: &mut Unstructured<'static>) -> T {
+        (*self).as_ref().mutate(obj, u)
     }
 
     #[tracing::instrument(skip(self))]
@@ -96,10 +96,11 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
+    fn mutate(&self, mut obj: T, u: &mut Unstructured<'static>) -> T {
         for f in self.iter() {
-            f.mutate(obj, u)
+            obj = f.mutate(obj, u);
         }
+        obj
     }
 
     #[tracing::instrument(skip(self))]
@@ -124,10 +125,11 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'static>) {
+    fn mutate(&self, mut obj: T, u: &mut Unstructured<'static>) -> T {
         for f in self.iter() {
-            f.mutate(obj, u)
+            obj = f.mutate(obj, u);
         }
+        obj
     }
 
     #[tracing::instrument(skip(self))]
