@@ -80,16 +80,17 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a lens and an existing Fact to create a new Fact.
-    pub fn new<G, S>(label: String, getter: G, setter: S, inner_fact: F) -> Self
+    pub fn new<L, G, S>(label: L, getter: G, setter: S, inner_fact: F) -> Self
     where
         T: Bounds,
         O: Bounds,
         F: Fact<T>,
+        L: ToString,
         G: 'static + Fn(O) -> T,
         S: 'static + Fn(O, T) -> O,
     {
         Self {
-            label,
+            label: label.to_string(),
             getter: Arc::new(getter),
             setter: Arc::new(setter),
             inner_fact,

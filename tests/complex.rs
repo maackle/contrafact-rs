@@ -39,7 +39,21 @@ impl Omega {
         }
     }
 
-    fn id(&mut self) -> &mut Id {
+    fn pi(&self) -> Pi {
+        match self.clone() {
+            Self::AlphaBeta { alpha, beta, .. } => Pi(alpha, Some(beta)),
+            Self::Alpha { alpha, .. } => Pi(alpha, None),
+        }
+    }
+
+    fn id(&self) -> &Id {
+        match self {
+            Self::AlphaBeta { id, .. } => id,
+            Self::Alpha { id, .. } => id,
+        }
+    }
+
+    fn id_mut(&mut self) -> &mut Id {
         match self {
             Self::AlphaBeta { id, .. } => id,
             Self::Alpha { id, .. } => id,
@@ -47,7 +61,7 @@ impl Omega {
     }
 }
 
-// Similar to Holochain's Header
+// Similar to Holochain's Action
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 enum Alpha {
     Beta { id: Id, beta: Beta, data: String },
@@ -76,6 +90,33 @@ struct Beta {
     data: String,
 }
 
+/// Similar to Holochain's SignedActionHashed
+struct Sigma {
+    alpha: Alpha,
+    id2: Id,
+    sig: String,
+}
+
+/// Similar to Holochain's Record
+struct Rho {
+    sigma: Sigma,
+    beta: Beta,
+}
+
+#[derive(Clone, Debug, PartialEq, Arbitrary)]
+struct Pi(Alpha, Option<Beta>);
+
+fn pi_beta_match() -> Facts<'static, Pi> {
+    facts![brute(
+        "Pi alpha has matching beta iff beta is Some",
+        |p: &Pi| match p {
+            Pi(Alpha::Beta { beta, .. }, Some(b)) => beta == b,
+            Pi(Alpha::Nil { .. }, None) => true,
+            _ => false,
+        }
+    )]
+}
+
 /// - All Ids should match each other. If there is a Beta, its id should match too
 /// - If Omega::Alpha,     then Alpha::Nil.
 /// - If Omega::AlphaBeta, then Alpha::Beta,
@@ -87,21 +128,32 @@ fn omega_fact(id: Id, data: String) -> Facts<'static, Omega> {
         lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
     ];
     let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, eq("id", id));
-    let omega_fact = facts![
-        brute("Omega variant matches Alpha variant", |o: &Omega| {
-            match (o, o.alpha()) {
-                (Omega::AlphaBeta { .. }, Alpha::Beta { .. }) => true,
-                (Omega::Alpha { .. }, Alpha::Nil { .. }) => true,
-                _ => false,
-            }
-        }),
-        lens("Omega::id", |o: &mut Omega| o.id(), eq("id", id)),
+
+    let pi_fact = facts![
+        pi_beta_match(),
+        lens("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
+        prism("Pi::beta", |o: &mut Pi| o.1.as_mut(), beta_fact),
     ];
 
+    let omega_pi = LensFact::new(
+        "Omega -> Pi",
+        |o| match o {
+            Omega::AlphaBeta { alpha, beta, .. } => Pi(alpha, Some(beta)),
+            Omega::Alpha { alpha, .. } => Pi(alpha, None),
+        },
+        |o, pi| {
+            let id = o.id().clone();
+            match pi {
+                Pi(alpha, Some(beta)) => Omega::AlphaBeta { id, alpha, beta },
+                Pi(alpha, None) => Omega::Alpha { id, alpha },
+            }
+        },
+        pi_fact,
+    );
+
     facts![
-        omega_fact,
-        lens("Omega::alpha", |o: &mut Omega| o.alpha_mut(), alpha_fact),
-        prism("Omega::beta", |o: &mut Omega| o.beta_mut(), beta_fact),
+        omega_pi,
+        lens("Omega::id", |o: &mut Omega| o.id_mut(), eq("id", id)),
     ]
 }
 
@@ -110,8 +162,7 @@ fn test_omega_fact() {
     observability::test_run().ok();
     let mut u = utils::unstructured_noise();
 
-    let data = "spartacus".into();
-    let fact = omega_fact(11, data);
+    let fact = omega_fact(11, "spartacus".into());
 
     let beta = Beta::arbitrary(&mut u).unwrap();
 
