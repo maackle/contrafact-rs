@@ -251,6 +251,7 @@ where
         .into()
     }
 
+    #[allow(unused_assignments)]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
         obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(&obj)
@@ -276,6 +277,7 @@ where
         Check::check(*obj == self.counter, self.context.clone())
     }
 
+    #[allow(unused_assignments)]
     fn mutate(&self, mut obj: T, _: &mut arbitrary::Unstructured<'static>) -> T {
         obj = self.counter.clone();
         obj

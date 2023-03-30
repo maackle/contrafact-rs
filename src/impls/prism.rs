@@ -43,7 +43,7 @@ use arbitrary::Unstructured;
 ///     }
 /// }
 ///
-/// let mut fact = prism("E::x", E::x, eq("must be 1", &1));
+/// let mut fact = prism("E::x", E::x, eq("must be 1", 1));
 ///
 /// assert!(fact.check(&E::X(1)).is_ok());
 /// assert!(fact.check(&E::X(2)).is_err());

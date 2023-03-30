@@ -20,7 +20,7 @@
 //!     y: u32,
 //! }
 //!
-//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", &1));
+//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
 //!
 //! assert!(fact.check(&S {x: 1, y: 333}).is_ok());
 //! assert!(fact.check(&S {x: 2, y: 333}).is_err());
