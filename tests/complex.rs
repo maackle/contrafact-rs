@@ -90,6 +90,7 @@ struct Beta {
     data: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Arbitrary)]
 /// Similar to Holochain's SignedActionHashed
 struct Sigma {
     alpha: Alpha,
@@ -97,10 +98,25 @@ struct Sigma {
     sig: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Arbitrary)]
 /// Similar to Holochain's Record
 struct Rho {
     sigma: Sigma,
-    beta: Beta,
+    beta: Option<Beta>,
+}
+
+/// Some struct needed to set the values of a Sigma whenever its Alpha changes.
+/// Analogous to Holochain's Keystore (MetaLairClient).
+struct AlphaSigner;
+
+impl AlphaSigner {
+    fn sign(&self, mut alpha: Alpha) -> Sigma {
+        Sigma {
+            id2: alpha.id().clone() * 2,
+            sig: alpha.id().to_string(),
+            alpha,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
@@ -117,24 +133,27 @@ fn pi_beta_match() -> Facts<'static, Pi> {
     )]
 }
 
+/// - All data must be set as specified
+/// - All Ids should match each other. If there is a Beta, its id should match too.
+fn pi_fact(id: Id, data: String) -> Facts<'static, Pi> {
+    let alpha_fact = facts![
+        lens("Alpha::id", |a: &mut Alpha| a.id(), eq("id", id)),
+        lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
+    ];
+    let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, eq("id", id));
+    facts![
+        pi_beta_match(),
+        lens("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
+        prism("Pi::beta", |o: &mut Pi| o.1.as_mut(), beta_fact),
+    ]
+}
+
 /// - All Ids should match each other. If there is a Beta, its id should match too
 /// - If Omega::Alpha,     then Alpha::Nil.
 /// - If Omega::AlphaBeta, then Alpha::Beta,
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
 fn omega_fact(id: Id, data: String) -> Facts<'static, Omega> {
-    let alpha_fact = facts![
-        lens("Alpha::id", |a: &mut Alpha| a.id(), eq("id", id)),
-        lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
-    ];
-    let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, eq("id", id));
-
-    let pi_fact = facts![
-        pi_beta_match(),
-        lens("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
-        prism("Pi::beta", |o: &mut Pi| o.1.as_mut(), beta_fact),
-    ];
-
     let omega_pi = LensFact::new(
         "Omega -> Pi",
         |o| match o {
@@ -148,13 +167,28 @@ fn omega_fact(id: Id, data: String) -> Facts<'static, Omega> {
                 Pi(alpha, None) => Omega::Alpha { id, alpha },
             }
         },
-        pi_fact,
+        pi_fact(id, data),
     );
 
     facts![
         omega_pi,
         lens("Omega::id", |o: &mut Omega| o.id_mut(), eq("id", id)),
     ]
+}
+
+/// TODO: use me
+fn rho_fact(id: Id, data: String, signer: AlphaSigner) -> Facts<'static, Rho> {
+    let rho_pi = LensFact::new(
+        "Rho -> Pi",
+        |rho: Rho| Pi(rho.sigma.alpha, rho.beta),
+        move |mut rho, Pi(a, b)| {
+            rho.sigma = signer.sign(a);
+            rho.beta = b;
+            rho
+        },
+        pi_fact(id, data),
+    );
+    facts![rho_pi]
 }
 
 #[test]
