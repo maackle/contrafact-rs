@@ -78,7 +78,7 @@ where
         };
         some.then_some(o)
     };
-    PrismFact::new(label.to_string(), inner_fact, getter, setter)
+    PrismFact::new(label.to_string(), getter, setter, inner_fact)
 }
 
 /// A fact which uses a prism to apply another fact. Use [`prism()`] to construct.
@@ -103,7 +103,7 @@ where
     F: Fact<T>,
 {
     /// Constructor. Supply a prism and an existing Fact to create a new Fact.
-    pub fn new<G, S>(label: String, inner_fact: F, getter: G, setter: S) -> Self
+    pub fn new<G, S>(label: String, getter: G, setter: S, inner_fact: F) -> Self
     where
         T: Bounds,
         O: Bounds,

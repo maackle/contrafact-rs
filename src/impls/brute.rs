@@ -69,12 +69,12 @@ where
         check_fallible!({ Ok(Check::check((self.f)(t)?, self.reason.clone())) })
     }
 
-    fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
+    fn mutate(&self, mut t: T, u: &mut Unstructured<'static>) -> T {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if (self.f)(t).expect("TODO: fallible mutation") {
-                return;
+            if (self.f)(&t).expect("TODO: fallible mutation") {
+                return t;
             }
-            *t = T::arbitrary(u).unwrap();
+            t = T::arbitrary(u).unwrap();
         }
 
         panic!(
