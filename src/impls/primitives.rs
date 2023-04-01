@@ -1,7 +1,11 @@
 //! Some predicates borrowed from predicates-rs
 //! https://github.com/assert-rs/predicates-rs
 
-use std::{borrow::Borrow, marker::PhantomData};
+use std::{
+    borrow::Borrow,
+    marker::PhantomData,
+    ops::{Bound, RangeBounds},
+};
 
 use crate::{fact::*, Check, BRUTE_ITERATION_LIMIT};
 
@@ -60,26 +64,67 @@ where
 }
 
 /// Specifies a membership constraint
-pub fn in_iter<'a, I, S, T>(context: S, iter: I) -> InFact<'a, T>
+pub fn in_iter<'a, I, S, T>(context: S, iter: I) -> InIterFact<'a, T>
 where
     S: ToString,
     T: 'a + PartialEq + std::fmt::Debug + Clone,
     I: IntoIterator<Item = &'a T>,
 {
     use std::iter::FromIterator;
-    InFact {
+    InIterFact {
         context: context.to_string(),
         inner: Vec::from_iter(iter),
     }
 }
 
 /// Specifies a membership constraint
-pub fn in_iter_<'a, I, T>(iter: I) -> InFact<'a, T>
+pub fn in_iter_<'a, I, T>(iter: I) -> InIterFact<'a, T>
 where
     T: 'a + PartialEq + std::fmt::Debug + Clone,
     I: IntoIterator<Item = &'a T>,
 {
     in_iter("___", iter)
+}
+
+/// Specifies a range constraint
+pub fn in_range<S, R, T>(context: S, range: R) -> InRangeFact<R, T>
+where
+    S: ToString,
+    R: RangeBounds<T> + std::fmt::Debug,
+    T: PartialEq
+        + PartialOrd
+        + Ord
+        + Clone
+        + std::fmt::Debug
+        + num::traits::Euclid
+        + std::ops::Add<Output = T>
+        + std::ops::Sub<Output = T>
+        + num::Bounded
+        + num::One,
+{
+    InRangeFact {
+        context: context.to_string(),
+        range,
+        phantom: PhantomData,
+    }
+}
+
+/// Specifies a range constraint
+pub fn in_range_<R, T>(range: R) -> InRangeFact<R, T>
+where
+    R: RangeBounds<T> + std::fmt::Debug,
+    T: PartialEq
+        + PartialOrd
+        + Ord
+        + Clone
+        + std::fmt::Debug
+        + num::traits::Euclid
+        + std::ops::Add<Output = T>
+        + std::ops::Sub<Output = T>
+        + num::Bounded
+        + num::One,
+{
+    in_range("___", range)
 }
 
 /// Specifies that a value should be increasing by 1 at every check/mutation
@@ -227,7 +272,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InFact<'a, T>
+pub struct InIterFact<'a, T>
 where
     T: PartialEq + std::fmt::Debug + Clone,
 {
@@ -235,7 +280,7 @@ where
     inner: Vec<&'a T>,
 }
 
-impl<T> Fact<T> for InFact<'_, T>
+impl<T> Fact<T> for InIterFact<'_, T>
 where
     T: Bounds + Clone,
 {
@@ -256,7 +301,85 @@ where
         obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(&obj)
             .result()
-            .expect("there's a bug in InFact::mutate");
+            .expect("there's a bug in InIterFact::mutate");
+        obj
+    }
+
+    fn advance(&mut self, _: &T) {}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InRangeFact<R, T>
+where
+    R: RangeBounds<T> + std::fmt::Debug,
+    T: PartialEq
+        + PartialOrd
+        + Ord
+        + Clone
+        + std::fmt::Debug
+        + num::traits::Euclid
+        + std::ops::Add<Output = T>
+        + std::ops::Sub<Output = T>
+        + num::Bounded
+        + num::One,
+{
+    context: String,
+    range: R,
+    phantom: PhantomData<T>,
+}
+
+impl<R, T> Fact<T> for InRangeFact<R, T>
+where
+    R: RangeBounds<T> + std::fmt::Debug,
+    T: Bounds
+        + PartialEq
+        + PartialOrd
+        + Ord
+        + Clone
+        + std::fmt::Debug
+        + num::traits::Euclid
+        + std::ops::Add<Output = T>
+        + std::ops::Sub<Output = T>
+        + num::Bounded
+        + num::One,
+{
+    fn check(&self, obj: &T) -> Check {
+        if self.range.contains(&obj) {
+            Vec::with_capacity(0)
+        } else {
+            vec![format!(
+                "{}: expected {:?} to be contained in {:?}",
+                self.context, obj, self.range
+            )]
+        }
+        .into()
+    }
+
+    #[allow(unused_assignments)]
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+        let rand = T::arbitrary(u).unwrap();
+        obj = match (self.range.start_bound(), self.range.end_bound()) {
+            (Bound::Unbounded, Bound::Unbounded) => rand,
+            (Bound::Included(a), Bound::Included(b)) if b.clone() - a.clone() >= T::one() => {
+                a.clone() + rand.rem_euclid(&(b.clone() - a.clone()))
+            }
+            (Bound::Included(a), Bound::Excluded(b)) if b.clone() - a.clone() > T::one() => {
+                a.clone() + rand.rem_euclid(&(b.clone() - a.clone()))
+            }
+            (Bound::Excluded(a), Bound::Included(b)) if b.clone() - a.clone() > T::one() => {
+                b.clone() - rand.rem_euclid(&(b.clone() - a.clone()))
+            }
+            (Bound::Unbounded, Bound::Excluded(b)) => {
+                T::min_value() + rand.rem_euclid(&(b.clone() - T::min_value()))
+            }
+            (Bound::Included(a), Bound::Unbounded) => {
+                a.clone() + rand.rem_euclid(&(T::max_value() - a.clone()))
+            }
+            _ => panic!("Range not yet supported, sorry! {:?}", self.range),
+        };
+        self.check(&obj)
+            .result()
+            .expect("there's a bug in InRangeFact::mutate");
         obj
     }
 
@@ -418,5 +541,35 @@ mod tests {
         check_seq(nums.as_slice(), not1.clone()).unwrap();
 
         assert!(nums.iter().all(|x| *x != 1));
+    }
+
+    #[test]
+    fn test_in_range() {
+        observability::test_run().ok();
+        let mut u = utils::unstructured_noise();
+
+        let positive1 = in_range("must be positive", 1..=i32::MAX);
+        let positive2 = in_range("must be positive", 1..);
+        let smallish = in_range("must be small in magnitude", -10..100);
+        let over9000 = in_range("must be over 9000", 9001..);
+        let under9000 = in_range("must be under 9000 (and no less than zero)", ..9000u32);
+
+        let nonpositive1 = not_(positive1);
+        let nonpositive2 = not_(positive2);
+
+        let smallish_nums = build_seq(&mut u, 100, smallish.clone());
+        let over9000_nums = build_seq(&mut u, 100, over9000.clone());
+        let under9000_nums = build_seq(&mut u, 100, under9000.clone());
+        let nonpositive1_nums = build_seq(&mut u, 20, nonpositive1.clone());
+        let nonpositive2_nums = build_seq(&mut u, 20, nonpositive2.clone());
+
+        dbg!(&under9000_nums);
+
+        check_seq(smallish_nums.as_slice(), smallish.clone()).unwrap();
+        check_seq(over9000_nums.as_slice(), over9000.clone()).unwrap();
+        check_seq(under9000_nums.as_slice(), under9000.clone()).unwrap();
+        check_seq(nonpositive1_nums.as_slice(), nonpositive1.clone()).unwrap();
+        check_seq(nonpositive2_nums.as_slice(), nonpositive2.clone()).unwrap();
+        assert!(nonpositive1_nums.iter().all(|x| *x <= 0));
     }
 }

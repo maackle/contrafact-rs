@@ -72,8 +72,8 @@ pub use fact::{BoxFact, Fact, Facts};
 pub use satisfy::*;
 
 pub use impls::primitives::{
-    always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,
-    not_, or,
+    always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, in_range, in_range_, ne,
+    ne_, never, not, not_, or,
 };
 
 pub use impls::brute::{brute, brute_fallible, BruteFact};
