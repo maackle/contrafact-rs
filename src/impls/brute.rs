@@ -71,7 +71,7 @@ where
 
     fn mutate(&self, mut t: T, u: &mut Unstructured<'static>) -> T {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if (self.f)(&t).expect("TODO: fallible mutation") {
+            if (self.f)(&t).expect("Mutation failed.") {
                 return t;
             }
             t = T::arbitrary(u).unwrap();
