@@ -119,6 +119,12 @@ impl AlphaSigner {
     }
 }
 
+fn alpha_fact() -> Facts<'static, Alpha> {
+    facts![lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
+}
+
+/// Just a pair of an Alpha with optional Beta.
+/// An intermediate type not used "in production" but useful for writing Facts against
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 struct Pi(Alpha, Option<Beta>);
 
@@ -133,14 +139,24 @@ fn pi_beta_match() -> Facts<'static, Pi> {
     )]
 }
 
-/// - All data must be set as specified
+fn id_fact(id: Option<Id>) -> Facts<'static, Id> {
+    let le = brute("< u32::MAX", |id: &Id| *id < Id::MAX / 2);
+
+    if let Some(id) = id {
+        facts![le, eq("id", id)]
+    } else {
+        facts![le]
+    }
+}
+
+/// - id must be set as specified
 /// - All Ids should match each other. If there is a Beta, its id should match too.
-fn pi_fact(id: Id, data: String) -> Facts<'static, Pi> {
+fn pi_fact(id: Id) -> Facts<'static, Pi> {
     let alpha_fact = facts![
-        lens("Alpha::id", |a: &mut Alpha| a.id(), eq("id", id)),
-        lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
+        lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
+        // lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
     ];
-    let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, eq("id", id));
+    let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, id_fact(Some(id)));
     facts![
         pi_beta_match(),
         lens("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
@@ -153,7 +169,7 @@ fn pi_fact(id: Id, data: String) -> Facts<'static, Pi> {
 /// - If Omega::AlphaBeta, then Alpha::Beta,
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
-fn omega_fact(id: Id, data: String) -> Facts<'static, Omega> {
+fn omega_fact(id: Id) -> Facts<'static, Omega> {
     let omega_pi = LensFact::new(
         "Omega -> Pi",
         |o| match o {
@@ -167,17 +183,40 @@ fn omega_fact(id: Id, data: String) -> Facts<'static, Omega> {
                 Pi(alpha, None) => Omega::Alpha { id, alpha },
             }
         },
-        pi_fact(id, data),
+        pi_fact(id),
     );
 
     facts![
         omega_pi,
-        lens("Omega::id", |o: &mut Omega| o.id_mut(), eq("id", id)),
+        lens("Omega::id", |o: &mut Omega| o.id_mut(), id_fact(Some(id))),
     ]
 }
 
-/// TODO: use me
-fn rho_fact(id: Id, data: String, signer: AlphaSigner) -> Facts<'static, Rho> {
+fn sigma_fact() -> Facts<'static, Sigma> {
+    let id_fact = LensFact::new(
+        "Sigma::id is correct",
+        |mut s: Sigma| (s.id2, *(s.alpha.id()) * 2),
+        |mut s, (_, id2)| {
+            s.id2 = id2;
+            s
+        },
+        same(""),
+    );
+    let sig_fact = LensFact::new(
+        "Sigma::sig is correct",
+        |mut s: Sigma| (s.sig, s.alpha.id().to_string()),
+        |mut s, (_, sig)| {
+            s.sig = sig;
+            s
+        },
+        same(""),
+    );
+    facts![id_fact]
+}
+
+/// The inner Sigma is correct wrt to signature
+/// XXX: this is a little wonky, probably room for improvement.
+fn rho_fact(id: Id, signer: AlphaSigner) -> Facts<'static, Rho> {
     let rho_pi = LensFact::new(
         "Rho -> Pi",
         |rho: Rho| Pi(rho.sigma.alpha, rho.beta),
@@ -186,9 +225,29 @@ fn rho_fact(id: Id, data: String, signer: AlphaSigner) -> Facts<'static, Rho> {
             rho.beta = b;
             rho
         },
-        pi_fact(id, data),
+        pi_fact(id),
     );
-    facts![rho_pi]
+    facts![
+        lens("Rho -> Sigma", |rho: &mut Rho| &mut rho.sigma, sigma_fact()),
+        rho_pi
+    ]
+}
+
+#[test]
+fn test_rho_fact() {
+    observability::test_run().ok();
+    let mut u = utils::unstructured_noise();
+
+    let mut fact = rho_fact(5, AlphaSigner);
+    let mut rho = fact.build(&mut u);
+    assert!(fact.check(&rho).is_ok());
+    assert_eq!(rho.sigma.id2, 10);
+    assert_eq!(rho.sigma.sig, "5".to_string());
+
+    rho.sigma.id2 = 9;
+    assert!(fact.check(&rho).is_err());
+
+    dbg!(rho);
 }
 
 #[test]
@@ -196,7 +255,7 @@ fn test_omega_fact() {
     observability::test_run().ok();
     let mut u = utils::unstructured_noise();
 
-    let fact = omega_fact(11, "spartacus".into());
+    let fact = omega_fact(11);
 
     let beta = Beta::arbitrary(&mut u).unwrap();
 
@@ -244,7 +303,7 @@ fn test_omega_fact() {
     // Ensure that check fails for invalid data
     assert_eq!(
         dbg!(fact.check(dbg!(&invalid1)).result().unwrap_err()).len(),
-        4,
+        3,
     );
     invalid1 = fact.mutate(invalid1, &mut u);
     fact.check(dbg!(&invalid1)).unwrap();
@@ -252,7 +311,7 @@ fn test_omega_fact() {
     // Ensure that check fails for invalid data
     assert_eq!(
         dbg!(fact.check(dbg!(&invalid2)).result().unwrap_err()).len(),
-        5,
+        4,
     );
     invalid2 = fact.mutate(invalid2, &mut u);
     fact.check(dbg!(&invalid2)).unwrap();

@@ -38,7 +38,7 @@ pub fn eq_<T>(constant: T) -> EqFact<T>
 where
     T: std::fmt::Debug + PartialEq,
 {
-    eq("___", constant)
+    eq("eq", constant)
 }
 
 /// Specifies an inequality constraint
@@ -60,7 +60,33 @@ pub fn ne_<T>(constant: T) -> EqFact<T>
 where
     T: std::fmt::Debug + PartialEq,
 {
-    ne("___", constant)
+    ne("ne", constant)
+}
+
+/// Specifies an equality constraint between two items in a tuple
+pub fn same<S, T>(context: S) -> SameFact<T>
+where
+    S: ToString,
+    T: std::fmt::Debug + PartialEq,
+{
+    SameFact {
+        context: context.to_string(),
+        op: EqOp::Equal,
+        _phantom: PhantomData,
+    }
+}
+
+/// Specifies an equality constraint between two items in a tuple
+pub fn different<S, T>(context: S) -> SameFact<T>
+where
+    S: ToString,
+    T: std::fmt::Debug + PartialEq,
+{
+    SameFact {
+        context: context.to_string(),
+        op: EqOp::NotEqual,
+        _phantom: PhantomData,
+    }
 }
 
 /// Specifies a membership constraint
@@ -83,7 +109,7 @@ where
     T: 'a + PartialEq + std::fmt::Debug + Clone,
     I: IntoIterator<Item = &'a T>,
 {
-    in_iter("___", iter)
+    in_iter("in_iter", iter)
 }
 
 /// Specifies a range constraint
@@ -124,7 +150,7 @@ where
         + num::Bounded
         + num::One,
 {
-    in_range("___", range)
+    in_range("in_range", range)
 }
 
 /// Specifies that a value should be increasing by 1 at every check/mutation
@@ -145,7 +171,7 @@ pub fn consecutive_int_<T>(initial: T) -> ConsecutiveIntFact<T>
 where
     T: std::fmt::Debug + PartialEq + num::PrimInt,
 {
-    consecutive_int("___", initial)
+    consecutive_int("consecutive_int", initial)
 }
 
 /// Combines two constraints so that either one may be satisfied
@@ -187,7 +213,7 @@ where
     F: Fact<T>,
     T: Bounds,
 {
-    not("___", fact)
+    not("not", fact)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,6 +295,49 @@ where
     }
 
     fn advance(&mut self, _: &T) {}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SameFact<T> {
+    context: String,
+    op: EqOp,
+    _phantom: PhantomData<T>,
+}
+
+impl<T> Fact<(T, T)> for SameFact<T>
+where
+    T: Bounds + PartialEq + Clone,
+{
+    fn check(&self, obj: &(T, T)) -> Check {
+        let (a, b) = obj;
+        match self.op {
+            EqOp::Equal if a != b => vec![format!("{}: expected {:?} == {:?}", self.context, a, b)],
+            EqOp::NotEqual if a == b => {
+                vec![format!("{}: expected {:?} != {:?}", self.context, a, b)]
+            }
+            _ => Vec::with_capacity(0),
+        }
+        .into()
+    }
+
+    #[allow(unused_assignments)]
+    fn mutate(&self, mut obj: (T, T), u: &mut arbitrary::Unstructured<'static>) -> (T, T) {
+        match self.op {
+            EqOp::Equal => obj.0 = obj.1.clone(),
+            EqOp::NotEqual => loop {
+                obj.0 = T::arbitrary(u).unwrap();
+                if obj.0 != obj.1 {
+                    break;
+                }
+            },
+        }
+        self.check(&obj)
+            .result()
+            .expect("there's a bug in EqFact::mutate");
+        obj
+    }
+
+    fn advance(&mut self, _: &(T, T)) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -541,6 +610,25 @@ mod tests {
         check_seq(nums.as_slice(), not1.clone()).unwrap();
 
         assert!(nums.iter().all(|x| *x != 1));
+    }
+
+    #[test]
+    fn test_same() {
+        observability::test_run().ok();
+        let mut u = utils::unstructured_noise();
+
+        {
+            let f = same::<_, u8>("must be same");
+            let nums = build_seq(&mut u, 10, f.clone());
+            check_seq(nums.as_slice(), f.clone()).unwrap();
+            assert!(nums.iter().all(|(a, b)| a == b));
+        }
+        {
+            let f = different::<_, u8>("must be different");
+            let nums = build_seq(&mut u, 10, f.clone());
+            check_seq(nums.as_slice(), f.clone()).unwrap();
+            assert!(nums.iter().all(|(a, b)| a != b));
+        }
     }
 
     #[test]
