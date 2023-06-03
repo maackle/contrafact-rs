@@ -7,11 +7,11 @@ use crate::Check;
 pub(crate) const SATISFY_ATTEMPTS: usize = 3;
 
 /// The trait bounds for the subject of a Fact
-pub trait Bounds: std::fmt::Debug + PartialEq + Arbitrary<'static> {}
-impl<T> Bounds for T where T: std::fmt::Debug + PartialEq + Arbitrary<'static> {}
+pub trait Bounds<'a>: std::fmt::Debug + PartialEq + Arbitrary<'a> {}
+impl<'a, T> Bounds<'a> for T where T: std::fmt::Debug + PartialEq + Arbitrary<'a> {}
 
 /// Type alias for a boxed Fact. Implements [`Fact`] itself.
-pub type BoxFact<'a, T> = Box<dyn 'a + Fact<T>>;
+pub type BoxFact<'a, T> = Box<dyn 'a + Fact<'a, T>>;
 
 /// Type alias for a Vec of boxed Facts. Implements [`Fact`] itself.
 pub type Facts<'a, T> = Vec<BoxFact<'a, T>>;
@@ -19,16 +19,16 @@ pub type Facts<'a, T> = Vec<BoxFact<'a, T>>;
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some arbitrary existing
 /// data into a shape which passes that same assertion (mutate)
-pub trait Fact<T>
+pub trait Fact<'a, T>
 where
-    T: Bounds,
+    T: Bounds<'a>,
 {
     /// Assert that the constraint is satisfied (panic if not).
     fn check(&self, obj: &T) -> Check;
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
     /// constraint.
-    fn mutate(&self, obj: T, u: &mut Unstructured<'static>) -> T;
+    fn mutate(&self, obj: T, u: &mut Unstructured<'a>) -> T;
 
     /// When checking or mutating a sequence of items, this gets called after
     /// each item to modify the state to get ready for the next item.
@@ -36,7 +36,7 @@ where
 
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
-    fn satisfy(&mut self, mut obj: T, u: &mut Unstructured<'static>) -> T {
+    fn satisfy(&mut self, mut obj: T, u: &mut Unstructured<'a>) -> T {
         let mut last_failure: Vec<String> = vec![];
         for _i in 0..SATISFY_ATTEMPTS {
             obj = self.mutate(obj, u);
@@ -53,16 +53,16 @@ where
     }
 
     /// Build a new value such that it satisfies the constraint
-    fn build(&mut self, u: &mut Unstructured<'static>) -> T {
+    fn build(&mut self, u: &mut Unstructured<'a>) -> T {
         let obj = T::arbitrary(u).unwrap();
         self.satisfy(obj, u)
     }
 }
 
-impl<T, F> Fact<T> for Box<F>
+impl<'a, T, F> Fact<'a, T> for Box<F>
 where
-    T: Bounds,
-    F: Fact<T> + ?Sized,
+    T: Bounds<'a>,
+    F: Fact<'a, T> + ?Sized,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &T) -> Check {
@@ -71,7 +71,7 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: T, u: &mut Unstructured<'static>) -> T {
+    fn mutate(&self, obj: T, u: &mut Unstructured<'a>) -> T {
         (*self).as_ref().mutate(obj, u)
     }
 
@@ -81,10 +81,10 @@ where
     }
 }
 
-impl<T, F> Fact<T> for &mut [F]
+impl<'a, T, F> Fact<'a, T> for &mut [F]
 where
-    T: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &T) -> Check {
@@ -95,7 +95,7 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, mut obj: T, u: &mut Unstructured<'static>) -> T {
+    fn mutate(&self, mut obj: T, u: &mut Unstructured<'a>) -> T {
         for f in self.iter() {
             obj = f.mutate(obj, u);
         }
@@ -110,10 +110,10 @@ where
     }
 }
 
-impl<T, F> Fact<T> for Vec<F>
+impl<'a, T, F> Fact<'a, T> for Vec<F>
 where
-    T: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &T) -> Check {
@@ -124,7 +124,7 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, mut obj: T, u: &mut Unstructured<'static>) -> T {
+    fn mutate(&self, mut obj: T, u: &mut Unstructured<'a>) -> T {
         for f in self.iter() {
             obj = f.mutate(obj, u);
         }

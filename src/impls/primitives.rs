@@ -175,12 +175,12 @@ where
 }
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<A, T, S, Item>(context: S, a: A, b: T) -> OrFact<A, T, Item>
+pub fn or<'a, A, T, S, Item>(context: S, a: A, b: T) -> OrFact<'a, A, T, Item>
 where
     S: ToString,
-    A: Fact<Item>,
-    T: Fact<Item>,
-    Item: Bounds,
+    A: Fact<'a, Item>,
+    T: Fact<'a, Item>,
+    Item: Bounds<'a>,
 {
     OrFact {
         context: context.to_string(),
@@ -194,11 +194,11 @@ where
 // TODO: `not` in particular would really benefit from Facts having accessible
 // labels, since currently you can only get context about why a `not` fact passed,
 // not why it fails.
-pub fn not<'a, F, S, T>(context: S, fact: F) -> NotFact<F, T>
+pub fn not<'a, F, S, T>(context: S, fact: F) -> NotFact<'a, F, T>
 where
     S: ToString,
-    F: Fact<T>,
-    T: Bounds,
+    F: Fact<'a, T>,
+    T: Bounds<'a>,
 {
     NotFact {
         context: context.to_string(),
@@ -208,10 +208,10 @@ where
 }
 
 /// Negates a fact, with no context given
-pub fn not_<'a, F, T>(fact: F) -> NotFact<F, T>
+pub fn not_<'a, F, T>(fact: F) -> NotFact<'a, F, T>
 where
-    F: Fact<T>,
-    T: Bounds,
+    F: Fact<'a, T>,
+    T: Bounds<'a>,
 {
     not("not", fact)
 }
@@ -219,9 +219,9 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoolFact(bool, String);
 
-impl<T> Fact<T> for BoolFact
+impl<'a, T> Fact<'a, T> for BoolFact
 where
-    T: Bounds + PartialEq + Clone,
+    T: Bounds<'a> + PartialEq + Clone,
 {
     fn check(&self, _: &T) -> Check {
         if self.0 {
@@ -232,7 +232,7 @@ where
         .into()
     }
 
-    fn mutate(&self, t: T, _: &mut arbitrary::Unstructured<'static>) -> T {
+    fn mutate(&self, t: T, _: &mut arbitrary::Unstructured<'_>) -> T {
         if !self.0 {
             panic!("never() cannot be used for mutation.")
         }
@@ -256,9 +256,9 @@ pub enum EqOp {
     NotEqual,
 }
 
-impl<T> Fact<T> for EqFact<T>
+impl<'a, T> Fact<'a, T> for EqFact<T>
 where
-    T: Bounds + PartialEq + Clone,
+    T: Bounds<'a> + PartialEq + Clone,
 {
     fn check(&self, obj: &T) -> Check {
         let constant = self.constant.borrow();
@@ -277,7 +277,7 @@ where
     }
 
     #[allow(unused_assignments)]
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         let constant = self.constant.clone();
         match self.op {
             EqOp::Equal => obj = constant,
@@ -304,9 +304,9 @@ pub struct SameFact<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<T> Fact<(T, T)> for SameFact<T>
+impl<'a, T> Fact<'a, (T, T)> for SameFact<T>
 where
-    T: Bounds + PartialEq + Clone,
+    T: Bounds<'a> + PartialEq + Clone,
 {
     fn check(&self, obj: &(T, T)) -> Check {
         let (a, b) = obj;
@@ -321,7 +321,7 @@ where
     }
 
     #[allow(unused_assignments)]
-    fn mutate(&self, mut obj: (T, T), u: &mut arbitrary::Unstructured<'static>) -> (T, T) {
+    fn mutate(&self, mut obj: (T, T), u: &mut arbitrary::Unstructured<'a>) -> (T, T) {
         match self.op {
             EqOp::Equal => obj.0 = obj.1.clone(),
             EqOp::NotEqual => loop {
@@ -349,9 +349,9 @@ where
     inner: Vec<&'a T>,
 }
 
-impl<T> Fact<T> for InIterFact<'_, T>
+impl<'a, T> Fact<'a, T> for InIterFact<'_, T>
 where
-    T: Bounds + Clone,
+    T: Bounds<'a> + Clone,
 {
     fn check(&self, obj: &T) -> Check {
         if self.inner.contains(&obj) {
@@ -366,7 +366,7 @@ where
     }
 
     #[allow(unused_assignments)]
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(&obj)
             .result()
@@ -397,10 +397,10 @@ where
     phantom: PhantomData<T>,
 }
 
-impl<R, T> Fact<T> for InRangeFact<R, T>
+impl<'a, R, T> Fact<'a, T> for InRangeFact<R, T>
 where
     R: RangeBounds<T> + std::fmt::Debug,
-    T: Bounds
+    T: Bounds<'a>
         + PartialEq
         + PartialOrd
         + Ord
@@ -425,7 +425,7 @@ where
     }
 
     #[allow(unused_assignments)]
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         let rand = T::arbitrary(u).unwrap();
         obj = match (self.range.start_bound(), self.range.end_bound()) {
             (Bound::Unbounded, Bound::Unbounded) => rand,
@@ -461,16 +461,16 @@ pub struct ConsecutiveIntFact<T> {
     counter: T,
 }
 
-impl<T> Fact<T> for ConsecutiveIntFact<T>
+impl<'a, T> Fact<'a, T> for ConsecutiveIntFact<T>
 where
-    T: Bounds + num::PrimInt,
+    T: Bounds<'a> + num::PrimInt,
 {
     fn check(&self, obj: &T) -> Check {
         Check::check(*obj == self.counter, self.context.clone())
     }
 
     #[allow(unused_assignments)]
-    fn mutate(&self, mut obj: T, _: &mut arbitrary::Unstructured<'static>) -> T {
+    fn mutate(&self, mut obj: T, _: &mut arbitrary::Unstructured<'a>) -> T {
         obj = self.counter.clone();
         obj
     }
@@ -484,23 +484,23 @@ where
 ///
 /// This is created by the `or` function.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OrFact<M1, M2, Item>
+pub struct OrFact<'a, M1, M2, Item>
 where
-    M1: Fact<Item>,
-    M2: Fact<Item>,
-    Item: ?Sized + Bounds,
+    M1: Fact<'a, Item>,
+    M2: Fact<'a, Item>,
+    Item: ?Sized + Bounds<'a>,
 {
     context: String,
     pub(crate) a: M1,
     pub(crate) b: M2,
-    _phantom: PhantomData<Item>,
+    _phantom: PhantomData<&'a Item>,
 }
 
-impl<P1, P2, T> Fact<T> for OrFact<P1, P2, T>
+impl<'a, P1, P2, T> Fact<'a, T> for OrFact<'a, P1, P2, T>
 where
-    P1: Fact<T> + Fact<T>,
-    P2: Fact<T> + Fact<T>,
-    T: Bounds,
+    P1: Fact<'a, T> + Fact<'a, T>,
+    P2: Fact<'a, T> + Fact<'a, T>,
+    T: Bounds<'a>,
 {
     fn check(&self, obj: &T) -> Check {
         let a = self.a.check(obj).result();
@@ -517,7 +517,7 @@ condition 2: {:#?}",
         }
     }
 
-    fn mutate(&self, obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+    fn mutate(&self, obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         if *u.choose(&[true, false]).unwrap() {
             self.a.mutate(obj, u)
         } else {
@@ -529,20 +529,20 @@ condition 2: {:#?}",
 }
 
 #[derive(Debug, Clone)]
-pub struct NotFact<F, T>
+pub struct NotFact<'a, F, T>
 where
-    F: Fact<T>,
-    T: Bounds,
+    F: Fact<'a, T>,
+    T: Bounds<'a>,
 {
     context: String,
     fact: F,
-    _phantom: PhantomData<T>,
+    _phantom: PhantomData<&'a T>,
 }
 
-impl<F, T> Fact<T> for NotFact<F, T>
+impl<'a, F, T> Fact<'a, T> for NotFact<'a, F, T>
 where
-    F: Fact<T>,
-    T: Bounds,
+    F: Fact<'a, T>,
+    T: Bounds<'a>,
 {
     fn check(&self, obj: &T) -> Check {
         Check::check(
@@ -551,7 +551,7 @@ where
         )
     }
 
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'static>) -> T {
+    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         for _ in 0..BRUTE_ITERATION_LIMIT {
             if self.fact.check(&obj).is_err() {
                 break;

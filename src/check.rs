@@ -141,7 +141,8 @@ mod tests {
     #[test]
     fn test_check_fallible() {
         struct F;
-        impl Fact<()> for F {
+
+        impl<'a> Fact<'a, ()> for F {
             fn check(&self, _: &()) -> Check {
                 check_fallible! {{
                     let x = 1;
@@ -153,7 +154,7 @@ mod tests {
                 }}
             }
 
-            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'static>) {
+            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'a>) {
                 unimplemented!()
             }
 

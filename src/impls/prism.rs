@@ -60,13 +60,13 @@ use arbitrary::Unstructured;
 /// The `prism` closure is a rather lazy way to provide a prism in the
 /// traditional optics sense. We may consider using a true lens library for
 /// this in the future.
-pub fn prism<O, T, F, P, S>(label: S, prism: P, inner_fact: F) -> PrismFact<O, T, F>
+pub fn prism<'a, O, T, F, P, S>(label: S, prism: P, inner_fact: F) -> PrismFact<'a, O, T, F>
 where
-    O: Bounds,
+    O: Bounds<'a>,
     S: ToString,
-    T: Bounds + Clone,
-    F: Fact<T>,
-    P: 'static + Fn(&mut O) -> Option<&mut T>,
+    T: Bounds<'a> + Clone,
+    F: Fact<'a, T>,
+    P: 'a + Fn(&mut O) -> Option<&mut T>,
 {
     // let getter = |o| prism(&mut o).cloned();
     // let setter = |o, t| {
@@ -83,33 +83,33 @@ where
 
 /// A fact which uses a prism to apply another fact. Use [`prism()`] to construct.
 #[derive(Clone)]
-pub struct PrismFact<O, T, F>
+pub struct PrismFact<'a, O, T, F>
 where
-    T: Bounds,
-    O: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    O: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     label: String,
-    // getter: Arc<dyn 'static + Fn(O) -> Option<T>>,
-    // setter: Arc<dyn 'static + Fn(O, T) -> Option<O>>,
-    prism: Arc<dyn 'static + Fn(&mut O) -> Option<&mut T>>,
+    // getter: Arc<dyn 'a + Fn(O) -> Option<T>>,
+    // setter: Arc<dyn 'a + Fn(O, T) -> Option<O>>,
+    prism: Arc<dyn 'a + Fn(&mut O) -> Option<&mut T>>,
     inner_fact: F,
-    __phantom: PhantomData<F>,
+    __phantom: PhantomData<&'a F>,
 }
 
-impl<O, T, F> PrismFact<O, T, F>
+impl<'a, O, T, F> PrismFact<'a, O, T, F>
 where
-    T: Bounds,
-    O: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    O: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     /// Constructor. Supply a prism and an existing Fact to create a new Fact.
     pub fn new<P>(label: String, prism: P, /*getter: G, setter: S,*/ inner_fact: F) -> Self
     where
-        T: Bounds,
-        O: Bounds,
-        F: Fact<T>,
-        P: 'static + Fn(&mut O) -> Option<&mut T>,
+        T: Bounds<'a>,
+        O: Bounds<'a>,
+        F: Fact<'a, T>,
+        P: 'a + Fn(&mut O) -> Option<&mut T>,
         // G: Fn(O) -> Option<T>,
         // S: Fn(O, T) -> Option<O>,
     {
@@ -124,11 +124,11 @@ where
     }
 }
 
-impl<O, T, F> Fact<O> for PrismFact<O, T, F>
+impl<'a, O, T, F> Fact<'a, O> for PrismFact<'a, O, T, F>
 where
-    T: Bounds + Clone,
-    O: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a> + Clone,
+    O: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, o: &O) -> Check {
@@ -149,7 +149,7 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, mut obj: O, u: &mut Unstructured<'static>) -> O {
+    fn mutate(&self, mut obj: O, u: &mut Unstructured<'a>) -> O {
         if let Some(t) = (self.prism)(&mut obj) {
             *t = self.inner_fact.mutate(t.clone(), u);
         }

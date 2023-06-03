@@ -5,8 +5,8 @@ use arbitrary::Unstructured;
 
 /// Lifts a Fact about a subset of some data into a Fact about the superset.
 ///
-/// In other words, if type `O` contains a `T`, and you have a `Fact<T>`,
-/// `LensFact` lets you lift that fact into a `Fact<O>`.
+/// In other words, if type `O` contains a `T`, and you have a `Fact<'a, T>`,
+/// `LensFact` lets you lift that fact into a `Fact<'a, O>`.
 ///
 /// The `lens` closure provides a mutable view into the subset of data.
 /// There must be a way to specify a mutable reference to the subset of data.
@@ -36,13 +36,13 @@ use arbitrary::Unstructured;
 /// ```
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
-pub fn lens<O, T, F, L, S>(label: S, lens: L, inner_fact: F) -> LensFact<O, T, F>
+pub fn lens<'a, O, T, F, L, S>(label: S, lens: L, inner_fact: F) -> LensFact<'a, O, T, F>
 where
-    O: Bounds,
-    T: Bounds + Clone,
+    O: Bounds<'a>,
+    T: Bounds<'a> + Clone,
     S: ToString,
-    F: Fact<T>,
-    L: 'static + Clone + Fn(&mut O) -> &mut T,
+    F: Fact<'a, T>,
+    L: 'a + Clone + Fn(&mut O) -> &mut T,
 {
     let lens2 = lens.clone();
     let getter = move |mut o| lens(&mut o).clone();
@@ -56,38 +56,38 @@ where
 
 /// A fact which uses a lens to apply another fact. Use [`lens()`] to construct.
 #[derive(Clone)]
-pub struct LensFact<O, T, F>
+pub struct LensFact<'a, O, T, F>
 where
-    T: Bounds,
-    O: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    O: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     label: String,
 
-    getter: Arc<dyn 'static + Fn(O) -> T>,
-    setter: Arc<dyn 'static + Fn(O, T) -> O>,
+    getter: Arc<dyn 'a + Fn(O) -> T>,
+    setter: Arc<dyn 'a + Fn(O, T) -> O>,
 
     /// The inner_fact about the inner substructure
     inner_fact: F,
 
-    __phantom: PhantomData<F>,
+    __phantom: PhantomData<&'a F>,
 }
 
-impl<O, T, F> LensFact<O, T, F>
+impl<'a, O, T, F> LensFact<'a, O, T, F>
 where
-    T: Bounds,
-    O: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    O: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     /// Constructor. Supply a lens and an existing Fact to create a new Fact.
     pub fn new<L, G, S>(label: L, getter: G, setter: S, inner_fact: F) -> Self
     where
-        T: Bounds,
-        O: Bounds,
-        F: Fact<T>,
+        T: Bounds<'a>,
+        O: Bounds<'a>,
+        F: Fact<'a, T>,
         L: ToString,
-        G: 'static + Fn(O) -> T,
-        S: 'static + Fn(O, T) -> O,
+        G: 'a + Fn(O) -> T,
+        S: 'a + Fn(O, T) -> O,
     {
         Self {
             label: label.to_string(),
@@ -99,11 +99,11 @@ where
     }
 }
 
-impl<O, T, F> Fact<O> for LensFact<O, T, F>
+impl<'a, O, T, F> Fact<'a, O> for LensFact<'a, O, T, F>
 where
-    T: Bounds,
-    O: Bounds + Clone,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    O: Bounds<'a> + Clone,
+    F: Fact<'a, T>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &O) -> Check {
@@ -113,7 +113,7 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: O, u: &mut Unstructured<'static>) -> O {
+    fn mutate(&self, obj: O, u: &mut Unstructured<'a>) -> O {
         let t = (self.getter)(obj.clone());
         let t = self.inner_fact.mutate(t, u);
         (self.setter)(obj, t)

@@ -8,8 +8,8 @@ use crate::{check_fallible, fact::Bounds, Check, Fact, Facts};
 pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
-    T: Bounds,
-    F: 'static + Fn(&T) -> crate::Result<Facts<'a, T>>,
+    T: Bounds<'a>,
+    F: 'a + Fn(&T) -> crate::Result<Facts<'a, T>>,
 {
     MappedFact::new(reason.to_string(), f)
 }
@@ -48,11 +48,11 @@ where
 /// assert!(fact.check(&9009).is_ok());
 /// assert!(fact.check(&9010).is_err());
 /// ```
-pub fn mapped<T, F, S>(reason: S, f: F) -> MappedFact<'static, T>
+pub fn mapped<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
-    T: Bounds,
-    F: 'static + Fn(&T) -> Facts<'static, T>,
+    T: Bounds<'a>,
+    F: 'a + Fn(&T) -> Facts<'a, T>,
 {
     MappedFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
@@ -65,9 +65,9 @@ pub struct MappedFact<'a, T> {
     f: Arc<dyn 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>,
 }
 
-impl<'a, T> Fact<T> for MappedFact<'a, T>
+impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
 where
-    T: Bounds,
+    T: Bounds<'a>,
 {
     fn check(&self, t: &T) -> Check {
         check_fallible! {{
@@ -77,7 +77,7 @@ where
         }}
     }
 
-    fn mutate(&self, t: T, u: &mut Unstructured<'static>) -> T {
+    fn mutate(&self, t: T, u: &mut Unstructured<'a>) -> T {
         (self.f)(&t).expect("TODO: fallible mutation").mutate(t, u)
     }
 

@@ -5,10 +5,10 @@ use arbitrary::Unstructured;
 /// Each Fact will run [`Fact::advance`] after each item checked, allowing stateful
 /// facts to change as the sequence advances.
 #[tracing::instrument(skip(fact))]
-pub fn check_seq<T, F>(seq: &[T], mut fact: F) -> Check
+pub fn check_seq<'a, T, F>(seq: &[T], mut fact: F) -> Check
 where
-    F: Fact<T>,
-    T: Bounds,
+    F: Fact<'a, T>,
+    T: Bounds<'a>,
 {
     let mut reasons: Vec<String> = Vec::new();
     for (i, obj) in seq.iter().enumerate() {
@@ -27,10 +27,10 @@ where
 /// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
 /// facts to change as the sequence advances.
 #[tracing::instrument(skip(u, fact))]
-pub fn build_seq<T, F>(u: &mut Unstructured<'static>, num: usize, mut fact: F) -> Vec<T>
+pub fn build_seq<'a, T, F>(u: &mut Unstructured<'a>, num: usize, mut fact: F) -> Vec<T>
 where
-    T: Bounds,
-    F: Fact<T>,
+    T: Bounds<'a>,
+    F: Fact<'a, T>,
 {
     let mut seq = Vec::new();
     for _i in 0..num {
@@ -53,7 +53,7 @@ where
 ///
 /// let eq1 = eq_(1);
 /// let not2 = not_(eq_(2));
-/// let fact: Facts<'static, u32> = facts![eq1, not2];
+/// let fact: Facts<'a, u32> = facts![eq1, not2];
 /// assert!(fact.check(&1).is_ok());
 /// ```
 #[macro_export]

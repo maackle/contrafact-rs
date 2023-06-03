@@ -23,7 +23,7 @@ struct Wrapper {
 
 /// Fact: all Links in a chain are by the same `author`, and any chain link has
 /// consecutive `prev` values starting with 0.
-fn chain_fact(author: String) -> Facts<'static, Link> {
+fn chain_fact<'a>(author: String) -> Facts<'a, Link> {
     facts![
         lens(
             "Link::author",
