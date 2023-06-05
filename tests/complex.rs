@@ -1,6 +1,9 @@
 use arbitrary::Arbitrary;
 use contrafact::*;
 
+#[cfg(feature = "optics")]
+use lens_rs::{optics, Lens, Prism};
+
 type Id = u32;
 
 // Similar to Holochain's DhtOp
@@ -99,9 +102,12 @@ struct Sigma {
 }
 
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
+#[cfg_attr(feature = "optics", derive(Lens))]
 /// Similar to Holochain's Record
 struct Rho {
+    #[cfg_attr(feature = "optics", optic)]
     sigma: Sigma,
+    #[cfg_attr(feature = "optics", optic)]
     beta: Option<Beta>,
 }
 
@@ -121,6 +127,10 @@ impl AlphaSigner {
 
 fn alpha_fact() -> Facts<'static, Alpha> {
     facts![lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
+}
+
+fn beta_fact() -> Facts<'static, Beta> {
+    facts![lens("Beta::id", |a: &mut Beta| &mut a.id, id_fact(None))]
 }
 
 /// Just a pair of an Alpha with optional Beta.
@@ -193,7 +203,7 @@ fn omega_fact(id: Id) -> Facts<'static, Omega> {
 }
 
 fn sigma_fact() -> Facts<'static, Sigma> {
-    let id_fact = LensFact::new(
+    let id2_fact = LensFact::new(
         "Sigma::id is correct",
         |mut s: Sigma| (s.id2, *(s.alpha.id()) * 2),
         |mut s, (_, id2)| {
@@ -211,7 +221,10 @@ fn sigma_fact() -> Facts<'static, Sigma> {
         },
         same(""),
     );
-    facts![id_fact]
+    facts![
+        lens("Sigma::id", |o: &mut Sigma| o.alpha.id(), id_fact(None)),
+        id2_fact
+    ]
 }
 
 /// The inner Sigma is correct wrt to signature
@@ -227,10 +240,22 @@ fn rho_fact(id: Id, signer: AlphaSigner) -> Facts<'static, Rho> {
         },
         pi_fact(id),
     );
-    facts![
-        lens("Rho -> Sigma", |rho: &mut Rho| &mut rho.sigma, sigma_fact()),
-        rho_pi
-    ]
+
+    #[cfg(not(feature = "optics"))]
+    {
+        facts![
+            lens("Rho -> Sigma", |rho: &mut Rho| &mut rho.sigma, sigma_fact()),
+            rho_pi
+        ]
+    }
+
+    #[cfg(feature = "optics")]
+    {
+        facts![
+            optical("Rho -> Sigma", optics!(sigma), sigma_fact()),
+            rho_pi
+        ]
+    }
 }
 
 #[test]
@@ -257,7 +282,7 @@ fn test_omega_fact() {
 
     let fact = omega_fact(11);
 
-    let beta = Beta::arbitrary(&mut u).unwrap();
+    let beta = beta_fact().build(&mut u);
 
     let mut valid1 = Omega::Alpha {
         id: 8,

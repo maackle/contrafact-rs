@@ -22,22 +22,22 @@ once_cell = { version = "1.5", optional = true }
 rand = { version = "0.7", optional = true }
 
 # lens
-# lens-rs = { version = "0.3", optional = true }
-lens-rs = { path = "/home/michael/gitfork/lens-rs/lens-rs", optional = true }
+lens-rs = { version = "0.3", optional = true }
+# lens-rs = { path = "/home/michael/gitfork/lens-rs/lens-rs", optional = true }
 
 [dev-dependencies]
 either = "1.5"
 observability = "0.1"
 
 [features]
-default = ["utils", "lens", "mutate-owned"]
+default = ["utils", "mutate-owned"]
 
 utils = [
     "once_cell",
     "rand",
 ]
 
-lens = [
+optics = [
     "lens-rs",
 ]
 

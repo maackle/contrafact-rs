@@ -81,6 +81,9 @@ pub use impls::lens::{lens, LensFact};
 pub use impls::mapped::{mapped, mapped_fallible, MappedFact};
 pub use impls::prism::{prism, PrismFact};
 
+#[cfg(feature = "optics")]
+pub use impls::optical::{optical, OpticalFact};
+
 /// The Result type returnable when using [`check_fallible!`]
 pub type Result<T> = anyhow::Result<T>;
 

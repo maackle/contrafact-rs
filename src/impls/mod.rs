@@ -4,4 +4,5 @@ pub(crate) mod mapped;
 pub(crate) mod primitives;
 pub(crate) mod prism;
 
-mod optical;
+#[cfg(feature = "optics")]
+pub(crate) mod optical;

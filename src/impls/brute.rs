@@ -38,7 +38,7 @@ where
 /// use arbitrary::Unstructured;
 /// use contrafact::*;
 ///
-/// fn div_by(n: usize) -> Facts<'a, usize> {
+/// fn div_by(n: usize) -> Facts<'static, usize> {
 ///     facts![brute(format!("Is divisible by {}", n), move |x| x % n == 0)]
 /// }
 ///
