@@ -71,6 +71,22 @@ where
         check_fallible!({ Ok(Check::check((self.f)(t)?, self.reason.clone())) })
     }
 
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, t: &mut T, u: &mut Unstructured<'a>) {
+        for _ in 0..BRUTE_ITERATION_LIMIT {
+            if (self.f)(&t).expect("Mutation failed.") {
+                return;
+            }
+            t = T::arbitrary(u).unwrap();
+        }
+
+        panic!(
+            "Exceeded iteration limit of {} while attempting to meet a PredicateFact",
+            BRUTE_ITERATION_LIMIT
+        );
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut t: T, u: &mut Unstructured<'a>) -> T {
         for _ in 0..BRUTE_ITERATION_LIMIT {
             if (self.f)(&t).expect("Mutation failed.") {

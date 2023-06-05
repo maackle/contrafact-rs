@@ -112,6 +112,16 @@ where
             .map(|err| format!("lens({}) > {}", self.label, err))
     }
 
+    #[cfg(feature = "mutate-inplace")]
+    #[tracing::instrument(skip(self, u))]
+    fn mutate(&self, obj: &mut O, u: &mut Unstructured<'a>) {
+        todo!()
+        // let t = (self.getter)(obj.clone());
+        // let t = self.inner_fact.mutate(t, u);
+        // (self.setter)(obj, t);
+    }
+
+    #[cfg(feature = "mutate-owned")]
     #[tracing::instrument(skip(self, u))]
     fn mutate(&self, obj: O, u: &mut Unstructured<'a>) -> O {
         let t = (self.getter)(obj.clone());

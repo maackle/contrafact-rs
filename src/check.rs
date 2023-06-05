@@ -159,6 +159,10 @@ mod tests {
                 }}
             }
 
+            #[cfg(feature = "mutate-inplace")]
+            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'a>) {}
+
+            #[cfg(feature = "mutate-owned")]
             fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'a>) {
                 unimplemented!()
             }

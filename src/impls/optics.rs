@@ -78,6 +78,13 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut Src, u: &mut Unstructured<'a>) {
+        let t = obj.view_mut(self.optics.clone());
+        self.inner_fact.mutate(t, u);
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: Src, u: &mut Unstructured<'a>) -> Src {
         let t = obj.view_ref(self.optics.clone());
         let t = self.inner_fact.mutate(t.clone(), u);

@@ -30,7 +30,7 @@ either = "1.5"
 observability = "0.1"
 
 [features]
-default = ["utils", "lens"]
+default = ["utils", "lens", "mutate-owned"]
 
 utils = [
     "once_cell",
@@ -40,6 +40,9 @@ utils = [
 lens = [
     "lens-rs",
 ]
+
+mutate-inplace = []
+mutate-owned = []
 
 [package.metadata.inwelling]
 lens-rs_generator = true

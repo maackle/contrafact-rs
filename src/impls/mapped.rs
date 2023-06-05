@@ -77,6 +77,12 @@ where
         }}
     }
 
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, t: &mut T, u: &mut Unstructured<'a>) {
+        (self.f)(&t).expect("TODO: fallible mutation").mutate(t, u)
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, t: T, u: &mut Unstructured<'a>) -> T {
         (self.f)(&t).expect("TODO: fallible mutation").mutate(t, u)
     }

@@ -28,6 +28,12 @@ where
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
     /// constraint.
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'a>);
+
+    /// Apply a mutation which moves the obj closer to satisfying the overall
+    /// constraint.
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, obj: T, u: &mut Unstructured<'a>) -> T;
 
     /// When checking or mutating a sequence of items, this gets called after
@@ -71,6 +77,13 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut T, u: &mut Unstructured<'a>) {
+        (*self).as_ref().mutate(obj, u)
+    }
+
+    #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, obj: T, u: &mut Unstructured<'a>) -> T {
         (*self).as_ref().mutate(obj, u)
     }
@@ -95,6 +108,16 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, mut obj: &mut T, u: &mut Unstructured<'a>) {
+        for f in self.iter() {
+            obj = f.mutate(obj, u);
+        }
+        obj
+    }
+
+    #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut Unstructured<'a>) -> T {
         for f in self.iter() {
             obj = f.mutate(obj, u);
@@ -124,6 +147,16 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, mut obj: &mut T, u: &mut Unstructured<'a>) {
+        for f in self.iter() {
+            obj = f.mutate(obj, u);
+        }
+        obj
+    }
+
+    #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut Unstructured<'a>) -> T {
         for f in self.iter() {
             obj = f.mutate(obj, u);

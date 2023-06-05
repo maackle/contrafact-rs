@@ -232,6 +232,14 @@ where
         .into()
     }
 
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, t: T, _: &mut arbitrary::Unstructured<'_>) {
+        if !self.0 {
+            panic!("never() cannot be used for mutation.")
+        }
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, t: T, _: &mut arbitrary::Unstructured<'_>) -> T {
         if !self.0 {
             panic!("never() cannot be used for mutation.")
@@ -277,6 +285,12 @@ where
     }
 
     #[allow(unused_assignments)]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
+        todo!()
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         let constant = self.constant.clone();
         match self.op {
@@ -321,6 +335,12 @@ where
     }
 
     #[allow(unused_assignments)]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut (T, T), u: &mut arbitrary::Unstructured<'a>) -> (T, T) {
+        todo!()
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: (T, T), u: &mut arbitrary::Unstructured<'a>) -> (T, T) {
         match self.op {
             EqOp::Equal => obj.0 = obj.1.clone(),
@@ -366,6 +386,12 @@ where
     }
 
     #[allow(unused_assignments)]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
+        todo!()
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
         self.check(&obj)
@@ -425,6 +451,12 @@ where
     }
 
     #[allow(unused_assignments)]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
+        todo!()
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         let rand = T::arbitrary(u).unwrap();
         obj = match (self.range.start_bound(), self.range.end_bound()) {
@@ -470,6 +502,12 @@ where
     }
 
     #[allow(unused_assignments)]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut T, _: &mut arbitrary::Unstructured<'a>) {
+        todo!()
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, _: &mut arbitrary::Unstructured<'a>) -> T {
         obj = self.counter.clone();
         obj
@@ -517,6 +555,10 @@ condition 2: {:#?}",
         }
     }
 
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {}
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         if *u.choose(&[true, false]).unwrap() {
             self.a.mutate(obj, u)
@@ -551,6 +593,12 @@ where
         )
     }
 
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
+        todo!()
+    }
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
         for _ in 0..BRUTE_ITERATION_LIMIT {
             if self.fact.check(&obj).is_err() {

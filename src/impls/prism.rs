@@ -149,6 +149,10 @@ where
     }
 
     #[tracing::instrument(skip(self, u))]
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, mut obj: O, u: &mut Unstructured<'a>) -> O {}
+
+    #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: O, u: &mut Unstructured<'a>) -> O {
         if let Some(t) = (self.prism)(&mut obj) {
             *t = self.inner_fact.mutate(t.clone(), u);
