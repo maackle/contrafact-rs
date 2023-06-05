@@ -13,6 +13,7 @@ enum Omega {
     Alpha { id: Id, alpha: Alpha },
 }
 
+#[allow(unused)]
 impl Omega {
     fn alpha(&self) -> &Alpha {
         match self {
@@ -71,6 +72,7 @@ enum Alpha {
     Nil { id: Id, data: String },
 }
 
+#[allow(unused)]
 impl Alpha {
     fn id(&mut self) -> &mut Id {
         match self {
@@ -125,6 +127,7 @@ impl AlphaSigner {
     }
 }
 
+#[allow(unused)]
 fn alpha_fact() -> Facts<'static, Alpha> {
     facts![lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
 }
@@ -202,6 +205,7 @@ fn omega_fact(id: Id) -> Facts<'static, Omega> {
     ]
 }
 
+#[allow(unused)]
 fn sigma_fact() -> Facts<'static, Sigma> {
     let id2_fact = LensFact::new(
         "Sigma::id is correct",

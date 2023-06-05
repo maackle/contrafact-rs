@@ -96,7 +96,6 @@ where
     T: 'a + PartialEq + std::fmt::Debug + Clone,
     I: IntoIterator<Item = &'a T>,
 {
-    use std::iter::FromIterator;
     InIterFact {
         context: context.to_string(),
         inner: Vec::from_iter(iter),
