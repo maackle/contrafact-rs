@@ -45,6 +45,11 @@ impl Check {
         !self.is_ok()
     }
 
+    /// Get errors if they exist
+    pub fn errors(&self) -> &[String] {
+        self.errors.as_ref()
+    }
+
     /// Convert to a Result: No errors => Ok
     ///
     /// ```

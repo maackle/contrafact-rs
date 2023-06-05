@@ -6,3 +6,9 @@
 A trait for highly composable constraints ("facts") which can be used both to verify data and to generate arbitrary data within those constraints
 
 [**See the rust docs for more info**](https://docs.rs/contrafact)
+
+## TODO:
+
+- [ ] make Arbitrary a feature, generalize data generation
+- [ ] add lens-rs support
+- [ ] 

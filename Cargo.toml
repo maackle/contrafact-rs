@@ -21,14 +21,24 @@ anyhow = "1.0.40"
 once_cell = { version = "1.5", optional = true }
 rand = { version = "0.7", optional = true }
 
+# lens
+lens-rs = { version = "0.3", optional = true }
+
 [dev-dependencies]
 either = "1.5"
 observability = "0.1"
 
 [features]
-default = ["utils"]
+default = ["utils", "lens"]
 
 utils = [
     "once_cell",
     "rand",
 ]
+
+lens = [
+    "lens-rs",
+]
+
+[package.metadata.inwelling]
+lens-rs_generator = true
