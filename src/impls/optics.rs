@@ -67,7 +67,14 @@ where
     fn check(&self, obj: &Src) -> Check {
         self.inner_fact
             .check(obj.view_ref(self.optics.clone()))
-            .map(|err| format!("lens({:?}) > {}", self.optics.clone(), err))
+            .map(|err| {
+                format!(
+                    "lens({}){{{:?}}} > {}",
+                    self.label,
+                    self.optics.clone(),
+                    err
+                )
+            })
     }
 
     #[tracing::instrument(skip(self, u))]

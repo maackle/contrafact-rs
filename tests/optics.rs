@@ -1,16 +1,20 @@
 use lens_rs::*;
 
 #[derive(Lens)]
-struct Complex(
-    #[optic] u8,
-    #[optic] Option<(Vec<Option<(String, u8)>>, u8)>,
-);
+struct Complex {
+    // #[optic]
+    yesno: bool,
+
+    #[optic]
+    hairy: Option<(Vec<Option<(String, u8)>>, u8)>,
+}
 
 #[test]
 fn lens_test() {
-    let mut x = Complex(
-        1u8,
-        Some((
+    let x = Complex {
+        yesno: true,
+        // yesno: true,
+        hairy: Some((
             vec![
                 Some(("a".to_string(), 2u8)),
                 None,
@@ -18,7 +22,7 @@ fn lens_test() {
             ],
             4u8,
         )),
-    );
-    let o = optics!(_1.Some._1);
+    };
+    let o = optics!(hairy.Some._1);
     assert_eq!(x.preview_ref(o).unwrap(), &4);
 }
