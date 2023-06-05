@@ -292,19 +292,21 @@ where
 
     #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
-        let constant = self.constant.clone();
-        match self.op {
-            EqOp::Equal => obj = constant,
-            EqOp::NotEqual => loop {
-                obj = T::arbitrary(u).unwrap();
-                if obj != constant {
-                    break;
-                }
-            },
+        if self.check(&obj).is_err() {
+            let constant = self.constant.clone();
+            match self.op {
+                EqOp::Equal => obj = constant,
+                EqOp::NotEqual => loop {
+                    obj = T::arbitrary(u).unwrap();
+                    if obj != constant {
+                        break;
+                    }
+                },
+            }
+            self.check(&obj)
+                .result()
+                .expect("there's a bug in EqFact::mutate");
         }
-        self.check(&obj)
-            .result()
-            .expect("there's a bug in EqFact::mutate");
         obj
     }
 
@@ -393,10 +395,12 @@ where
 
     #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
-        obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
-        self.check(&obj)
-            .result()
-            .expect("there's a bug in InIterFact::mutate");
+        if self.check(&obj).is_err() {
+            obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
+            self.check(&obj)
+                .result()
+                .expect("there's a bug in InIterFact::mutate");
+        }
         obj
     }
 
@@ -458,26 +462,28 @@ where
 
     #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
-        let rand = T::arbitrary(u).unwrap();
-        obj = match (self.range.start_bound(), self.range.end_bound()) {
-            (Bound::Unbounded, Bound::Unbounded) => rand,
-            (Bound::Included(a), Bound::Included(b)) if b.clone() - a.clone() >= T::one() => {
-                a.clone() + rand.rem_euclid(&(b.clone() - a.clone()))
-            }
-            (Bound::Included(a), Bound::Excluded(b)) if b.clone() - a.clone() > T::one() => {
-                a.clone() + rand.rem_euclid(&(b.clone() - a.clone()))
-            }
-            (Bound::Excluded(a), Bound::Included(b)) if b.clone() - a.clone() > T::one() => {
-                b.clone() - rand.rem_euclid(&(b.clone() - a.clone()))
-            }
-            (Bound::Unbounded, Bound::Excluded(b)) => {
-                T::min_value() + rand.rem_euclid(&(b.clone() - T::min_value()))
-            }
-            (Bound::Included(a), Bound::Unbounded) => {
-                a.clone() + rand.rem_euclid(&(T::max_value() - a.clone()))
-            }
-            _ => panic!("Range not yet supported, sorry! {:?}", self.range),
-        };
+        if self.check(&obj).is_err() {
+            let rand = T::arbitrary(u).unwrap();
+            obj = match (self.range.start_bound(), self.range.end_bound()) {
+                (Bound::Unbounded, Bound::Unbounded) => rand,
+                (Bound::Included(a), Bound::Included(b)) if b.clone() - a.clone() >= T::one() => {
+                    a.clone() + rand.rem_euclid(&(b.clone() - a.clone()))
+                }
+                (Bound::Included(a), Bound::Excluded(b)) if b.clone() - a.clone() > T::one() => {
+                    a.clone() + rand.rem_euclid(&(b.clone() - a.clone()))
+                }
+                (Bound::Excluded(a), Bound::Included(b)) if b.clone() - a.clone() > T::one() => {
+                    b.clone() - rand.rem_euclid(&(b.clone() - a.clone()))
+                }
+                (Bound::Unbounded, Bound::Excluded(b)) => {
+                    T::min_value() + rand.rem_euclid(&(b.clone() - T::min_value()))
+                }
+                (Bound::Included(a), Bound::Unbounded) => {
+                    a.clone() + rand.rem_euclid(&(T::max_value() - a.clone()))
+                }
+                _ => panic!("Range not yet supported, sorry! {:?}", self.range),
+            };
+        }
         self.check(&obj)
             .result()
             .expect("there's a bug in InRangeFact::mutate");
@@ -509,7 +515,9 @@ where
 
     #[cfg(feature = "mutate-owned")]
     fn mutate(&self, mut obj: T, _: &mut arbitrary::Unstructured<'a>) -> T {
-        obj = self.counter.clone();
+        if self.check(&obj).is_err() {
+            obj = self.counter.clone();
+        }
         obj
     }
 
