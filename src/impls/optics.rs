@@ -5,16 +5,15 @@ use lens_rs::*;
 
 use crate::{fact::Bounds, Fact, *};
 
-pub fn lens<'a, Src, Img, Optics, OpticsFn, F, L>(
+pub fn lens<'a, Src, Img, Optics, F, L>(
     label: L,
-    optics: OpticsFn,
+    optics: Optics,
     inner_fact: F,
-) -> LensFact<'a, Src, Img, Optics, OpticsFn, F>
+) -> LensFact<'a, Src, Img, Optics, F>
 where
     Src: Bounds<'a> + Lens<Optics, Img>,
     Img: Bounds<'a> + Clone,
-    Optics: std::fmt::Debug,
-    OpticsFn: Fn() -> Optics,
+    Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
     L: ToString,
 {
@@ -23,17 +22,16 @@ where
 
 /// A fact which uses a lens to apply another fact. Use [`lens()`] to construct.
 #[derive(Clone)]
-pub struct LensFact<'a, Src, Img, Optics, OpticsFn, F>
+pub struct LensFact<'a, Src, Img, Optics, F>
 where
     Src: Bounds<'a> + Lens<Optics, Img>,
     Img: Bounds<'a> + Clone,
-    Optics: std::fmt::Debug,
-    OpticsFn: Fn() -> Optics,
+    Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
     label: String,
 
-    optics: OpticsFn,
+    optics: Optics,
 
     /// The inner_fact about the inner substructure
     inner_fact: F,
@@ -41,15 +39,14 @@ where
     __phantom: PhantomData<&'a (Src, Img)>,
 }
 
-impl<'a, Src, Img, Optics, OpticsFn, F> LensFact<'a, Src, Img, Optics, OpticsFn, F>
+impl<'a, Src, Img, Optics, F> LensFact<'a, Src, Img, Optics, F>
 where
     Src: Bounds<'a> + Lens<Optics, Img>,
     Img: Bounds<'a> + Clone,
-    Optics: std::fmt::Debug,
-    OpticsFn: Fn() -> Optics,
+    Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
-    pub fn new(label: String, optics: OpticsFn, inner_fact: F) -> Self {
+    pub fn new(label: String, optics: Optics, inner_fact: F) -> Self {
         Self {
             label,
             optics,
@@ -59,33 +56,31 @@ where
     }
 }
 
-impl<'a, Src, Img, Optics, OpticsFn, F> Fact<'a, Src>
-    for LensFact<'a, Src, Img, Optics, OpticsFn, F>
+impl<'a, Src, Img, Optics, F> Fact<'a, Src> for LensFact<'a, Src, Img, Optics, F>
 where
     Src: Bounds<'a> + Lens<Optics, Img>,
     Img: Bounds<'a> + Clone,
-    Optics: std::fmt::Debug,
-    OpticsFn: Fn() -> Optics,
+    Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &Src) -> Check {
         self.inner_fact
-            .check(obj.view_ref((self.optics)()))
-            .map(|err| format!("lens({:?}) > {}", (self.optics)(), err))
+            .check(obj.view_ref(self.optics.clone()))
+            .map(|err| format!("lens({:?}) > {}", self.optics.clone(), err))
     }
 
     #[tracing::instrument(skip(self, u))]
     fn mutate(&self, mut obj: Src, u: &mut Unstructured<'a>) -> Src {
-        let t = obj.view_ref((self.optics)());
+        let t = obj.view_ref(self.optics.clone());
         let t = self.inner_fact.mutate(t.clone(), u);
-        *obj.view_mut((self.optics)()) = t;
+        *obj.view_mut(self.optics.clone()) = t;
         obj
     }
 
     #[tracing::instrument(skip(self))]
     fn advance(&mut self, obj: &Src) {
-        self.inner_fact.advance(obj.view_ref((self.optics)()))
+        self.inner_fact.advance(obj.view_ref(self.optics.clone()))
     }
 }
 
@@ -95,7 +90,7 @@ fn test_lens() {
 
     let mut fact = LensFact {
         label: "".into(),
-        optics: || optics!(_1._1._1),
+        optics: optics!(_1._1._1),
         inner_fact: eq_(3),
         __phantom: PhantomData::<&((u8, (u8, (u8, u8))), u8)>,
     };
