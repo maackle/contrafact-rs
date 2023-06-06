@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use arbitrary::Unstructured;
 
-use crate::{check_fallible, fact::Bounds, Check, Fact, Facts};
+use crate::{check_fallible, fact::Bounds, Check, Fact, FactsRef};
 
 /// A version of [`mapped`] whose closure returns a Result
 pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> crate::Result<Facts<'a, T>>,
+    F: 'a + Fn(&T) -> crate::Result<FactsRef<'a, T>>,
 {
     MappedFact::new(reason.to_string(), f)
 }
@@ -52,7 +52,7 @@ pub fn mapped<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> Facts<'a, T>,
+    F: 'a + Fn(&T) -> FactsRef<'a, T>,
 {
     MappedFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
@@ -62,7 +62,7 @@ where
 #[derive(Clone)]
 pub struct MappedFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>,
+    f: Arc<dyn 'a + Fn(&T) -> crate::Result<FactsRef<'a, T>>>,
 }
 
 impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
@@ -91,7 +91,10 @@ where
 }
 
 impl<'a, T> MappedFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<Facts<'a, T>>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<FactsRef<'a, T>>>(
+        reason: String,
+        f: F,
+    ) -> Self {
         Self {
             reason,
             f: Arc::new(f),

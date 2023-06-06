@@ -68,7 +68,7 @@ pub mod utils;
 pub use arbitrary;
 
 pub use check::Check;
-pub use fact::{BoxFact, Fact, Facts};
+pub use fact::{BoxFact, Fact, Facts, FactsRef};
 pub use satisfy::*;
 
 pub use impls::primitives::{

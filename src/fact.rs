@@ -14,7 +14,10 @@ impl<'a, T> Bounds<'a> for T where T: std::fmt::Debug + PartialEq + Arbitrary<'a
 pub type BoxFact<'a, T> = Box<dyn 'a + Fact<'a, T>>;
 
 /// Type alias for a Vec of boxed Facts. Implements [`Fact`] itself.
-pub type Facts<'a, T> = Vec<BoxFact<'a, T>>;
+pub type FactsRef<'a, T> = Vec<BoxFact<'a, T>>;
+
+/// Type alias for a static Vec of boxed Facts. Implements [`Fact`] itself.
+pub type Facts<T> = FactsRef<'static, T>;
 
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some arbitrary existing

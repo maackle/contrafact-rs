@@ -53,13 +53,13 @@ where
 ///
 /// let eq1 = eq_(1);
 /// let not2 = not_(eq_(2));
-/// let fact: Facts<'static, u32> = facts![eq1, not2];
+/// let fact: FactsRef<'static, u32> = facts![eq1, not2];
 /// assert!(fact.check(&1).is_ok());
 /// ```
 #[macro_export]
 macro_rules! facts {
     ( $( $fact:expr ),+ $(,)?) => {{
-        let mut fs: $crate::Facts<_> = Vec::new();
+        let mut fs: $crate::FactsRef<_> = Vec::new();
         $(
             fs.push(Box::new($fact));
         )+
