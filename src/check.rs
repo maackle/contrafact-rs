@@ -27,12 +27,11 @@ impl Check {
     /// Panic if there are any errors, and display those errors.
     pub fn unwrap(self) {
         if !self.errors.is_empty() {
-            let msg = if self.errors.len() == 1 {
-                format!("Check failed: {}", self.errors[0])
+            if self.errors.len() == 1 {
+                panic!("Check failed: {}", self.errors[0])
             } else {
-                format!("Check failed: {:#?}", self.errors)
+                panic!("Check failed: {:#?}", self.errors)
             };
-            panic!(msg);
         }
     }
 
@@ -44,6 +43,11 @@ impl Check {
     /// There is at least one error.
     pub fn is_err(&self) -> bool {
         !self.is_ok()
+    }
+
+    /// Get errors if they exist
+    pub fn errors(&self) -> &[String] {
+        self.errors.as_ref()
     }
 
     /// Convert to a Result: No errors => Ok
@@ -142,7 +146,8 @@ mod tests {
     #[test]
     fn test_check_fallible() {
         struct F;
-        impl Fact<()> for F {
+
+        impl<'a> Fact<'a, ()> for F {
             fn check(&self, _: &()) -> Check {
                 check_fallible! {{
                     let x = 1;
@@ -154,7 +159,11 @@ mod tests {
                 }}
             }
 
-            fn mutate(&self, _: &mut (), _: &mut arbitrary::Unstructured<'static>) {
+            #[cfg(feature = "mutate-inplace")]
+            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'a>) {}
+
+            #[cfg(feature = "mutate-owned")]
+            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'a>) {
                 unimplemented!()
             }
 

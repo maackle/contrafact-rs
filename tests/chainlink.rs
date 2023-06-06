@@ -1,11 +1,5 @@
 use arbitrary::*;
-use contrafact::*;
-
-pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    std::iter::repeat_with(|| rng.gen()).take(999999).collect()
-});
+use contrafact::{utils::unstructured_noise, *};
 
 #[derive(Arbitrary, Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 enum Color {
@@ -29,7 +23,7 @@ struct Wrapper {
 
 /// Fact: all Links in a chain are by the same `author`, and any chain link has
 /// consecutive `prev` values starting with 0.
-fn chain_fact<'a>(author: &'a String) -> Facts<'a, Link> {
+fn chain_fact<'a>(author: String) -> FactsRef<'a, Link> {
     facts![
         lens(
             "Link::author",
@@ -46,7 +40,7 @@ fn chain_fact<'a>(author: &'a String) -> Facts<'a, Link> {
 
 /// Fact: the Links within each wrapper form a valid chain, and the color
 /// of the wrapper is in the given set.
-fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> Facts<'a, Wrapper> {
+fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> FactsRef<'a, Wrapper> {
     facts![
         lens(
             "Wrapper::color",
@@ -64,11 +58,11 @@ fn wrapper_fact<'a>(author: &'a String, valid_colors: &'a [Color]) -> Facts<'a, 
 #[test]
 fn test_link() {
     observability::test_run().ok();
-    let mut u = Unstructured::new(&NOISE);
+    let mut u = unstructured_noise();
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = || chain_fact(&author);
+    let fact = move || chain_fact(author.clone());
 
     let mut chain = build_seq(&mut u, NUM as usize, fact());
     dbg!(&chain);
@@ -81,11 +75,11 @@ fn test_link() {
 #[test]
 fn test_wrapper() {
     observability::test_run().ok();
-    let mut u = Unstructured::new(&NOISE);
+    let mut u = unstructured_noise();
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = || wrapper_fact(&author, &[Color::Cyan, Color::Magenta]);
+    let fact = move || wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]);
 
     let mut chain = build_seq(&mut u, NUM as usize, fact());
     dbg!(&chain);

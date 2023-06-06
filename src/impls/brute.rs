@@ -5,13 +5,13 @@ use arbitrary::Unstructured;
 use crate::{check_fallible, fact::Bounds, Check, Fact, BRUTE_ITERATION_LIMIT};
 
 /// A version of [`brute`] whose closure returns a Result
-pub fn brute_fallible<T, F, S>(reason: S, f: F) -> BruteFact<'static, T>
+pub fn brute_fallible<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
-    T: Bounds,
-    F: 'static + Fn(&T) -> crate::Result<bool>,
+    T: Bounds<'a>,
+    F: 'a + Fn(&T) -> crate::Result<bool>,
 {
-    BruteFact::<'static, T>::new(reason.to_string(), f)
+    BruteFact::<T>::new(reason.to_string(), f)
 }
 
 /// A constraint defined only by a predicate closure. Mutation occurs by brute
@@ -38,43 +38,46 @@ where
 /// use arbitrary::Unstructured;
 /// use contrafact::*;
 ///
-/// fn div_by(n: usize) -> Facts<'static, usize> {
+/// fn div_by(n: usize) -> Facts<usize> {
 ///     facts![brute(format!("Is divisible by {}", n), move |x| x % n == 0)]
 /// }
 ///
 /// let mut u = Unstructured::new(&[0; 9999]);
 /// assert!(div_by(3).build(&mut u) % 3 == 0);
 /// ```
-pub fn brute<T, F, S>(reason: S, f: F) -> BruteFact<'static, T>
+pub fn brute<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
-    T: Bounds,
-    F: 'static + Fn(&T) -> bool,
+    T: Bounds<'a>,
+    F: 'a + Fn(&T) -> bool,
 {
-    BruteFact::<'static, T>::new(reason.to_string(), move |x| Ok(f(x)))
+    BruteFact::<T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
+
+type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> crate::Result<bool>)>;
 
 /// A brute-force fact. Use [`brute()`] to construct.
 #[derive(Clone)]
 pub struct BruteFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Fn(&T) -> crate::Result<bool>>,
+    f: BruteFn<'a, T>,
 }
 
-impl<'a, T> Fact<T> for BruteFact<'a, T>
+impl<'a, T> Fact<'a, T> for BruteFact<'a, T>
 where
-    T: Bounds,
+    T: Bounds<'a>,
 {
     fn check(&self, t: &T) -> Check {
         check_fallible!({ Ok(Check::check((self.f)(t)?, self.reason.clone())) })
     }
 
-    fn mutate(&self, t: &mut T, u: &mut Unstructured<'static>) {
+    #[cfg(feature = "mutate-inplace")]
+    fn mutate(&self, t: &mut T, u: &mut Unstructured<'a>) {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if (self.f)(t).expect("TODO: fallible mutation") {
+            if (self.f)(&t).expect("Mutation failed.") {
                 return;
             }
-            *t = T::arbitrary(u).unwrap();
+            t = T::arbitrary(u).unwrap();
         }
 
         panic!(
@@ -82,6 +85,22 @@ where
             BRUTE_ITERATION_LIMIT
         );
     }
+
+    #[cfg(feature = "mutate-owned")]
+    fn mutate(&self, mut t: T, u: &mut Unstructured<'a>) -> T {
+        for _ in 0..BRUTE_ITERATION_LIMIT {
+            if (self.f)(&t).expect("Mutation failed.") {
+                return t;
+            }
+            t = T::arbitrary(u).unwrap();
+        }
+
+        panic!(
+            "Exceeded iteration limit of {} while attempting to meet a PredicateFact",
+            BRUTE_ITERATION_LIMIT
+        );
+    }
+
     fn advance(&mut self, _: &T) {}
 }
 

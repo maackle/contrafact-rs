@@ -20,7 +20,7 @@
 //!     y: u32,
 //! }
 //!
-//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", &1));
+//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
 //!
 //! assert!(fact.check(&S {x: 1, y: 333}).is_ok());
 //! assert!(fact.check(&S {x: 2, y: 333}).is_err());
@@ -62,15 +62,18 @@ mod fact;
 mod impls;
 mod satisfy;
 
+#[cfg(feature = "utils")]
+pub mod utils;
+
 pub use arbitrary;
 
 pub use check::Check;
-pub use fact::{BoxFact, Fact, Facts};
+pub use fact::{BoxFact, Fact, Facts, FactsRef};
 pub use satisfy::*;
 
 pub use impls::primitives::{
-    always, consecutive_int, consecutive_int_, eq, eq_, in_iter, in_iter_, ne, ne_, never, not,
-    not_, or,
+    always, consecutive_int, consecutive_int_, different, eq, eq_, in_iter, in_iter_, in_range,
+    in_range_, ne, ne_, never, not, not_, or, same,
 };
 
 pub use impls::brute::{brute, brute_fallible, BruteFact};
@@ -78,14 +81,10 @@ pub use impls::lens::{lens, LensFact};
 pub use impls::mapped::{mapped, mapped_fallible, MappedFact};
 pub use impls::prism::{prism, PrismFact};
 
+#[cfg(feature = "optics")]
+pub use impls::optical::{optical, OpticalFact};
+
 /// The Result type returnable when using [`check_fallible!`]
 pub type Result<T> = anyhow::Result<T>;
 
 pub(crate) const BRUTE_ITERATION_LIMIT: usize = 100;
-
-#[cfg(any(test, feature = "test"))]
-pub static NOISE: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    std::iter::repeat_with(|| rng.gen()).take(999999).collect()
-});
