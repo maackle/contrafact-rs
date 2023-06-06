@@ -59,7 +59,7 @@ type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> crate::Result<bool>)>;
 /// A brute-force fact. Use [`brute()`] to construct.
 #[derive(Clone)]
 pub struct BruteFact<'a, T> {
-    reason: String,
+    label: String,
     f: BruteFn<'a, T>,
 }
 
@@ -68,7 +68,7 @@ where
     T: Bounds<'a>,
 {
     fn check(&self, t: &T) -> Check {
-        check_fallible!({ Ok(Check::check((self.f)(t)?, self.reason.clone())) })
+        check_fallible!({ Ok(Check::check((self.f)(t)?, self.label.clone())) })
     }
 
     #[cfg(feature = "mutate-inplace")]
@@ -81,8 +81,8 @@ where
         }
 
         panic!(
-            "Exceeded iteration limit of {} while attempting to meet a PredicateFact",
-            BRUTE_ITERATION_LIMIT
+            "Exceeded iteration limit of {} while attempting to meet a BruteFact. Context: {}",
+            BRUTE_ITERATION_LIMIT, self.reason
         );
     }
 
@@ -96,8 +96,8 @@ where
         }
 
         panic!(
-            "Exceeded iteration limit of {} while attempting to meet a PredicateFact",
-            BRUTE_ITERATION_LIMIT
+            "Exceeded iteration limit of {} while attempting to meet a BruteFact. Context: {}",
+            BRUTE_ITERATION_LIMIT, self.label
         );
     }
 
@@ -107,7 +107,7 @@ where
 impl<'a, T> BruteFact<'a, T> {
     pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<bool>>(reason: String, f: F) -> Self {
         Self {
-            reason,
+            label: reason,
             f: Arc::new(f),
         }
     }

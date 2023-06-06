@@ -63,7 +63,8 @@ where
 
     /// Build a new value such that it satisfies the constraint
     fn build(&mut self, u: &mut Unstructured<'a>) -> T {
-        let obj = T::arbitrary(u).unwrap();
+        let obj = T::arbitrary(u)
+            .expect("Ran out of Unstructured data. Try again with more Unstructured bytes.");
         self.satisfy(obj, u)
     }
 }
