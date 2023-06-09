@@ -12,7 +12,7 @@ use crate::*;
 pub enum Check {
     /// The check ran successfully, and reported these failures.
     /// An empty list of failures means the data is valid per this check.
-    Failures(Vec<CheckMsg>),
+    Failures(Vec<Failure>),
 
     /// There was a problem actually running the check: there is a bug in a Fact
     /// or Generator.
@@ -65,7 +65,7 @@ impl Check {
     }
 
     /// Get errors if they exist
-    pub fn failures(&self) -> Result<&[CheckMsg], ContrafactError> {
+    pub fn failures(&self) -> Result<&[Failure], ContrafactError> {
         match self {
             Self::Failures(failures) => Ok(failures.as_ref()),
             Self::Error(err) => Err(err.clone().into()),
@@ -80,7 +80,7 @@ impl Check {
     /// assert_eq!(Check::pass().result(), Ok(Ok(())));
     /// assert_eq!(Check::fail("message").result(), Ok(Err(vec!["message".to_string()])));
     /// ```
-    pub fn result(self) -> ContrafactResult<std::result::Result<(), Vec<CheckMsg>>> {
+    pub fn result(self) -> ContrafactResult<std::result::Result<(), Vec<Failure>>> {
         match self {
             Self::Failures(failures) => {
                 if failures.is_empty() {
@@ -125,7 +125,7 @@ impl Check {
     }
 
     /// Create a check where failures are drawn from Ok, and internal errors from Err of the input Result
-    pub fn from_result(res: Result<Vec<CheckMsg>, ContrafactError>) -> Self {
+    pub fn from_result(res: Result<Vec<Failure>, ContrafactError>) -> Self {
         res.map(Self::Failures)
             .unwrap_or_else(|e| Self::Error(format!("{:?}", e)))
     }

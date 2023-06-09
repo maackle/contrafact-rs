@@ -1,45 +1,48 @@
-pub type CheckMsg = String;
+/// A failure is the reason why some data does not conform to a given Fact
+pub type Failure = String;
 
-#[derive(Clone, Debug, PartialEq, Eq, derive_more::From)]
-pub enum CheckError {
-    Check(CheckMsg),
-    Internal(ContrafactError),
-}
+// ///
+// #[derive(Clone, Debug, PartialEq, Eq, derive_more::From)]
+// pub enum CheckError {
+//     Check(Failure),
+//     Internal(ContrafactError),
+// }
 
+/// Errors caused by bugs in Facts, Generators, or contrafact itself
 #[derive(Clone, Debug, PartialEq, Eq, derive_more::From)]
 pub enum ContrafactError {
     // TODO: uncomment if this PR is merged:
     // https://github.com/rust-fuzz/arbitrary/pull/153
     // UnexpectedError(arbitrary::Error),
+    /// The only type of error we know about right now
     Other(String),
 }
 
+/// Alias
 pub type ContrafactResult<T> = Result<T, ContrafactError>;
 
+/// Errors which can occur during a `mutate()` call
 #[derive(Clone, Debug, derive_more::From)]
 pub enum MutationError {
-    Check(CheckMsg),
+    /// When running check, this is a failure which was generated instead of mutating the data
+    Check(Failure),
+    /// arbitrary failed to produce new data, which means we can't go on
     Arbitrary(arbitrary::Error),
+    /// There was some other bug in the Fact implementation
     Internal(ContrafactError),
 }
 
+/// Alias
 pub type Mutation<T> = Result<T, MutationError>;
 
+/// Adds a helpful method to MutationResults
 pub trait MutationExt<T> {
-    // fn checks_ok(self) -> Result<Result<T, CheckError>, MutationError>;
-    fn map_check_err(self, f: impl Fn(CheckMsg) -> CheckMsg) -> Mutation<T>;
+    /// Map over only the Failures, leaving other error kinds untouched
+    fn map_check_err(self, f: impl Fn(Failure) -> Failure) -> Mutation<T>;
 }
 
 impl<T> MutationExt<T> for Mutation<T> {
-    // fn checks_ok(self) -> Result<Result<T, CheckError>, MutationError> {
-    //     match self {
-    //         Ok(r) => Ok(Ok(r)),
-    //         Err(MutationError::Check(e)) => Ok(Err(e)),
-    //         Err(err) => Err(err),
-    //     }
-    // }
-
-    fn map_check_err(self, f: impl Fn(CheckMsg) -> CheckMsg) -> Mutation<T> {
+    fn map_check_err(self, f: impl Fn(Failure) -> Failure) -> Mutation<T> {
         match self {
             Err(MutationError::Check(e)) => Err(MutationError::Check(f(e))),
             other => other,

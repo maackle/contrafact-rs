@@ -154,7 +154,7 @@ where
                 .map(|e| format!("fact {}: {}", i, e))
                 .collect())
         })
-        .collect::<ContrafactResult<Vec<Vec<CheckMsg>>>>()
+        .collect::<ContrafactResult<Vec<Vec<Failure>>>>()
         .map(|fs| fs.into_iter().flatten().collect());
     Check::from_result(checks)
 }
