@@ -215,7 +215,7 @@ impl<'a, T> Fact<'a, T> for BoolFact
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
-    fn mutate(&self, t: T, _: &mut Generator<'_>) -> GenResult<T> {
+    fn mutate(&self, t: T, _: &mut Generator<'_>) -> Mutation<T> {
         if !self.0 {
             Err("never() encountered.".to_string())
         } else {
@@ -244,7 +244,7 @@ impl<'a, T> Fact<'a, T> for EqFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         let constant = self.constant.clone();
         match self.op {
             EqOp::Equal => {
@@ -282,7 +282,7 @@ impl<'a, T> Fact<'a, (T, T)> for SameFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
-    fn mutate(&self, mut obj: (T, T), g: &mut Generator<'a>) -> GenResult<(T, T)> {
+    fn mutate(&self, mut obj: (T, T), g: &mut Generator<'a>) -> Mutation<(T, T)> {
         match self.op {
             EqOp::Equal => {
                 if obj.0 != obj.1 {
@@ -327,7 +327,7 @@ where
         todo!()
     }
 
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         Ok(if !self.slice.contains(&obj) {
             g.choose(
                 self.slice,
@@ -380,7 +380,7 @@ where
         + num::Bounded
         + num::One,
 {
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         if !self.range.contains(&obj) {
             let rand = g.arbitrary(format!(
                 "{}: expected {:?} to be contained in {:?}",
@@ -422,7 +422,7 @@ impl<'a, T> Fact<'a, T> for ConsecutiveIntFact<T>
 where
     T: Bounds<'a> + num::PrimInt,
 {
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         if obj != self.counter {
             g.fail(&self.context)?;
             obj = self.counter.clone();
@@ -457,7 +457,7 @@ where
     P2: Fact<'a, T> + Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         use rand::{thread_rng, Rng};
 
         let a = self.a.check(&obj).is_ok();
@@ -500,7 +500,7 @@ where
     F: Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         for _ in 0..BRUTE_ITERATION_LIMIT {
             if self.fact.check(&obj).is_err() {
                 break;

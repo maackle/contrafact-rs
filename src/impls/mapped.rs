@@ -7,7 +7,7 @@ pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> GenResult<FactsRef<'a, T>>,
+    F: 'a + Fn(&T) -> Mutation<FactsRef<'a, T>>,
 {
     MappedFact::new(reason.to_string(), f)
 }
@@ -60,14 +60,14 @@ where
 #[derive(Clone)]
 pub struct MappedFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Fn(&T) -> GenResult<FactsRef<'a, T>>>,
+    f: Arc<dyn 'a + Fn(&T) -> Mutation<FactsRef<'a, T>>>,
 }
 
 impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
 where
     T: Bounds<'a>,
 {
-    fn mutate(&self, t: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, t: T, g: &mut Generator<'a>) -> Mutation<T> {
         (self.f)(&t)?
             .mutate(t, g)
             .map_err(|err| format!("mapped({}) > {}", self.reason, err))
@@ -77,7 +77,7 @@ where
 }
 
 impl<'a, T> MappedFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> GenResult<FactsRef<'a, T>>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Fn(&T) -> Mutation<FactsRef<'a, T>>>(reason: String, f: F) -> Self {
         Self {
             reason,
             f: Arc::new(f),

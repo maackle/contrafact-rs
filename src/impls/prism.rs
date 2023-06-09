@@ -129,7 +129,7 @@ where
     O: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    fn mutate(&self, mut obj: O, g: &mut Generator<'a>) -> GenResult<O> {
+    fn mutate(&self, mut obj: O, g: &mut Generator<'a>) -> Mutation<O> {
         if let Some(t) = (self.prism)(&mut obj) {
             *t = self
                 .inner_fact

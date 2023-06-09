@@ -34,7 +34,7 @@ where
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
     /// constraint.
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> GenResult<T>;
+    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T>;
 
     /// When checking or mutating a sequence of items, this gets called after
     /// each item to modify the state to get ready for the next item.
@@ -75,7 +75,7 @@ where
     F: Fact<'a, T> + ?Sized,
 {
     #[tracing::instrument(skip(self, g))]
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         (*self).as_ref().mutate(obj, g)
     }
 
@@ -99,7 +99,7 @@ where
     }
 
     #[tracing::instrument(skip(self, g))]
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         for f in self.iter() {
             obj = f.mutate(obj, g)?;
         }
@@ -128,7 +128,7 @@ where
     }
 
     #[tracing::instrument(skip(self, g))]
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         for f in self.iter() {
             obj = f.mutate(obj, g)?;
         }

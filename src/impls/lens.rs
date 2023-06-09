@@ -105,7 +105,7 @@ where
     F: Fact<'a, T>,
 {
     #[tracing::instrument(skip(self, g))]
-    fn mutate(&self, obj: O, g: &mut Generator<'a>) -> GenResult<O> {
+    fn mutate(&self, obj: O, g: &mut Generator<'a>) -> Mutation<O> {
         let t = (self.getter)(obj.clone());
         let t = self
             .inner_fact

@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use crate::{fact::Bounds, Fact, BRUTE_ITERATION_LIMIT};
 
-use crate::{GenResult, Generator};
+use crate::{Generator, Mutation};
 
 /// A version of [`brute`] whose closure returns a Result
 pub fn brute_fallible<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> GenResult<bool>,
+    F: 'a + Fn(&T) -> Mutation<bool>,
 {
     BruteFact::<T>::new(reason.to_string(), f)
 }
@@ -54,7 +54,7 @@ where
     BruteFact::<T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
-type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> GenResult<bool>)>;
+type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> Mutation<bool>)>;
 
 /// A brute-force fact. Use [`brute()`] to construct.
 #[derive(Clone)]
@@ -67,7 +67,7 @@ impl<'a, T> Fact<'a, T> for BruteFact<'a, T>
 where
     T: Bounds<'a>,
 {
-    fn mutate(&self, mut t: T, g: &mut Generator<'a>) -> GenResult<T> {
+    fn mutate(&self, mut t: T, g: &mut Generator<'a>) -> Mutation<T> {
         for _ in 0..=BRUTE_ITERATION_LIMIT {
             if (self.f)(&t)? {
                 return Ok(t);
@@ -85,7 +85,7 @@ where
 }
 
 impl<'a, T> BruteFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> GenResult<bool>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Fn(&T) -> Mutation<bool>>(reason: String, f: F) -> Self {
         Self {
             label: reason,
             f: Arc::new(f),

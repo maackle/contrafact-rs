@@ -18,7 +18,7 @@ use crate::check::CheckError;
 
 /// Mutation errors must give String reasons for mutation, which can be used to
 /// specify the error when used for a Check
-pub type GenResult<T> = Result<T, CheckError>;
+pub type Mutation<T> = Result<T, CheckError>;
 
 /// Generators are used to generate new values and error messages.
 ///
@@ -50,7 +50,7 @@ impl<'a> Generator<'a> {
     /// When running a Check, fail immediately with this error.
     /// This should be used in cases where a mutation occurs using some known value, rather than
     /// generating a value from the Generator itself.
-    pub fn fail(&self, err: impl ToString) -> GenResult<()> {
+    pub fn fail(&self, err: impl ToString) -> Mutation<()> {
         if self.arb.is_none() {
             Err(err.to_string())
         } else {
@@ -59,7 +59,7 @@ impl<'a> Generator<'a> {
     }
 
     /// Generate arbitrary data in mutation mode, or produce an error in check mode
-    pub fn arbitrary<T: Arbitrary<'a>>(&mut self, err: impl ToString) -> GenResult<T> {
+    pub fn arbitrary<T: Arbitrary<'a>>(&mut self, err: impl ToString) -> Mutation<T> {
         self.with(err, |u| u.arbitrary())
     }
 
@@ -68,7 +68,7 @@ impl<'a> Generator<'a> {
         &mut self,
         choices: &'a [T],
         err: impl ToString,
-    ) -> GenResult<&T> {
+    ) -> Mutation<&T> {
         self.with(err, |u| u.choose(choices))
     }
 
@@ -77,7 +77,7 @@ impl<'a> Generator<'a> {
         &mut self,
         err: impl ToString,
         f: impl FnOnce(&mut Unstructured<'a>) -> Result<T, arbitrary::Error>,
-    ) -> GenResult<T> {
+    ) -> Mutation<T> {
         if let Some(mut arb) = self.arb.as_mut() {
             f(&mut arb).map_err(|e| format!("Could not generate data: {}", e))
         } else {
