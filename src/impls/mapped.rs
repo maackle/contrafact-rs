@@ -70,7 +70,7 @@ where
     fn mutate(&self, t: T, g: &mut Generator<'a>) -> Mutation<T> {
         (self.f)(&t)?
             .mutate(t, g)
-            .map_err(|err| format!("mapped({}) > {}", self.reason, err))
+            .map_check_err(|err| format!("mapped({}) > {}", self.reason, err))
     }
 
     fn advance(&mut self, _: &T) {}
@@ -113,6 +113,7 @@ fn test_mapped_fact() {
     assert_eq!(
         dbg!(check_seq(numbers.as_slice(), divisibility_fact())
             .result()
+            .unwrap()
             .unwrap_err()),
         vec![
             "item 0: mapped(reason) > lens(T.1) > divisible by 4".to_string(),
@@ -131,7 +132,7 @@ fn test_mapped_fact() {
         ]
     };
 
-    let built = build_seq(&mut g, 12, composite_fact());
+    let built = build_seq(&mut g, 12, composite_fact()).unwrap();
     dbg!(&built);
     check_seq(built.as_slice(), composite_fact()).unwrap();
 }

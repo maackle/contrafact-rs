@@ -6,6 +6,12 @@ use crate::*;
 /// repetition helps ease into the constraint.
 pub(crate) const SATISFY_ATTEMPTS: usize = 7;
 
+// TODO: we can remove the Clone requirement if:
+// - make `Mutate` track list of errors so that it can know if a mutation occurred.
+// - make `mutate()` take a mut ref
+// - make `check()` take a mut ref
+// then `check()` can know if a mutation occurred
+//
 /// The trait bounds for the subject of a Fact
 pub trait Bounds<'a>: std::fmt::Debug + Clone + PartialEq + Arbitrary<'a> {}
 impl<'a, T> Bounds<'a> for T where T: std::fmt::Debug + Clone + PartialEq + Arbitrary<'a> {}
@@ -29,7 +35,7 @@ where
     /// Assert that the constraint is satisfied for given data
     fn check(&self, obj: &T) -> Check {
         let mut g = Generator::checker();
-        Check::from_result(self.mutate(obj.clone(), &mut g))
+        Check::from_mutation(self.mutate(obj.clone(), &mut g))
     }
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
@@ -42,16 +48,14 @@ where
 
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
-    fn satisfy(&mut self, mut obj: T, g: &mut Generator<'a>) -> T {
+    fn satisfy(&mut self, mut obj: T, g: &mut Generator<'a>) -> ContrafactResult<T> {
         let mut last_failure: Vec<String> = vec![];
         for _i in 0..SATISFY_ATTEMPTS {
-            obj = self
-                .mutate(obj, g)
-                .expect("Ran out of Unstructured data. Try again with more Unstructured bytes.");
-            if let Err(errs) = self.check(&obj).result() {
+            obj = self.mutate(obj, g).unwrap();
+            if let Err(errs) = self.check(&obj).result()? {
                 last_failure = errs;
             } else {
-                return obj;
+                return Ok(obj);
             }
         }
         panic!(
@@ -61,10 +65,8 @@ where
     }
 
     /// Build a new value such that it satisfies the constraint
-    fn build(&mut self, g: &mut Generator<'a>) -> T {
-        let obj = g
-            .arbitrary("Ran out of Unstructured data. Try again with more Unstructured bytes.")
-            .unwrap();
+    fn build(&mut self, g: &mut Generator<'a>) -> ContrafactResult<T> {
+        let obj = T::arbitrary(g).unwrap();
         self.satisfy(obj, g)
     }
 }
@@ -92,10 +94,7 @@ where
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &T) -> Check {
-        self.iter()
-            .flat_map(|f| f.check(obj))
-            .collect::<Vec<_>>()
-            .into()
+        collect_checks(self, obj)
     }
 
     #[tracing::instrument(skip(self, g))]
@@ -121,10 +120,7 @@ where
 {
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &T) -> Check {
-        self.iter()
-            .flat_map(|f| f.check(obj))
-            .collect::<Vec<_>>()
-            .into()
+        collect_checks(self.as_slice(), obj)
     }
 
     #[tracing::instrument(skip(self, g))]
@@ -141,4 +137,24 @@ where
             f.advance(obj)
         }
     }
+}
+
+fn collect_checks<'a, T, F>(facts: &[F], obj: &T) -> Check
+where
+    T: Bounds<'a>,
+    F: Fact<'a, T>,
+{
+    let checks = facts
+        .iter()
+        .enumerate()
+        .map(|(i, f)| {
+            Ok(f.check(obj)
+                .failures()?
+                .iter()
+                .map(|e| format!("fact {}: {}", i, e))
+                .collect())
+        })
+        .collect::<ContrafactResult<Vec<Vec<CheckMsg>>>>()
+        .map(|fs| fs.into_iter().flatten().collect());
+    Check::from_result(checks)
 }

@@ -64,7 +64,7 @@ fn test_link() {
     let author = "alice".to_string();
     let fact = move || chain_fact(author.clone());
 
-    let mut chain = build_seq(&mut g, NUM as usize, fact());
+    let mut chain = build_seq(&mut g, NUM as usize, fact()).unwrap();
     dbg!(&chain);
     check_seq(chain.as_mut_slice(), fact()).unwrap();
 
@@ -81,7 +81,7 @@ fn test_wrapper() {
     let author = "alice".to_string();
     let fact = move || wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]);
 
-    let mut chain = build_seq(&mut g, NUM as usize, fact());
+    let mut chain = build_seq(&mut g, NUM as usize, fact()).unwrap();
     dbg!(&chain);
     check_seq(chain.as_mut_slice(), fact()).unwrap();
 

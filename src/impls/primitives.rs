@@ -215,12 +215,11 @@ impl<'a, T> Fact<'a, T> for BoolFact
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
-    fn mutate(&self, t: T, _: &mut Generator<'_>) -> Mutation<T> {
+    fn mutate(&self, t: T, g: &mut Generator<'_>) -> Mutation<T> {
         if !self.0 {
-            Err("never() encountered.".to_string())
-        } else {
-            Ok(t)
+            g.fail("never() encountered.")?;
         }
+        Ok(t)
     }
 
     fn advance(&mut self, _: &T) {}
@@ -527,7 +526,7 @@ mod tests {
 
         let eq1 = eq("must be 1", 1);
 
-        let ones = build_seq(&mut g, 3, eq1.clone());
+        let ones = build_seq(&mut g, 3, eq1.clone()).unwrap();
         check_seq(ones.as_slice(), eq1.clone()).unwrap();
 
         assert!(ones.iter().all(|x| *x == 1));
@@ -542,11 +541,11 @@ mod tests {
         let eq2 = eq("must be 2", 2);
         let either = or("can be 1 or 2", eq1, eq2);
 
-        let ones = build_seq(&mut g, 10, either.clone());
+        let ones = build_seq(&mut g, 10, either.clone()).unwrap();
         check_seq(ones.as_slice(), either.clone()).unwrap();
         assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
-        assert_eq!(either.check(&3).result().unwrap_err().len(), 1);
+        assert_eq!(either.check(&3).result().unwrap().unwrap_err().len(), 1);
     }
 
     #[test]
@@ -557,7 +556,7 @@ mod tests {
         let eq1 = eq("must be 1", 1);
         let not1 = not_(eq1);
 
-        let nums = build_seq(&mut g, 10, not1.clone());
+        let nums = build_seq(&mut g, 10, not1.clone()).unwrap();
         check_seq(nums.as_slice(), not1.clone()).unwrap();
 
         assert!(nums.iter().all(|x| *x != 1));
@@ -570,13 +569,13 @@ mod tests {
 
         {
             let f = same::<u8>();
-            let nums = build_seq(&mut g, 10, f.clone());
+            let nums = build_seq(&mut g, 10, f.clone()).unwrap();
             check_seq(nums.as_slice(), f.clone()).unwrap();
             assert!(nums.iter().all(|(a, b)| a == b));
         }
         {
             let f = different::<u8>();
-            let nums = build_seq(&mut g, 10, f.clone());
+            let nums = build_seq(&mut g, 10, f.clone()).unwrap();
             check_seq(nums.as_slice(), f.clone()).unwrap();
             assert!(nums.iter().all(|(a, b)| a != b));
         }
@@ -596,11 +595,11 @@ mod tests {
         let nonpositive1 = not_(positive1);
         let nonpositive2 = not_(positive2);
 
-        let smallish_nums = build_seq(&mut g, 100, smallish.clone());
-        let over9000_nums = build_seq(&mut g, 100, over9000.clone());
-        let under9000_nums = build_seq(&mut g, 100, under9000.clone());
-        let nonpositive1_nums = build_seq(&mut g, 20, nonpositive1.clone());
-        let nonpositive2_nums = build_seq(&mut g, 20, nonpositive2.clone());
+        let smallish_nums = build_seq(&mut g, 100, smallish.clone()).unwrap();
+        let over9000_nums = build_seq(&mut g, 100, over9000.clone()).unwrap();
+        let under9000_nums = build_seq(&mut g, 100, under9000.clone()).unwrap();
+        let nonpositive1_nums = build_seq(&mut g, 20, nonpositive1.clone()).unwrap();
+        let nonpositive2_nums = build_seq(&mut g, 20, nonpositive2.clone()).unwrap();
 
         dbg!(&under9000_nums);
 

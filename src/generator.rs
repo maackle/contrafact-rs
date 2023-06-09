@@ -14,11 +14,7 @@
 
 use arbitrary::{Arbitrary, Unstructured};
 
-use crate::check::CheckError;
-
-/// Mutation errors must give String reasons for mutation, which can be used to
-/// specify the error when used for a Check
-pub type Mutation<T> = Result<T, CheckError>;
+use crate::error::*;
 
 /// Generators are used to generate new values and error messages.
 ///
@@ -27,12 +23,17 @@ pub type Mutation<T> = Result<T, CheckError>;
 #[must_use = "Be sure to use Generator::fail even if you're not generating new values, to provide an error message when running check()"]
 #[derive(derive_more::Deref, derive_more::DerefMut)]
 pub struct Generator<'a> {
-    arb: Option<Unstructured<'a>>,
+    #[deref]
+    #[deref_mut]
+    arb: Unstructured<'a>,
+
+    check: bool,
 }
 
 impl<'a> From<Unstructured<'a>> for Generator<'a> {
     fn from(arb: Unstructured<'a>) -> Self {
-        Self { arb: Some(arb) }
+        assert!(!arb.is_empty());
+        Self { arb, check: false }
     }
 }
 
@@ -44,18 +45,39 @@ impl<'a> From<&'a [u8]> for Generator<'a> {
 
 impl<'a> Generator<'a> {
     pub(crate) fn checker() -> Self {
-        Self { arb: None }
+        Self {
+            arb: arbitrary::Unstructured::new(&[]),
+            check: true,
+        }
     }
 
     /// When running a Check, fail immediately with this error.
     /// This should be used in cases where a mutation occurs using some known value, rather than
     /// generating a value from the Generator itself.
     pub fn fail(&self, err: impl ToString) -> Mutation<()> {
-        if self.arb.is_none() {
-            Err(err.to_string())
+        if self.check {
+            Err(MutationError::Check(err.to_string()))
         } else {
             Ok(())
         }
+    }
+
+    /// When running a Check, fail immediately with this error if the existing value doesn't match.
+    /// During mutation, set the value so that it does match.
+    pub fn set<T: PartialEq + Clone>(
+        &self,
+        source: &mut T,
+        target: &T,
+        err: impl ToString,
+    ) -> Mutation<()> {
+        if source != target {
+            if self.check {
+                return Err(MutationError::Check(err.to_string()));
+            } else {
+                *source = target.clone();
+            }
+        }
+        Ok(())
     }
 
     /// Generate arbitrary data in mutation mode, or produce an error in check mode
@@ -78,10 +100,10 @@ impl<'a> Generator<'a> {
         err: impl ToString,
         f: impl FnOnce(&mut Unstructured<'a>) -> Result<T, arbitrary::Error>,
     ) -> Mutation<T> {
-        if let Some(mut arb) = self.arb.as_mut() {
-            f(&mut arb).map_err(|e| format!("Could not generate data: {}", e))
+        if self.check {
+            Err(MutationError::Check(err.to_string())).into()
         } else {
-            Err(err.to_string())
+            f(&mut self.arb).map_err(Into::into)
         }
     }
 }

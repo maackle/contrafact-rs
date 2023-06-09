@@ -27,7 +27,7 @@
 //!
 //! // NB: don't actually construct a Generator this way! See the docs for [[`Generator`]].
 //! let mut g = contrafact::utils::random_generator();
-//! let a = fact.build(&mut g);
+//! let a = fact.build(&mut g).unwrap();
 //! assert_eq!(a.x, 1);
 //! ```
 //!
@@ -59,6 +59,7 @@
 #![warn(missing_docs)]
 
 mod check;
+mod error;
 mod fact;
 mod generator;
 mod impls;
@@ -70,6 +71,7 @@ pub mod utils;
 pub use arbitrary;
 
 pub use check::Check;
+pub use error::*;
 pub use fact::{Bounds, BoxFact, Fact, Facts, FactsRef};
 pub use generator::*;
 pub use satisfy::*;
@@ -86,8 +88,5 @@ pub use impls::prism::{prism, PrismFact};
 
 #[cfg(feature = "optics")]
 pub use impls::optical::{optical, OpticalFact};
-
-/// The Result type returnable when using [`check_fallible!`]
-pub type Result<T> = anyhow::Result<T>;
 
 pub(crate) const BRUTE_ITERATION_LIMIT: usize = 100;

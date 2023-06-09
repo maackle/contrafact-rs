@@ -11,12 +11,17 @@ where
 {
     let mut reasons: Vec<String> = Vec::new();
     for (i, obj) in seq.iter().enumerate() {
-        reasons.extend(
-            fact.check(obj)
-                .into_iter()
-                .map(|reason| format!("item {}: {}", i, reason))
-                .collect::<Vec<_>>(),
-        );
+        match fact.check(obj).failures() {
+            Ok(failures) => {
+                reasons.extend(
+                    failures
+                        .into_iter()
+                        .map(|reason| format!("item {}: {}", i, reason))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Err(err) => return Check::Error(format!("{:?}", err)),
+        }
         fact.advance(obj);
     }
     reasons.into()
@@ -26,7 +31,11 @@ where
 /// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
 /// facts to change as the sequence advances.
 #[tracing::instrument(skip(g, fact))]
-pub fn build_seq<'a, T, F>(g: &mut Generator<'a>, num: usize, mut fact: F) -> Vec<T>
+pub fn build_seq<'a, T, F>(
+    g: &mut Generator<'a>,
+    num: usize,
+    mut fact: F,
+) -> ContrafactResult<Vec<T>>
 where
     T: Bounds<'a>,
     F: Fact<'a, T>,
@@ -34,11 +43,11 @@ where
     let mut seq = Vec::new();
     for _i in 0..num {
         tracing::trace!("i: {}", _i);
-        let obj = fact.build(g);
+        let obj = fact.build(g)?;
         fact.advance(&obj);
         seq.push(obj);
     }
-    return seq;
+    Ok(seq)
 }
 
 /// Convenience macro for creating a collection of [`Fact`](crate::Fact)s
