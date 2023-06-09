@@ -25,8 +25,9 @@
 //! assert!(fact.check(&S {x: 1, y: 333}).is_ok());
 //! assert!(fact.check(&S {x: 2, y: 333}).is_err());
 //!
-//! let mut u = Unstructured::new(&[0; 9999]);  // NB: don't actually construct Unstructured this way!
-//! let a = fact.build(&mut u);
+//! // NB: don't actually construct a Generator this way! See the docs for [[`Generator`]].
+//! let mut g = contrafact::utils::random_generator();
+//! let a = fact.build(&mut g);
 //! assert_eq!(a.x, 1);
 //! ```
 //!
@@ -72,8 +73,8 @@ pub use fact::{BoxFact, Fact, Facts, FactsRef};
 pub use satisfy::*;
 
 pub use impls::primitives::{
-    always, consecutive_int, consecutive_int_, different, eq, eq_, in_iter, in_iter_, in_range,
-    in_range_, ne, ne_, never, not, not_, or, same,
+    always, consecutive_int, consecutive_int_, different, eq, eq_, in_range, in_range_, in_slice,
+    in_slice_, ne, ne_, never, not, not_, or, same,
 };
 
 pub use impls::brute::{brute, brute_fallible, BruteFact};

@@ -1,6 +1,6 @@
 [package]
 name = "contrafact"
-version = "0.2.0-dev.0"
+version = "0.2.0-dev.1"
 authors = ["Michael Dougherty <maackle.d@gmail.com>"]
 repository = "https://github.com/maackle/contrafact-rs/"
 license = "MIT"
@@ -29,7 +29,7 @@ either = "1.5"
 observability = "0.1"
 
 [features]
-default = ["utils", "mutate-owned"]
+default = ["utils"]
 
 utils = [
     "once_cell",
@@ -39,9 +39,6 @@ utils = [
 optics = [
     "lens-rs",
 ]
-
-mutate-inplace = []
-mutate-owned = []
 
 [package.metadata.inwelling]
 lens-rs_generator = true

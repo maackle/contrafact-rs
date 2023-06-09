@@ -1,7 +1,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::{fact::*, Check};
-use arbitrary::Unstructured;
+use crate::fact::*;
 
 /// Lifts a Fact about a subset of some data into a Fact about the superset.
 ///
@@ -30,8 +29,8 @@ use arbitrary::Unstructured;
 /// assert!(fact.check(&S {x: 1, y: 333}).is_ok());
 /// assert!(fact.check(&S {x: 2, y: 333}).is_err());
 ///
-/// let mut u = Unstructured::new(&[0; 9999]);
-/// let a = fact.build(&mut u);
+/// let mut g = utils::random_generator();
+/// let a = fact.build(&mut g);
 /// assert_eq!(a.x, 1);
 /// ```
 //
@@ -105,28 +104,14 @@ where
     O: Bounds<'a> + Clone,
     F: Fact<'a, T>,
 {
-    #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &O) -> Check {
-        self.inner_fact
-            .check(&(self.getter)(obj.clone()))
-            .map(|err| format!("lens({}) > {}", self.label, err))
-    }
-
-    #[cfg(feature = "mutate-inplace")]
-    #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: &mut O, u: &mut Unstructured<'a>) {
-        todo!()
-        // let t = (self.getter)(obj.clone());
-        // let t = self.inner_fact.mutate(t, u);
-        // (self.setter)(obj, t);
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    #[tracing::instrument(skip(self, u))]
-    fn mutate(&self, obj: O, u: &mut Unstructured<'a>) -> O {
+    #[tracing::instrument(skip(self, g))]
+    fn mutate(&self, obj: O, g: &mut Generator<'a>) -> GenResult<O> {
         let t = (self.getter)(obj.clone());
-        let t = self.inner_fact.mutate(t, u);
-        (self.setter)(obj, t)
+        let t = self
+            .inner_fact
+            .mutate(t, g)
+            .map_err(|err| format!("lens({}) > {}", self.label, err))?;
+        Ok((self.setter)(obj, t))
     }
 
     #[tracing::instrument(skip(self))]
@@ -150,11 +135,12 @@ mod tests {
     #[test]
     fn test() {
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
-
-        let ones = build_seq(&mut u, 3, f());
+        dbg!();
+        let ones = build_seq(&mut g, 3, f());
+        dbg!();
         check_seq(ones.as_slice(), f()).unwrap();
 
         assert!(ones.iter().all(|s| s.x == 1));

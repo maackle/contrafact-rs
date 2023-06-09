@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
-use arbitrary::Unstructured;
-
-use crate::{check_fallible, fact::Bounds, Check, Fact, FactsRef};
+use crate::{
+    fact::{Bounds, GenResult, Generator},
+    Fact, FactsRef,
+};
 
 /// A version of [`mapped`] whose closure returns a Result
 pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> crate::Result<FactsRef<'a, T>>,
+    F: 'a + Fn(&T) -> GenResult<FactsRef<'a, T>>,
 {
     MappedFact::new(reason.to_string(), f)
 }
@@ -62,39 +63,24 @@ where
 #[derive(Clone)]
 pub struct MappedFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Fn(&T) -> crate::Result<FactsRef<'a, T>>>,
+    f: Arc<dyn 'a + Fn(&T) -> GenResult<FactsRef<'a, T>>>,
 }
 
 impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
 where
     T: Bounds<'a>,
 {
-    fn check(&self, t: &T) -> Check {
-        check_fallible! {{
-            Ok((self.f)(t)?
-            .check(t)
-            .map(|e| format!("mapped({}) > {}", self.reason, e)))
-        }}
-    }
-
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, t: &mut T, u: &mut Unstructured<'a>) {
-        (self.f)(&t).expect("TODO: fallible mutation").mutate(t, u)
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, t: T, u: &mut Unstructured<'a>) -> T {
-        (self.f)(&t).expect("TODO: fallible mutation").mutate(t, u)
+    fn mutate(&self, t: T, g: &mut Generator<'a>) -> GenResult<T> {
+        (self.f)(&t)?
+            .mutate(t, g)
+            .map_err(|err| format!("mapped({}) > {}", self.reason, err))
     }
 
     fn advance(&mut self, _: &T) {}
 }
 
 impl<'a, T> MappedFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<FactsRef<'a, T>>>(
-        reason: String,
-        f: F,
-    ) -> Self {
+    pub(crate) fn new<F: 'a + Fn(&T) -> GenResult<FactsRef<'a, T>>>(reason: String, f: F) -> Self {
         Self {
             reason,
             f: Arc::new(f),
@@ -139,7 +125,7 @@ fn test_mapped_fact() {
         ]
     );
 
-    let mut u = utils::unstructured_noise();
+    let mut g = utils::random_generator();
 
     let composite_fact = || {
         facts![
@@ -148,7 +134,7 @@ fn test_mapped_fact() {
         ]
     };
 
-    let built = build_seq(&mut u, 12, composite_fact());
+    let built = build_seq(&mut g, 12, composite_fact());
     dbg!(&built);
     check_seq(built.as_slice(), composite_fact()).unwrap();
 }

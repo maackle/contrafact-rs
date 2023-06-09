@@ -1,7 +1,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::{fact::*, Check};
-use arbitrary::Unstructured;
+use crate::fact::*;
 
 /// Lifts a Fact about some *optional* subset of data into a Fact about the
 /// superset.
@@ -49,8 +48,8 @@ use arbitrary::Unstructured;
 /// assert!(fact.check(&E::X(2)).is_err());
 /// assert!(fact.check(&E::Y(99)).is_ok());
 ///
-/// let mut u = Unstructured::new(&[0; 9999]);
-/// let e = fact.build(&mut u);
+/// let mut g = utils::random_generator();
+/// let e = fact.build(&mut g);
 /// match e {
 ///     E::X(x) => assert_eq!(x, 1),
 ///     _ => (),  // Y is not defined by the prism, so it can take on any value.
@@ -130,34 +129,14 @@ where
     O: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    #[tracing::instrument(skip(self))]
-    fn check(&self, o: &O) -> Check {
-        unsafe {
-            // We can convert the immutable ref to a mutable one because `check`
-            // never mutates the value, but we need `prism` to return a mutable
-            // reference so it can be reused in `mutate`
-            let o = o as *const O;
-            let o = o as *mut O;
-            if let Some(t) = (self.prism)(&mut *o) {
-                self.inner_fact
-                    .check(t)
-                    .map(|err| format!("prism({}) > {}", self.label, err))
-            } else {
-                Vec::with_capacity(0).into()
-            }
-        }
-    }
-
-    #[tracing::instrument(skip(self, u))]
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, mut obj: O, u: &mut Unstructured<'a>) -> O {}
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: O, u: &mut Unstructured<'a>) -> O {
+    fn mutate(&self, mut obj: O, g: &mut Generator<'a>) -> GenResult<O> {
         if let Some(t) = (self.prism)(&mut obj) {
-            *t = self.inner_fact.mutate(t.clone(), u);
+            *t = self
+                .inner_fact
+                .mutate(t.clone(), g)
+                .map_err(|err| format!("prism({}) > {}", self.label, err))?;
         }
-        obj
+        Ok(obj)
     }
 
     #[tracing::instrument(skip(self))]
@@ -205,7 +184,7 @@ mod tests {
     #[test]
     fn stateless() {
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         let f = || {
             vec![
@@ -214,7 +193,7 @@ mod tests {
             ]
         };
 
-        let seq = build_seq(&mut u, 6, f());
+        let seq = build_seq(&mut g, 6, f());
         check_seq(seq.as_slice(), f()).unwrap();
 
         assert!(seq.iter().all(|e| match e {
@@ -227,7 +206,7 @@ mod tests {
     fn stateful() {
         use itertools::*;
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         let f = || {
             vec![
@@ -244,7 +223,7 @@ mod tests {
             ]
         };
 
-        let seq = build_seq(&mut u, 10, f());
+        let seq = build_seq(&mut g, 10, f());
         check_seq(seq.as_slice(), f()).unwrap();
 
         // Assert that each variant of E is independently increasing

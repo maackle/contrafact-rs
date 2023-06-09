@@ -1,3 +1,5 @@
+pub type CheckError = String;
+
 /// The result of a check operation, which contains an error message for every
 /// constraint which was not met.
 //
@@ -5,7 +7,7 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::IntoIterator)]
 #[must_use = "Check should be used with either `.unwrap()` or `.result()`"]
 pub struct Check {
-    errors: Vec<String>,
+    errors: Vec<CheckError>,
 }
 
 impl Check {
@@ -14,7 +16,7 @@ impl Check {
     /// by inner facts.
     pub fn map<F>(self, f: F) -> Self
     where
-        F: FnMut(String) -> String,
+        F: FnMut(CheckError) -> CheckError,
     {
         if let Err(errs) = self.result() {
             errs.into_iter().map(f).collect()
@@ -46,7 +48,7 @@ impl Check {
     }
 
     /// Get errors if they exist
-    pub fn errors(&self) -> &[String] {
+    pub fn errors(&self) -> &[CheckError] {
         self.errors.as_ref()
     }
 
@@ -57,7 +59,7 @@ impl Check {
     /// assert_eq!(Check::pass().result(), Ok(()));
     /// assert_eq!(Check::fail("message").result(), Err(vec!["message".to_string()]));
     /// ```
-    pub fn result(self) -> std::result::Result<(), Vec<String>> {
+    pub fn result(self) -> std::result::Result<(), Vec<CheckError>> {
         if self.is_ok() {
             std::result::Result::Ok(())
         } else {
@@ -77,6 +79,21 @@ impl Check {
             Self::pass()
         } else {
             Self::fail(err)
+        }
+    }
+
+    /// Create a single-error failure from a Result
+    ///
+    /// ```
+    /// use contrafact::*;
+    /// assert_eq!(Check::from_result(Ok(42)), Check::pass());
+    /// assert_eq!(Check::from_result::<()>(Err("message".to_string())), Check::fail("message"));
+    /// ```
+    pub fn from_result<T>(res: Result<T, CheckError>) -> Self {
+        if let Err(err) = res {
+            Self::fail(err)
+        } else {
+            Self::pass()
         }
     }
 
@@ -102,74 +119,5 @@ impl Check {
         Self {
             errors: vec![error.to_string()],
         }
-    }
-}
-
-type CheckResult = crate::Result<Check>;
-
-impl From<CheckResult> for Check {
-    fn from(result: CheckResult) -> Check {
-        match result {
-            Ok(check) => check,
-            Err(err) => vec![err.to_string()].into(),
-        }
-    }
-}
-
-/// Helper macro to run a check which may produce a Result, mapping any Err into
-/// a normal Check error string.
-///
-/// ```
-/// use contrafact::*;
-///
-/// // This is most useful when implementing [`Fact::check`]
-/// let check: Check = check_fallible! {{
-///     Err(anyhow::Error::msg("message"))?;
-///     Ok(Check::pass())
-/// }};
-/// assert_eq!(check, Check::fail("message"));
-/// ```
-#[macro_export]
-macro_rules! check_fallible {
-    ($blk:block) => {{
-        let result: $crate::Result<Check> = (|| $blk)();
-        Check::from(result)
-    }};
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::Fact;
-
-    use super::*;
-
-    #[test]
-    fn test_check_fallible() {
-        struct F;
-
-        impl<'a> Fact<'a, ()> for F {
-            fn check(&self, _: &()) -> Check {
-                check_fallible! {{
-                    let x = 1;
-                    Ok(if x == 1 {
-                        Err(anyhow::Error::msg("oh no"))?
-                    } else {
-                        Check::pass()
-                    })
-                }}
-            }
-
-            #[cfg(feature = "mutate-inplace")]
-            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'a>) {}
-
-            #[cfg(feature = "mutate-owned")]
-            fn mutate(&self, _: (), _: &mut arbitrary::Unstructured<'a>) {
-                unimplemented!()
-            }
-
-            fn advance(&mut self, _: &()) {}
-        }
-
-        assert_eq!(F.check(&()).result().unwrap_err(), vec!["oh no"]);
     }
 }

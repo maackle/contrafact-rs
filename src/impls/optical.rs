@@ -63,6 +63,7 @@ where
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
+    // TODO: remove
     #[tracing::instrument(skip(self))]
     fn check(&self, obj: &Src) -> Check {
         let imgs = obj.traverse_ref(self.optics.clone());
@@ -83,17 +84,16 @@ where
             .into()
     }
 
-    #[tracing::instrument(skip(self, u))]
+    #[tracing::instrument(skip(self, g))]
     #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut Src, u: &mut Unstructured<'a>) {
+    fn mutate(&self, obj: &mut Src, g: &mut Generator<'a>) {
         let t = obj.view_mut(self.optics.clone());
-        self.inner_fact.mutate(t, u);
+        self.inner_fact.mutate(t, g);
     }
 
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: Src, u: &mut Unstructured<'a>) -> Src {
+    fn mutate(&self, mut obj: Src, g: &mut Generator<'a>) -> Src {
         for img in obj.traverse_mut(self.optics.clone()) {
-            *img = self.inner_fact.mutate(img.clone(), u);
+            *img = self.inner_fact.mutate(img.clone(), g);
         }
         obj
     }

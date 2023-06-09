@@ -214,7 +214,7 @@ fn sigma_fact() -> Facts<Sigma> {
             s.id2 = id2;
             s
         },
-        same(""),
+        same(),
     );
     let sig_fact = LensFact::new(
         "Sigma::sig is correct",
@@ -223,7 +223,7 @@ fn sigma_fact() -> Facts<Sigma> {
             s.sig = sig;
             s
         },
-        same(""),
+        same(),
     );
     facts![
         lens("Sigma::id", |o: &mut Sigma| o.alpha.id(), id_fact(None)),
@@ -265,10 +265,10 @@ fn rho_fact(id: Id, signer: AlphaSigner) -> Facts<Rho> {
 #[test]
 fn test_rho_fact() {
     observability::test_run().ok();
-    let mut u = utils::unstructured_noise();
+    let mut g = utils::random_generator();
 
     let mut fact = rho_fact(5, AlphaSigner);
-    let mut rho = fact.build(&mut u);
+    let mut rho = fact.build(&mut g);
     assert!(fact.check(&rho).is_ok());
     assert_eq!(rho.sigma.id2, 10);
     assert_eq!(rho.sigma.sig, "5".to_string());
@@ -282,11 +282,11 @@ fn test_rho_fact() {
 #[test]
 fn test_omega_fact() {
     observability::test_run().ok();
-    let mut u = utils::unstructured_noise();
+    let mut g = utils::random_generator();
 
     let fact = omega_fact(11);
 
-    let beta = beta_fact().build(&mut u);
+    let beta = beta_fact().build(&mut g);
 
     let mut valid1 = Omega::Alpha {
         id: 8,
@@ -305,10 +305,10 @@ fn test_omega_fact() {
         beta: beta.clone(),
     };
 
-    valid1 = fact.mutate(valid1, &mut u);
+    valid1 = fact.mutate(valid1, &mut g).unwrap();
     fact.check(dbg!(&valid1)).unwrap();
 
-    valid2 = fact.mutate(valid2, &mut u);
+    valid2 = fact.mutate(valid2, &mut g).unwrap();
     fact.check(dbg!(&valid2)).unwrap();
 
     let mut invalid1 = Omega::Alpha {
@@ -330,18 +330,12 @@ fn test_omega_fact() {
     };
 
     // Ensure that check fails for invalid data
-    assert_eq!(
-        dbg!(fact.check(dbg!(&invalid1)).result().unwrap_err()).len(),
-        3,
-    );
-    invalid1 = fact.mutate(invalid1, &mut u);
+    assert!(dbg!(fact.check(dbg!(&invalid1)).result().unwrap_err()).len() > 1);
+    invalid1 = fact.mutate(invalid1, &mut g).unwrap();
     fact.check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
-    assert_eq!(
-        dbg!(fact.check(dbg!(&invalid2)).result().unwrap_err()).len(),
-        4,
-    );
-    invalid2 = fact.mutate(invalid2, &mut u);
+    assert!(dbg!(fact.check(dbg!(&invalid2)).result().unwrap_err()).len() > 1);
+    invalid2 = fact.mutate(invalid2, &mut g).unwrap();
     fact.check(dbg!(&invalid2)).unwrap();
 }

@@ -1,5 +1,5 @@
 use arbitrary::*;
-use contrafact::{utils::unstructured_noise, *};
+use contrafact::{utils::random_generator, *};
 
 #[derive(Arbitrary, Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 enum Color {
@@ -45,7 +45,7 @@ fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> FactsRef<'a, W
         lens(
             "Wrapper::color",
             |o: &mut Wrapper| &mut o.color,
-            in_iter("valid color", valid_colors),
+            in_slice("valid color", valid_colors),
         ),
         lens(
             "Wrapper::link",
@@ -58,13 +58,13 @@ fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> FactsRef<'a, W
 #[test]
 fn test_link() {
     observability::test_run().ok();
-    let mut u = unstructured_noise();
+    let mut g = random_generator();
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
     let fact = move || chain_fact(author.clone());
 
-    let mut chain = build_seq(&mut u, NUM as usize, fact());
+    let mut chain = build_seq(&mut g, NUM as usize, fact());
     dbg!(&chain);
     check_seq(chain.as_mut_slice(), fact()).unwrap();
 
@@ -75,13 +75,13 @@ fn test_link() {
 #[test]
 fn test_wrapper() {
     observability::test_run().ok();
-    let mut u = unstructured_noise();
+    let mut g = random_generator();
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
     let fact = move || wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]);
 
-    let mut chain = build_seq(&mut u, NUM as usize, fact());
+    let mut chain = build_seq(&mut g, NUM as usize, fact());
     dbg!(&chain);
     check_seq(chain.as_mut_slice(), fact()).unwrap();
 

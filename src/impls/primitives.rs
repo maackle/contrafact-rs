@@ -2,12 +2,11 @@
 //! https://github.com/assert-rs/predicates-rs
 
 use std::{
-    borrow::Borrow,
     marker::PhantomData,
     ops::{Bound, RangeBounds},
 };
 
-use crate::{fact::*, Check, BRUTE_ITERATION_LIMIT};
+use crate::{fact::*, BRUTE_ITERATION_LIMIT};
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {
@@ -64,51 +63,45 @@ where
 }
 
 /// Specifies an equality constraint between two items in a tuple
-pub fn same<S, T>(context: S) -> SameFact<T>
+pub fn same<T>() -> SameFact<T>
 where
-    S: ToString,
     T: std::fmt::Debug + PartialEq,
 {
     SameFact {
-        context: context.to_string(),
         op: EqOp::Equal,
         _phantom: PhantomData,
     }
 }
 
-/// Specifies an equality constraint between two items in a tuple
-pub fn different<S, T>(context: S) -> SameFact<T>
+/// Specifies an inequality constraint between two items in a tuple
+pub fn different<T>() -> SameFact<T>
 where
-    S: ToString,
     T: std::fmt::Debug + PartialEq,
 {
     SameFact {
-        context: context.to_string(),
         op: EqOp::NotEqual,
         _phantom: PhantomData,
     }
 }
 
 /// Specifies a membership constraint
-pub fn in_iter<'a, I, S, T>(context: S, iter: I) -> InIterFact<'a, T>
+pub fn in_slice<'a, S, T>(context: S, slice: &'a [T]) -> InSliceFact<'a, T>
 where
     S: ToString,
     T: 'a + PartialEq + std::fmt::Debug + Clone,
-    I: IntoIterator<Item = &'a T>,
 {
-    InIterFact {
+    InSliceFact {
         context: context.to_string(),
-        inner: Vec::from_iter(iter),
+        slice,
     }
 }
 
 /// Specifies a membership constraint
-pub fn in_iter_<'a, I, T>(iter: I) -> InIterFact<'a, T>
+pub fn in_slice_<'a, T>(slice: &'a [T]) -> InSliceFact<'a, T>
 where
     T: 'a + PartialEq + std::fmt::Debug + Clone,
-    I: IntoIterator<Item = &'a T>,
 {
-    in_iter("in_iter", iter)
+    in_slice("in_slice", slice)
 }
 
 /// Specifies a range constraint
@@ -222,28 +215,12 @@ impl<'a, T> Fact<'a, T> for BoolFact
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
-    fn check(&self, _: &T) -> Check {
-        if self.0 {
-            Vec::with_capacity(0)
+    fn mutate(&self, t: T, _: &mut Generator<'_>) -> GenResult<T> {
+        if !self.0 {
+            Err("never() encountered.".to_string())
         } else {
-            vec![format!("never() encountered: {}", self.1)]
+            Ok(t)
         }
-        .into()
-    }
-
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, t: T, _: &mut arbitrary::Unstructured<'_>) {
-        if !self.0 {
-            panic!("never() cannot be used for mutation.")
-        }
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, t: T, _: &mut arbitrary::Unstructured<'_>) -> T {
-        if !self.0 {
-            panic!("never() cannot be used for mutation.")
-        }
-        t
     }
 
     fn advance(&mut self, _: &T) {}
@@ -267,46 +244,29 @@ impl<'a, T> Fact<'a, T> for EqFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
-    fn check(&self, obj: &T) -> Check {
-        let constant = self.constant.borrow();
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+        let constant = self.constant.clone();
         match self.op {
-            EqOp::Equal if obj != constant => vec![format!(
-                "{}: expected {:?} == {:?}",
-                self.context, obj, constant
-            )],
-            EqOp::NotEqual if obj == constant => vec![format!(
-                "{}: expected {:?} != {:?}",
-                self.context, obj, constant
-            )],
-            _ => Vec::with_capacity(0),
-        }
-        .into()
-    }
-
-    #[allow(unused_assignments)]
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
-        todo!()
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
-        if self.check(&obj).is_err() {
-            let constant = self.constant.clone();
-            match self.op {
-                EqOp::Equal => obj = constant,
-                EqOp::NotEqual => loop {
-                    obj = T::arbitrary(u).unwrap();
-                    if obj != constant {
-                        break;
-                    }
-                },
+            EqOp::Equal => {
+                if obj != constant {
+                    g.fail(format!(
+                        "{}: expected {:?} == {:?}",
+                        self.context, obj, constant
+                    ))?;
+                    obj = constant;
+                }
             }
-            self.check(&obj)
-                .result()
-                .expect("there's a bug in EqFact::mutate");
+            EqOp::NotEqual => loop {
+                if obj != constant {
+                    break;
+                }
+                obj = g.arbitrary(format!(
+                    "{}: expected {:?} != {:?}",
+                    self.context, obj, constant
+                ))?;
+            },
         }
-        obj
+        Ok(obj)
     }
 
     fn advance(&mut self, _: &T) {}
@@ -314,7 +274,6 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SameFact<T> {
-    context: String,
     op: EqOp,
     _phantom: PhantomData<T>,
 }
@@ -323,84 +282,64 @@ impl<'a, T> Fact<'a, (T, T)> for SameFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
-    fn check(&self, obj: &(T, T)) -> Check {
-        let (a, b) = obj;
+    fn mutate(&self, mut obj: (T, T), g: &mut Generator<'a>) -> GenResult<(T, T)> {
         match self.op {
-            EqOp::Equal if a != b => vec![format!("{}: expected {:?} == {:?}", self.context, a, b)],
-            EqOp::NotEqual if a == b => {
-                vec![format!("{}: expected {:?} != {:?}", self.context, a, b)]
+            EqOp::Equal => {
+                if obj.0 != obj.1 {
+                    g.fail(format!("must be same: expected {:?} == {:?}", obj.0, obj.1))?;
+                    obj.0 = obj.1.clone();
+                }
             }
-            _ => Vec::with_capacity(0),
-        }
-        .into()
-    }
-
-    #[allow(unused_assignments)]
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut (T, T), u: &mut arbitrary::Unstructured<'a>) -> (T, T) {
-        todo!()
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: (T, T), u: &mut arbitrary::Unstructured<'a>) -> (T, T) {
-        match self.op {
-            EqOp::Equal => obj.0 = obj.1.clone(),
             EqOp::NotEqual => loop {
-                obj.0 = T::arbitrary(u).unwrap();
                 if obj.0 != obj.1 {
                     break;
                 }
+                obj.0 = g.arbitrary(format!(
+                    "must be different: expected {:?} != {:?}",
+                    obj.0, obj.1
+                ))?;
             },
         }
-        self.check(&obj)
-            .result()
-            .expect("there's a bug in EqFact::mutate");
-        obj
+        Ok(obj)
     }
 
     fn advance(&mut self, _: &(T, T)) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InIterFact<'a, T>
+pub struct InSliceFact<'a, T>
 where
-    T: PartialEq + std::fmt::Debug + Clone,
+    T: 'a + PartialEq + std::fmt::Debug + Clone,
+    // I: Iterator<Item = &'a T>,
 {
     context: String,
-    inner: Vec<&'a T>,
+    slice: &'a [T],
 }
 
-impl<'a, T> Fact<'a, T> for InIterFact<'_, T>
+impl<'a, 'b: 'a, T> Fact<'a, T> for InSliceFact<'b, T>
 where
-    T: Bounds<'a> + Clone,
+    T: 'b + Bounds<'a> + Clone,
+    // I: Iterator<Item = &'b T>,
 {
-    fn check(&self, obj: &T) -> Check {
-        if self.inner.contains(&obj) {
-            Vec::with_capacity(0)
-        } else {
-            vec![format!(
-                "{}: expected {:?} to be contained in {:?}",
-                self.context, obj, self.inner
-            )]
-        }
-        .into()
-    }
-
     #[allow(unused_assignments)]
     #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
+    fn mutate(&self, obj: &mut T, g: &mut Generator<'a>) {
         todo!()
     }
 
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
-        if self.check(&obj).is_err() {
-            obj = (*u.choose(self.inner.as_slice()).unwrap()).to_owned();
-            self.check(&obj)
-                .result()
-                .expect("there's a bug in InIterFact::mutate");
-        }
-        obj
+    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+        Ok(if !self.slice.contains(&obj) {
+            g.choose(
+                self.slice,
+                format!(
+                    "{}: expected {:?} to be contained in {:?}",
+                    self.context, obj, self.slice
+                ),
+            )?
+            .to_owned()
+        } else {
+            obj
+        })
     }
 
     fn advance(&mut self, _: &T) {}
@@ -441,28 +380,12 @@ where
         + num::Bounded
         + num::One,
 {
-    fn check(&self, obj: &T) -> Check {
-        if self.range.contains(&obj) {
-            Vec::with_capacity(0)
-        } else {
-            vec![format!(
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+        if !self.range.contains(&obj) {
+            let rand = g.arbitrary(format!(
                 "{}: expected {:?} to be contained in {:?}",
                 self.context, obj, self.range
-            )]
-        }
-        .into()
-    }
-
-    #[allow(unused_assignments)]
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
-        todo!()
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
-        if self.check(&obj).is_err() {
-            let rand = T::arbitrary(u).unwrap();
+            ))?;
             obj = match (self.range.start_bound(), self.range.end_bound()) {
                 (Bound::Unbounded, Bound::Unbounded) => rand,
                 (Bound::Included(a), Bound::Included(b)) if b.clone() - a.clone() >= T::one() => {
@@ -483,10 +406,7 @@ where
                 _ => panic!("Range not yet supported, sorry! {:?}", self.range),
             };
         }
-        self.check(&obj)
-            .result()
-            .expect("there's a bug in InRangeFact::mutate");
-        obj
+        Ok(obj)
     }
 
     fn advance(&mut self, _: &T) {}
@@ -502,22 +422,12 @@ impl<'a, T> Fact<'a, T> for ConsecutiveIntFact<T>
 where
     T: Bounds<'a> + num::PrimInt,
 {
-    fn check(&self, obj: &T) -> Check {
-        Check::check(*obj == self.counter, self.context.clone())
-    }
-
-    #[allow(unused_assignments)]
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut T, _: &mut arbitrary::Unstructured<'a>) {
-        todo!()
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: T, _: &mut arbitrary::Unstructured<'a>) -> T {
-        if self.check(&obj).is_err() {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+        if obj != self.counter {
+            g.fail(&self.context)?;
             obj = self.counter.clone();
         }
-        obj
+        Ok(obj)
     }
 
     fn advance(&mut self, _: &T) {
@@ -547,30 +457,27 @@ where
     P2: Fact<'a, T> + Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn check(&self, obj: &T) -> Check {
-        let a = self.a.check(obj).result();
-        let b = self.b.check(obj).result();
+    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> GenResult<T> {
+        use rand::{thread_rng, Rng};
+
+        let a = self.a.check(&obj).is_ok();
+        let b = self.b.check(&obj).is_ok();
         match (a, b) {
-            (Err(a), Err(b)) => vec![format!(
-                "expected either one of the following conditions to be met:
-condition 1: {:#?}
-condition 2: {:#?}",
-                a, b
-            )]
-            .into(),
-            _ => Check::pass(),
-        }
-    }
-
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {}
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
-        if *u.choose(&[true, false]).unwrap() {
-            self.a.mutate(obj, u)
-        } else {
-            self.b.mutate(obj, u)
+            (true, _) => Ok(obj),
+            (_, true) => Ok(obj),
+            (false, false) => {
+                g.fail(format!(
+                    "expected either one of the following conditions to be met:
+    condition 1: {:#?}
+    condition 2: {:#?}",
+                    a, b
+                ))?;
+                if thread_rng().gen::<bool>() {
+                    self.a.mutate(obj, g)
+                } else {
+                    self.b.mutate(obj, g)
+                }
+            }
         }
     }
 
@@ -593,27 +500,16 @@ where
     F: Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn check(&self, obj: &T) -> Check {
-        Check::check(
-            self.fact.check(obj).is_err(),
-            format!("not({})", self.context.clone()),
-        )
-    }
-
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut T, u: &mut arbitrary::Unstructured<'a>) {
-        todo!()
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut obj: T, u: &mut arbitrary::Unstructured<'a>) -> T {
+    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> GenResult<T> {
         for _ in 0..BRUTE_ITERATION_LIMIT {
             if self.fact.check(&obj).is_err() {
                 break;
             }
-            obj = T::arbitrary(u).unwrap();
+            obj = g
+                .arbitrary(format!("not({})", self.context.clone()))
+                .unwrap();
         }
-        obj
+        Ok(obj)
     }
 
     fn advance(&mut self, _: &T) {}
@@ -627,11 +523,11 @@ mod tests {
     #[test]
     fn test_eq() {
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         let eq1 = eq("must be 1", 1);
 
-        let ones = build_seq(&mut u, 3, eq1.clone());
+        let ones = build_seq(&mut g, 3, eq1.clone());
         check_seq(ones.as_slice(), eq1.clone()).unwrap();
 
         assert!(ones.iter().all(|x| *x == 1));
@@ -640,13 +536,13 @@ mod tests {
     #[test]
     fn test_or() {
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         let eq1 = eq("must be 1", 1);
         let eq2 = eq("must be 2", 2);
         let either = or("can be 1 or 2", eq1, eq2);
 
-        let ones = build_seq(&mut u, 10, either.clone());
+        let ones = build_seq(&mut g, 10, either.clone());
         check_seq(ones.as_slice(), either.clone()).unwrap();
         assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
@@ -656,12 +552,12 @@ mod tests {
     #[test]
     fn test_not() {
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         let eq1 = eq("must be 1", 1);
         let not1 = not_(eq1);
 
-        let nums = build_seq(&mut u, 10, not1.clone());
+        let nums = build_seq(&mut g, 10, not1.clone());
         check_seq(nums.as_slice(), not1.clone()).unwrap();
 
         assert!(nums.iter().all(|x| *x != 1));
@@ -670,17 +566,17 @@ mod tests {
     #[test]
     fn test_same() {
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         {
-            let f = same::<_, u8>("must be same");
-            let nums = build_seq(&mut u, 10, f.clone());
+            let f = same::<u8>();
+            let nums = build_seq(&mut g, 10, f.clone());
             check_seq(nums.as_slice(), f.clone()).unwrap();
             assert!(nums.iter().all(|(a, b)| a == b));
         }
         {
-            let f = different::<_, u8>("must be different");
-            let nums = build_seq(&mut u, 10, f.clone());
+            let f = different::<u8>();
+            let nums = build_seq(&mut g, 10, f.clone());
             check_seq(nums.as_slice(), f.clone()).unwrap();
             assert!(nums.iter().all(|(a, b)| a != b));
         }
@@ -689,7 +585,7 @@ mod tests {
     #[test]
     fn test_in_range() {
         observability::test_run().ok();
-        let mut u = utils::unstructured_noise();
+        let mut g = utils::random_generator();
 
         let positive1 = in_range("must be positive", 1..=i32::MAX);
         let positive2 = in_range("must be positive", 1..);
@@ -700,11 +596,11 @@ mod tests {
         let nonpositive1 = not_(positive1);
         let nonpositive2 = not_(positive2);
 
-        let smallish_nums = build_seq(&mut u, 100, smallish.clone());
-        let over9000_nums = build_seq(&mut u, 100, over9000.clone());
-        let under9000_nums = build_seq(&mut u, 100, under9000.clone());
-        let nonpositive1_nums = build_seq(&mut u, 20, nonpositive1.clone());
-        let nonpositive2_nums = build_seq(&mut u, 20, nonpositive2.clone());
+        let smallish_nums = build_seq(&mut g, 100, smallish.clone());
+        let over9000_nums = build_seq(&mut g, 100, over9000.clone());
+        let under9000_nums = build_seq(&mut g, 100, under9000.clone());
+        let nonpositive1_nums = build_seq(&mut g, 20, nonpositive1.clone());
+        let nonpositive2_nums = build_seq(&mut g, 20, nonpositive2.clone());
 
         dbg!(&under9000_nums);
 

@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use arbitrary::Unstructured;
+use crate::{fact::Bounds, Fact, BRUTE_ITERATION_LIMIT};
 
-use crate::{check_fallible, fact::Bounds, Check, Fact, BRUTE_ITERATION_LIMIT};
+use crate::fact::{GenResult, Generator};
 
 /// A version of [`brute`] whose closure returns a Result
 pub fn brute_fallible<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> crate::Result<bool>,
+    F: 'a + Fn(&T) -> GenResult<bool>,
 {
     BruteFact::<T>::new(reason.to_string(), f)
 }
@@ -42,8 +42,8 @@ where
 ///     facts![brute(format!("Is divisible by {}", n), move |x| x % n == 0)]
 /// }
 ///
-/// let mut u = Unstructured::new(&[0; 9999]);
-/// assert!(div_by(3).build(&mut u) % 3 == 0);
+/// let mut g = utils::random_generator();
+/// assert!(div_by(3).build(&mut g) % 3 == 0);
 /// ```
 pub fn brute<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
@@ -54,7 +54,7 @@ where
     BruteFact::<T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
-type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> crate::Result<bool>)>;
+type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> GenResult<bool>)>;
 
 /// A brute-force fact. Use [`brute()`] to construct.
 #[derive(Clone)]
@@ -67,32 +67,12 @@ impl<'a, T> Fact<'a, T> for BruteFact<'a, T>
 where
     T: Bounds<'a>,
 {
-    fn check(&self, t: &T) -> Check {
-        check_fallible!({ Ok(Check::check((self.f)(t)?, self.label.clone())) })
-    }
-
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, t: &mut T, u: &mut Unstructured<'a>) {
-        for _ in 0..BRUTE_ITERATION_LIMIT {
-            if (self.f)(&t).expect("Mutation failed.") {
-                return;
+    fn mutate(&self, mut t: T, g: &mut Generator<'a>) -> GenResult<T> {
+        for _ in 0..=BRUTE_ITERATION_LIMIT {
+            if (self.f)(&t)? {
+                return Ok(t);
             }
-            t = T::arbitrary(u).unwrap();
-        }
-
-        panic!(
-            "Exceeded iteration limit of {} while attempting to meet a BruteFact. Context: {}",
-            BRUTE_ITERATION_LIMIT, self.reason
-        );
-    }
-
-    #[cfg(feature = "mutate-owned")]
-    fn mutate(&self, mut t: T, u: &mut Unstructured<'a>) -> T {
-        for _ in 0..BRUTE_ITERATION_LIMIT {
-            if (self.f)(&t).expect("Mutation failed.") {
-                return t;
-            }
-            t = T::arbitrary(u).unwrap();
+            t = g.arbitrary(&self.label)?;
         }
 
         panic!(
@@ -105,7 +85,7 @@ where
 }
 
 impl<'a, T> BruteFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> crate::Result<bool>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Fn(&T) -> GenResult<bool>>(reason: String, f: F) -> Self {
         Self {
             label: reason,
             f: Arc::new(f),

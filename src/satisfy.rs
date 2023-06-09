@@ -1,5 +1,7 @@
-use crate::{fact::Bounds, Check, Fact};
-use arbitrary::Unstructured;
+use crate::{
+    fact::{Bounds, Generator},
+    Check, Fact,
+};
 
 /// Check that all of the constraints of all Facts are satisfied for this sequence.
 /// Each Fact will run [`Fact::advance`] after each item checked, allowing stateful
@@ -26,8 +28,8 @@ where
 /// Build a sequence from scratch such that all Facts are satisfied.
 /// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
 /// facts to change as the sequence advances.
-#[tracing::instrument(skip(u, fact))]
-pub fn build_seq<'a, T, F>(u: &mut Unstructured<'a>, num: usize, mut fact: F) -> Vec<T>
+#[tracing::instrument(skip(g, fact))]
+pub fn build_seq<'a, T, F>(g: &mut Generator<'a>, num: usize, mut fact: F) -> Vec<T>
 where
     T: Bounds<'a>,
     F: Fact<'a, T>,
@@ -35,7 +37,7 @@ where
     let mut seq = Vec::new();
     for _i in 0..num {
         tracing::trace!("i: {}", _i);
-        let obj = fact.build(u);
+        let obj = fact.build(g);
         fact.advance(&obj);
         seq.push(obj);
     }
