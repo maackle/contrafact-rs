@@ -60,6 +60,7 @@
 
 mod check;
 mod fact;
+mod generator;
 mod impls;
 mod satisfy;
 
@@ -69,7 +70,8 @@ pub mod utils;
 pub use arbitrary;
 
 pub use check::Check;
-pub use fact::{BoxFact, Fact, Facts, FactsRef};
+pub use fact::{Bounds, BoxFact, Fact, Facts, FactsRef};
+pub use generator::*;
 pub use satisfy::*;
 
 pub use impls::primitives::{

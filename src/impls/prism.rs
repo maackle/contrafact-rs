@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::fact::*;
+use crate::*;
 
 /// Lifts a Fact about some *optional* subset of data into a Fact about the
 /// superset.

@@ -1,6 +1,6 @@
 use arbitrary::*;
 
-use crate::{check::CheckError, Check};
+use crate::*;
 
 /// When running `Fact::satisfy`, repeat mutate+check this many times, in case
 /// repetition helps ease into the constraint.
@@ -18,75 +18,6 @@ pub type FactsRef<'a, T> = Vec<BoxFact<'a, T>>;
 
 /// Type alias for a static Vec of boxed Facts. Implements [`Fact`] itself.
 pub type Facts<T> = FactsRef<'static, T>;
-
-/// Mutation errors must give String reasons for mutation, which can be used to
-/// specify the error when used for a Check
-pub type GenResult<T> = Result<T, CheckError>;
-
-/// Type used to generate new values and error messages
-#[must_use = "Be sure to use Generator::value even if you're assigning a constant value, to provide an error message when running check()"]
-#[derive(derive_more::Deref, derive_more::DerefMut)]
-pub struct Generator<'a> {
-    arb: Option<Unstructured<'a>>,
-}
-
-impl<'a> From<Unstructured<'a>> for Generator<'a> {
-    fn from(arb: Unstructured<'a>) -> Self {
-        Self { arb: Some(arb) }
-    }
-}
-
-impl<'a> From<&'a [u8]> for Generator<'a> {
-    fn from(bytes: &'a [u8]) -> Self {
-        arbitrary::Unstructured::new(bytes).into()
-    }
-}
-
-impl<'a> Generator<'a> {
-    pub fn checker() -> Self {
-        Self { arb: None }
-    }
-
-    pub fn fail(&self, err: impl ToString) -> GenResult<()> {
-        if self.arb.is_none() {
-            Err(err.to_string())
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn value<T>(&mut self, val: T, err: impl ToString) -> GenResult<T> {
-        if self.arb.is_none() {
-            Err(err.to_string())
-        } else {
-            Ok(val)
-        }
-    }
-
-    pub fn arbitrary<T: Arbitrary<'a>>(&mut self, err: impl ToString) -> GenResult<T> {
-        self.with(err, |u| u.arbitrary())
-    }
-
-    pub fn choose<T: Arbitrary<'a>>(
-        &mut self,
-        choices: &'a [T],
-        err: impl ToString,
-    ) -> GenResult<&T> {
-        self.with(err, |u| u.choose(choices))
-    }
-
-    pub fn with<T>(
-        &mut self,
-        err: impl ToString,
-        f: impl FnOnce(&mut Unstructured<'a>) -> Result<T, arbitrary::Error>,
-    ) -> GenResult<T> {
-        if let Some(mut arb) = self.arb.as_mut() {
-            f(&mut arb).map_err(|e| format!("Could not generate data: {}", e))
-        } else {
-            Err(err.to_string())
-        }
-    }
-}
 
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some arbitrary existing

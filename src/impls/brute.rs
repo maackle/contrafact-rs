@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{fact::Bounds, Fact, BRUTE_ITERATION_LIMIT};
 
-use crate::fact::{GenResult, Generator};
+use crate::{GenResult, Generator};
 
 /// A version of [`brute`] whose closure returns a Result
 pub fn brute_fallible<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>

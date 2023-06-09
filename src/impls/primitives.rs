@@ -6,7 +6,7 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
-use crate::{fact::*, BRUTE_ITERATION_LIMIT};
+use crate::*;
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {

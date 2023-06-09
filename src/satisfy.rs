@@ -1,7 +1,4 @@
-use crate::{
-    fact::{Bounds, Generator},
-    Check, Fact,
-};
+use crate::*;
 
 /// Check that all of the constraints of all Facts are satisfied for this sequence.
 /// Each Fact will run [`Fact::advance`] after each item checked, allowing stateful

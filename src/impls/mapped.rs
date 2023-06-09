@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    fact::{Bounds, GenResult, Generator},
-    Fact, FactsRef,
-};
+use crate::{fact::Bounds, *};
 
 /// A version of [`mapped`] whose closure returns a Result
 pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
