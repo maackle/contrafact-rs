@@ -53,6 +53,12 @@ where
 /// Build a sequence from scratch such that all Facts are satisfied.
 /// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
 /// facts to change as the sequence advances.
+///
+/// ## Panics
+///
+/// Panics if an error is encountered during any build step. To handle these errors,
+/// use [`build_seq_fallible`] instead.
+
 #[tracing::instrument(skip(g, fact))]
 pub fn build_seq<'a, T, F>(g: &mut Generator<'a>, num: usize, fact: F) -> Vec<T>
 where
@@ -60,6 +66,30 @@ where
     F: Fact<'a, T>,
 {
     build_seq_fallible(g, num, fact).unwrap()
+}
+
+/// Build an infinite iterator of items such that all Facts are satisfied.
+/// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
+/// facts to change as the sequence advances.
+///
+/// ## Panics
+///
+/// Panics if an error is encountered at any iteration.
+#[tracing::instrument(skip(g, fact))]
+pub fn build_iter<'a, 'b: 'a, T, F>(
+    g: &'b mut Generator<'a>,
+    mut fact: F,
+) -> impl Iterator<Item = T> + 'b
+where
+    T: 'b + Bounds<'a>,
+    F: 'b + Fact<'a, T>,
+{
+    let repeater = move || {
+        let obj = fact.build_fallible(g).unwrap();
+        fact.advance(&obj);
+        obj
+    };
+    std::iter::repeat_with(repeater)
 }
 
 /// Convenience macro for creating a collection of [`Fact`](crate::Fact)s
