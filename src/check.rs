@@ -120,7 +120,7 @@ impl Check {
             Ok(_) => Self::pass(),
             Err(MutationError::Check(err)) => Self::fail(err),
             Err(MutationError::Arbitrary(err)) => Self::Error(err.to_string()),
-            Err(MutationError::Internal(err)) => Self::Error(format!("{:?}", err)),
+            Err(MutationError::Exception(err)) => Self::Error(format!("{:?}", err)),
         }
     }
 

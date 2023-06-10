@@ -193,7 +193,7 @@ mod tests {
             ]
         };
 
-        let seq = build_seq(&mut g, 6, f()).unwrap();
+        let seq = build_seq(&mut g, 6, f());
         check_seq(seq.as_slice(), f()).unwrap();
 
         assert!(seq.iter().all(|e| match e {
@@ -223,7 +223,7 @@ mod tests {
             ]
         };
 
-        let seq = build_seq(&mut g, 10, f()).unwrap();
+        let seq = build_seq(&mut g, 10, f());
         check_seq(seq.as_slice(), f()).unwrap();
 
         // Assert that each variant of E is independently increasing

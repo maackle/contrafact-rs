@@ -65,9 +65,14 @@ where
     }
 
     /// Build a new value such that it satisfies the constraint
-    fn build(&mut self, g: &mut Generator<'a>) -> ContrafactResult<T> {
+    fn build_fallible(&mut self, g: &mut Generator<'a>) -> ContrafactResult<T> {
         let obj = T::arbitrary(g).unwrap();
         self.satisfy(obj, g)
+    }
+
+    /// Build a new value such that it satisfies the constraint, panicking on error
+    fn build(&mut self, g: &mut Generator<'a>) -> T {
+        self.build_fallible(g).unwrap()
     }
 }
 

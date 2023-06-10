@@ -27,9 +27,10 @@ pub enum MutationError {
     /// When running check, this is a failure which was generated instead of mutating the data
     Check(Failure),
     /// arbitrary failed to produce new data, which means we can't go on
+    #[from]
     Arbitrary(arbitrary::Error),
     /// There was some other bug in the Fact implementation
-    Internal(ContrafactError),
+    Exception(String),
 }
 
 /// Alias
