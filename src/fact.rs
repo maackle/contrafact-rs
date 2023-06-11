@@ -13,8 +13,11 @@ pub(crate) const SATISFY_ATTEMPTS: usize = 7;
 // then `check()` can know if a mutation occurred
 //
 /// The trait bounds for the subject of a Fact
-pub trait Bounds<'a>: std::fmt::Debug + Clone + PartialEq + Arbitrary<'a> {}
-impl<'a, T> Bounds<'a> for T where T: std::fmt::Debug + Clone + PartialEq + Arbitrary<'a> {}
+pub trait Bounds<'a>: std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a> {}
+impl<'a, T> Bounds<'a> for T where
+    T: std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a>
+{
+}
 
 /// Type alias for a boxed Fact. Implements [`Fact`] itself.
 pub type BoxFact<'a, T> = Box<dyn 'a + Fact<'a, T>>;
@@ -28,7 +31,7 @@ pub type Facts<T> = FactsRef<'static, T>;
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some arbitrary existing
 /// data into a shape which passes that same assertion (mutate)
-pub trait Fact<'a, T>
+pub trait Fact<'a, T>: Send + Sync
 where
     T: Bounds<'a>,
 {

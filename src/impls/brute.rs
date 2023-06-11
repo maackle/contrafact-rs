@@ -9,7 +9,7 @@ pub fn brute_fallible<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> Mutation<bool>,
+    F: 'a + Send + Sync + Fn(&T) -> Mutation<bool>,
 {
     BruteFact::<T>::new(reason.to_string(), f)
 }
@@ -49,12 +49,12 @@ pub fn brute<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> bool,
+    F: 'a + Send + Sync + Fn(&T) -> bool,
 {
     BruteFact::<T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
-type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> Mutation<bool>)>;
+type BruteFn<'a, T> = Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<bool>>;
 
 /// A brute-force fact. Use [`brute()`] to construct.
 #[derive(Clone)]
@@ -85,7 +85,10 @@ where
 }
 
 impl<'a, T> BruteFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> Mutation<bool>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<bool>>(
+        reason: String,
+        f: F,
+    ) -> Self {
         Self {
             label: reason,
             f: Arc::new(f),

@@ -76,21 +76,41 @@ where
 ///
 /// Panics if an error is encountered at any iteration.
 #[tracing::instrument(skip(g, fact))]
-pub fn build_iter<'a, 'b: 'a, T, F>(
-    g: &'b mut Generator<'a>,
-    mut fact: F,
-) -> impl Iterator<Item = T> + 'b
+pub fn build_iter<'a, T, F>(g: Generator<'a>, fact: F) -> impl Iterator<Item = T> + 'a
 where
-    T: 'b + Bounds<'a>,
-    F: 'b + Fact<'a, T>,
+    T: Bounds<'a>,
+    F: 'a + Fact<'a, T>,
 {
-    let repeater = move || {
+    (0..).scan((g, fact), |(g, fact), _| {
         let obj = fact.build_fallible(g).unwrap();
         fact.advance(&obj);
-        obj
-    };
-    std::iter::repeat_with(repeater)
+        Some(obj)
+    })
 }
+
+// /// Build an infinite iterator of items such that all Facts are satisfied.
+// /// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
+// /// facts to change as the sequence advances.
+// ///
+// /// ## Panics
+// ///
+// /// Panics if an error is encountered at any iteration.
+// #[tracing::instrument(skip(g, fact))]
+// pub fn build_iter<'a, 'b: 'a, T, F>(
+//     g: &'b mut Generator<'a>,
+//     mut fact: F,
+// ) -> impl Iterator<Item = T> + 'b
+// where
+//     T: 'b + Bounds<'a>,
+//     F: 'b + Fact<'a, T>,
+// {
+//     let repeater = move || {
+//         let obj = fact.build_fallible(g).unwrap();
+//         fact.advance(&obj);
+//         obj
+//     };
+//     std::iter::repeat_with(repeater)
+// }
 
 /// Convenience macro for creating a collection of [`Fact`](crate::Fact)s
 /// of different types.

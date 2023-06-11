@@ -41,7 +41,7 @@ where
     T: Bounds<'a> + Clone,
     S: ToString,
     F: Fact<'a, T>,
-    L: 'a + Clone + Fn(&mut O) -> &mut T,
+    L: 'a + Clone + Send + Sync + Fn(&mut O) -> &mut T,
 {
     let lens2 = lens.clone();
     let getter = move |mut o| lens(&mut o).clone();
@@ -63,8 +63,8 @@ where
 {
     label: String,
 
-    getter: Arc<dyn 'a + Fn(O) -> T>,
-    setter: Arc<dyn 'a + Fn(O, T) -> O>,
+    getter: Arc<dyn 'a + Send + Sync + Fn(O) -> T>,
+    setter: Arc<dyn 'a + Send + Sync + Fn(O, T) -> O>,
 
     /// The inner_fact about the inner substructure
     inner_fact: F,
@@ -85,8 +85,8 @@ where
         O: Bounds<'a>,
         F: Fact<'a, T>,
         L: ToString,
-        G: 'a + Fn(O) -> T,
-        S: 'a + Fn(O, T) -> O,
+        G: 'a + Send + Sync + Fn(O) -> T,
+        S: 'a + Send + Sync + Fn(O, T) -> O,
     {
         Self {
             label: label.to_string(),

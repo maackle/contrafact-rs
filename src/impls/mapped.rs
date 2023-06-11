@@ -7,7 +7,7 @@ pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> Mutation<FactsRef<'a, T>>,
+    F: 'a + Send + Sync + Fn(&T) -> Mutation<FactsRef<'a, T>>,
 {
     MappedFact::new(reason.to_string(), f)
 }
@@ -50,7 +50,7 @@ pub fn mapped<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> FactsRef<'a, T>,
+    F: 'a + Send + Sync + Fn(&T) -> FactsRef<'a, T>,
 {
     MappedFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
@@ -60,7 +60,7 @@ where
 #[derive(Clone)]
 pub struct MappedFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Fn(&T) -> Mutation<FactsRef<'a, T>>>,
+    f: Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<FactsRef<'a, T>>>,
 }
 
 impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
@@ -77,7 +77,10 @@ where
 }
 
 impl<'a, T> MappedFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> Mutation<FactsRef<'a, T>>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<FactsRef<'a, T>>>(
+        reason: String,
+        f: F,
+    ) -> Self {
         Self {
             reason,
             f: Arc::new(f),

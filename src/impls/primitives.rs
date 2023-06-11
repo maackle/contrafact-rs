@@ -366,7 +366,7 @@ where
 
 impl<'a, R, T> Fact<'a, T> for InRangeFact<R, T>
 where
-    R: RangeBounds<T> + std::fmt::Debug,
+    R: Send + Sync + RangeBounds<T> + std::fmt::Debug,
     T: Bounds<'a>
         + PartialEq
         + PartialOrd

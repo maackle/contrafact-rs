@@ -65,7 +65,7 @@ where
     S: ToString,
     T: Bounds<'a> + Clone,
     F: Fact<'a, T>,
-    P: 'a + Fn(&mut O) -> Option<&mut T>,
+    P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
 {
     // let getter = |o| prism(&mut o).cloned();
     // let setter = |o, t| {
@@ -89,9 +89,9 @@ where
     F: Fact<'a, T>,
 {
     label: String,
-    // getter: Arc<dyn 'a + Fn(O) -> Option<T>>,
-    // setter: Arc<dyn 'a + Fn(O, T) -> Option<O>>,
-    prism: Arc<dyn 'a + Fn(&mut O) -> Option<&mut T>>,
+    // getter: Arc<dyn 'a + Send + Sync + Fn(O) -> Option<T>>,
+    // setter: Arc<dyn 'a + Send + Sync + Fn(O, T) -> Option<O>>,
+    prism: Arc<dyn 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>>,
     inner_fact: F,
     __phantom: PhantomData<&'a F>,
 }
@@ -108,7 +108,7 @@ where
         T: Bounds<'a>,
         O: Bounds<'a>,
         F: Fact<'a, T>,
-        P: 'a + Fn(&mut O) -> Option<&mut T>,
+        P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
         // G: Fn(O) -> Option<T>,
         // S: Fn(O, T) -> Option<O>,
     {
