@@ -98,10 +98,18 @@ impl<'a> Generator<'a> {
             return Ok(&choices[0]).into();
         }
         if self.arb.is_empty() {
-            return Err(MutationError::Check("Ran out of choices".to_string())).into();
+            return Err(MutationError::Check("Ran out of entropy".to_string())).into();
         }
         self.with(err, |u| u.choose(choices))
     }
+
+    // /// Size a collection in mutation mode, or produce an error in check mode.
+    // pub fn collection_size<T: Arbitrary<'a>>(
+    //     &mut self,
+    //     err: impl ToString,
+    // ) -> Mutation<usize> {
+    //     self.with(err, |u| u.arbitrary_len::<T>())
+    // }
 
     /// Call the specified Arbitrary function in mutation mode, or produce an error in check mode.
     pub fn with<T>(
@@ -152,7 +160,7 @@ pub mod test {
         assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
 
         // This is the only case where we can't choose a value, because we have 2 choices and 6 bytes.
-        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of choices".to_string())));
+        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of entropy".to_string())));
     }
 
     /// Test that a generator can be used to choose between three values.
@@ -168,7 +176,7 @@ pub mod test {
         assert_eq!(gen.choose(&choices, "error").unwrap(), &2);
 
         // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
-        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of choices".to_string())));
+        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of entropy".to_string())));
     }
 
     /// Test that a generator can be used to choose between three values with
@@ -192,6 +200,6 @@ pub mod test {
         assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
 
         // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
-        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of choices".to_string())));
+        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of entropy".to_string())));
     }
 }
