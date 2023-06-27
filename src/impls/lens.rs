@@ -30,7 +30,7 @@ use crate::*;
 /// assert!(fact.check(&S {x: 2, y: 333}).is_err());
 ///
 /// let mut g = utils::random_generator();
-/// let a = fact.build(&mut g).unwrap();
+/// let a = fact.build(&mut g);
 /// assert_eq!(a.x, 1);
 /// ```
 //

@@ -33,6 +33,17 @@ pub enum MutationError {
     Exception(String),
 }
 
+impl PartialEq for MutationError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Check(s), Self::Check(o)) => s == o,
+            (Self::Arbitrary(s), Self::Arbitrary(o)) => s.to_string() == o.to_string(),
+            (Self::Exception(s), Self::Exception(o)) => s == o,
+            _ => false,
+        }
+    }
+}
+
 /// Alias
 pub type Mutation<T> = Result<T, MutationError>;
 

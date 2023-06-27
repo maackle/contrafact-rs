@@ -49,7 +49,7 @@ use crate::*;
 /// assert!(fact.check(&E::Y(99)).is_ok());
 ///
 /// let mut g = utils::random_generator();
-/// let e = fact.build(&mut g).unwrap();
+/// let e = fact.build(&mut g);
 /// match e {
 ///     E::X(x) => assert_eq!(x, 1),
 ///     _ => (),  // Y is not defined by the prism, so it can take on any value.

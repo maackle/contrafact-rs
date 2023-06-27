@@ -91,6 +91,15 @@ impl<'a> Generator<'a> {
         choices: &'a [T],
         err: impl ToString,
     ) -> Mutation<&T> {
+        if choices.is_empty() {
+            return Err(MutationError::Check("Empty choices".to_string())).into();
+        }
+        if choices.len() == 1 {
+            return Ok(&choices[0]).into();
+        }
+        if self.arb.is_empty() {
+            return Err(MutationError::Check("Ran out of choices".to_string())).into();
+        }
         self.with(err, |u| u.choose(choices))
     }
 
@@ -105,5 +114,84 @@ impl<'a> Generator<'a> {
         } else {
             f(&mut self.arb).map_err(Into::into)
         }
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use crate::MutationError;
+    use rand::SeedableRng;
+    use rand::prelude::SliceRandom;
+
+    /// Test the error when there are no possible choices.
+    #[test]
+    pub fn test_generator_no_choices() {
+        let mut gen = crate::generator::Generator::from(&[0, 1, 2, 3, 4, 5][..]);
+        let choices: [usize; 0] = [];
+        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Empty choices".to_string())));
+    }
+
+    /// Test that a generator can be used to choose one value.
+    #[test]
+    pub fn test_generator_one_choices() {
+        let mut gen = crate::generator::Generator::from(&[0, 1, 2, 3, 4, 5][..]);
+        let choices = [0];
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+    }
+
+    /// Test that a generator can be used to choose between two values.
+    #[test]
+    pub fn test_generator_choose_two_values() {
+        let mut gen = crate::generator::Generator::from(&[0, 1, 2, 3, 4, 5][..]);
+        let choices = [0, 1];
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
+
+        // This is the only case where we can't choose a value, because we have 2 choices and 6 bytes.
+        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of choices".to_string())));
+    }
+
+    /// Test that a generator can be used to choose between three values.
+    #[test]
+    pub fn test_generator_choose_three_values() {
+        let mut gen = crate::generator::Generator::from(&[0, 1, 2, 3, 4, 5][..]);
+        let choices = [0, 1, 2];
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &2);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &2);
+
+        // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
+        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of choices".to_string())));
+    }
+
+    /// Test that a generator can be used to choose between three values with
+    /// randomization.
+    #[test]
+    pub fn test_generator_choose_three_values_random() {
+        let mut u_data = [0, 1, 2, 3, 4, 5];
+
+        // Seeded random so we get deterministic results.
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0);
+        u_data.shuffle(&mut rng);
+
+        let mut gen = crate::generator::Generator::from(&u_data[..]);
+
+        let choices = [0, 1, 2];
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &2);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &2);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+        assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
+
+        // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
+        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Check("Ran out of choices".to_string())));
     }
 }
