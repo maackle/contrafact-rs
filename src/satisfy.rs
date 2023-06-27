@@ -76,15 +76,21 @@ where
 ///
 /// Panics if an error is encountered at any iteration.
 #[tracing::instrument(skip(g, fact))]
-pub fn build_iter<'a, T, F>(g: Generator<'a>, fact: F) -> impl Iterator<Item = T> + 'a
+pub fn build_iter<'a, T, F>(mut g: Generator<'a>, mut fact: F) -> impl Iterator<Item = T> + 'a
 where
     T: Bounds<'a>,
     F: 'a + Fact<'a, T>,
 {
-    (0..).scan((g, fact), |(g, fact), _| {
-        let obj = fact.build_fallible(g).unwrap();
+    // (0..).scan((g, fact), |(g, fact), _| {
+    //     let obj = fact.build_fallible(g).unwrap();
+    //     fact.advance(&obj);
+    //     Some(obj)
+    // })
+
+    std::iter::repeat_with(move || {
+        let obj = fact.build_fallible(&mut g).unwrap();
         fact.advance(&obj);
-        Some(obj)
+        obj
     })
 }
 

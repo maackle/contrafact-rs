@@ -35,7 +35,12 @@ pub trait Fact<'a, T>: Send + Sync
 where
     T: Bounds<'a>,
 {
-    /// Assert that the constraint is satisfied for given data
+    /// Assert that the constraint is satisfied for given data.
+    ///
+    /// If the mutation function is written properly, we get a check for free
+    /// by using a special Generator which fails upon mutation. If this is for
+    /// some reason unreasonable, a check function can be written by hand, but
+    /// care must be taken to make sure it perfectly lines up with the mutation function.
     fn check(&self, obj: &T) -> Check {
         let mut g = Generator::checker();
         Check::from_mutation(self.mutate(obj.clone(), &mut g))
@@ -49,20 +54,33 @@ where
     /// each item to modify the state to get ready for the next item.
     fn advance(&mut self, obj: &T);
 
+    /// Make this many attempts to satisfy a constraint before giving up and panicking.
+    ///
+    /// If you are combining highly contentious facts together and relying on randomness
+    /// to find a solution, this limit may need to be higher. In general, you should try
+    /// to write facts that don't interfere with each other so that the constraint can be
+    /// met on the first attempt, or perhaps the second or third. If necessary, this can
+    /// be raised to lean more on random search.
+    fn satisfy_attempts(&self) -> usize {
+        SATISFY_ATTEMPTS
+    }
+
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
-    fn satisfy(&mut self, mut obj: T, g: &mut Generator<'a>) -> ContrafactResult<T> {
+    fn satisfy(&mut self, obj: T, g: &mut Generator<'a>) -> ContrafactResult<T> {
         let mut last_failure: Vec<String> = vec![];
-        for _i in 0..SATISFY_ATTEMPTS {
-            obj = self.mutate(obj, g).unwrap();
-            if let Err(errs) = self.check(&obj).result()? {
+        let mut next = obj.clone();
+        for _i in 0..self.satisfy_attempts() {
+            next = self.mutate(next, g).unwrap();
+            if let Err(errs) = self.check(&next).result()? {
                 last_failure = errs;
             } else {
-                return Ok(obj);
+                self.advance(&obj);
+                return Ok(next);
             }
         }
         panic!(
-            "Could not satisfy a constraint even after {} attemps. Last check failure: {:?}",
+            "Could not satisfy a constraint even after {} attempts. Last check failure: {:?}",
             SATISFY_ATTEMPTS, last_failure
         );
     }
