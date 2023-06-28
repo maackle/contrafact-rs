@@ -284,7 +284,7 @@ fn test_omega_fact() {
     observability::test_run().ok();
     let mut g = utils::random_generator();
 
-    let fact = omega_fact(11);
+    let mut fact = omega_fact(11);
 
     let beta = beta_fact().build(&mut g);
 

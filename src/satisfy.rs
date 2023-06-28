@@ -22,7 +22,6 @@ where
             }
             Err(err) => return Check::Error(format!("{:?}", err)),
         }
-        fact.advance(obj);
     }
     reasons.into()
 }
@@ -44,7 +43,6 @@ where
     for _i in 0..num {
         tracing::trace!("i: {}", _i);
         let obj = fact.build_fallible(g)?;
-        fact.advance(&obj);
         seq.push(obj);
     }
     Ok(seq)

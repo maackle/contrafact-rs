@@ -61,6 +61,20 @@ where
     T: Bounds<'a>,
     F: Fact<'a, T>,
 {
+    fn check(&mut self, seq: &Vec<T>) -> Check {
+        let mut g = Generator::checker();
+
+        for (i, obj) in seq.iter().enumerate() {
+            let check = Check::from_mutation(self.inner_fact.mutate(obj.clone(), &mut g));
+            if let Ok(Ok(())) = check.clone().result() {
+                self.inner_fact.advance(&obj);
+            } else {
+                return check.map(|e| format!("seq({})[{}]: {}", self.label, i, e));
+            }
+        }
+        Check::pass()
+    }
+
     fn satisfy(&mut self, seq: Vec<T>, g: &mut Generator<'a>) -> ContrafactResult<Vec<T>> {
         let satisfy_attempts = self.satisfy_attempts();
         let mut last_failure: Vec<String> = vec![];
@@ -69,11 +83,13 @@ where
             let mut next = obj.clone();
             for _a in 0..satisfy_attempts {
                 next = self.inner_fact.mutate(next, g).unwrap();
-                if let Err(errs) = self.inner_fact.check(&next).result()? {
+                if let Err(errs) = self
+                    .inner_fact
+                    .check(&next)
+                    .map(|e| format!("seq({})[{}]: {}", self.label, i, e))
+                    .result()?
+                {
                     last_failure = errs
-                        .into_iter()
-                        .map(|e| format!("seq({})[{}]: {}", self.label, i, e))
-                        .collect();
                 } else {
                     self.inner_fact.advance(&obj);
                     next_seq.push(next);
@@ -113,11 +129,17 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let ff = || seq("S::x", eq("must be 1", 1));
+        let ff = || {
+            facts![
+                brute("len must be >= 3", |v: &Vec<_>| v.len() >= 3),
+                seq("S::x", eq("must be 1", 1)),
+            ]
+        };
         let mut f = ff();
         let ones = f.build(&mut g);
         f.check(&ones).unwrap();
 
+        assert!(ones.len() >= 3);
         assert!(ones.iter().all(|s| *s == 1));
     }
 }

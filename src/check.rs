@@ -23,20 +23,18 @@ pub enum Check {
 }
 
 impl Check {
-    // /// Map over each error string.
-    // /// Useful for combinators which add additional context to errors produced
-    // /// by inner facts.
-    // pub fn map<F>(self, f: F) -> Self
-    // where
-    //     F: FnMut(CheckMsg) -> CheckMsg,
-    // {
-    //     if let Err(errs) = self.result() {
-    //         errs.into_iter().map(f).collect()
-    //     } else {
-    //         vec![]
-    //     }
-    //     .into()
-    // }
+    /// Map over each failure string.
+    /// Useful for combinators which add additional context to errors produced
+    /// by inner facts.
+    pub fn map<F>(self, f: F) -> Self
+    where
+        F: FnMut(Failure) -> Failure,
+    {
+        match self {
+            Self::Failures(failures) => Self::Failures(failures.into_iter().map(f).collect()),
+            e => e,
+        }
+    }
 
     /// Panic if there are any errors, and display those errors.
     pub fn unwrap(self) {
@@ -72,7 +70,7 @@ impl Check {
         }
     }
 
-    /// Convert to a Result: No errors => Ok
+    /// Convert to a Result: No failures => `Ok` all the way
     /// The result is wrapped in another Result, in case the overall check failed for an internal reason
     ///
     /// ```

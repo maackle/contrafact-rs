@@ -41,9 +41,10 @@ where
     /// by using a special Generator which fails upon mutation. If this is for
     /// some reason unreasonable, a check function can be written by hand, but
     /// care must be taken to make sure it perfectly lines up with the mutation function.
-    fn check(&self, obj: &T) -> Check {
-        let mut g = Generator::checker();
-        Check::from_mutation(self.mutate(obj.clone(), &mut g))
+    fn check(&mut self, obj: &T) -> Check {
+        let check = check_raw(self, obj);
+        self.advance(obj);
+        check
     }
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
@@ -72,7 +73,7 @@ where
         let mut next = obj.clone();
         for _i in 0..self.satisfy_attempts() {
             next = self.mutate(next, g).unwrap();
-            if let Err(errs) = self.check(&next).result()? {
+            if let Err(errs) = check_raw(self, &next).result()? {
                 last_failure = errs;
             } else {
                 self.advance(&obj);
@@ -119,7 +120,7 @@ where
     F: Fact<'a, T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) -> Check {
+    fn check(&mut self, obj: &T) -> Check {
         collect_checks(self, obj)
     }
 
@@ -145,8 +146,8 @@ where
     F: Fact<'a, T>,
 {
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &T) -> Check {
-        collect_checks(self.as_slice(), obj)
+    fn check(&mut self, obj: &T) -> Check {
+        collect_checks(self.as_mut_slice(), obj)
     }
 
     #[tracing::instrument(skip(self, g))]
@@ -165,13 +166,22 @@ where
     }
 }
 
-fn collect_checks<'a, T, F>(facts: &[F], obj: &T) -> Check
+pub(crate) fn check_raw<'a, T, F: Fact<'a, T>>(fact: &F, obj: &T) -> Check
+where
+    T: Bounds<'a> + ?Sized,
+    F: Fact<'a, T> + ?Sized,
+{
+    let mut g = Generator::checker();
+    Check::from_mutation(fact.mutate(obj.clone(), &mut g))
+}
+
+fn collect_checks<'a, T, F>(facts: &mut [F], obj: &T) -> Check
 where
     T: Bounds<'a>,
     F: Fact<'a, T>,
 {
     let checks = facts
-        .iter()
+        .iter_mut()
         .enumerate()
         .map(|(i, f)| {
             Ok(f.check(obj)

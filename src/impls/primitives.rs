@@ -6,7 +6,7 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
-use crate::*;
+use crate::{fact::check_raw, *};
 
 /// A constraint which is always met
 pub fn always() -> BoolFact {
@@ -320,12 +320,6 @@ where
     T: 'b + Bounds<'a> + Clone,
     // I: Iterator<Item = &'b T>,
 {
-    #[allow(unused_assignments)]
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut T, g: &mut Generator<'a>) {
-        todo!()
-    }
-
     fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         Ok(if !self.slice.contains(&obj) {
             g.choose(
@@ -459,8 +453,8 @@ where
     fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         use rand::{thread_rng, Rng};
 
-        let a = self.a.check(&obj).is_ok();
-        let b = self.b.check(&obj).is_ok();
+        let a = check_raw(&self.a, &obj).is_ok();
+        let b = check_raw(&self.b, &obj).is_ok();
         match (a, b) {
             (true, _) => Ok(obj),
             (_, true) => Ok(obj),
@@ -501,7 +495,7 @@ where
 {
     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if self.fact.check(&obj).is_err() {
+            if check_raw(&self.fact, &obj).is_err() {
                 break;
             }
             obj = g
@@ -539,7 +533,7 @@ mod tests {
 
         let eq1 = eq("must be 1", 1);
         let eq2 = eq("must be 2", 2);
-        let either = or("can be 1 or 2", eq1, eq2);
+        let mut either = or("can be 1 or 2", eq1, eq2);
 
         let ones = build_seq(&mut g, 10, either.clone());
         check_seq(ones.as_slice(), either.clone()).unwrap();
