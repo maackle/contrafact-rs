@@ -92,13 +92,13 @@ impl<'a> Generator<'a> {
         err: impl ToString,
     ) -> Mutation<&T> {
         if choices.is_empty() {
-            return Err(MutationError::Check("Empty choices".to_string())).into();
+            return Err(MutationError::Exception("Empty choices".to_string())).into();
         }
         if choices.len() == 1 {
             return Ok(&choices[0]).into();
         }
         if self.arb.is_empty() {
-            return Err(MutationError::Check("Ran out of entropy".to_string())).into();
+            return Err(MutationError::Exception("Ran out of entropy".to_string())).into();
         }
         self.with(err, |u| u.choose(choices))
     }
