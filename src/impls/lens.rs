@@ -104,7 +104,7 @@ where
     O: Bounds<'a> + Clone,
     F: Fact<'a, T>,
 {
-    #[tracing::instrument(skip(self, g))]
+    #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
     fn mutate(&self, obj: O, g: &mut Generator<'a>) -> Mutation<O> {
         let t = (self.getter)(obj.clone());
         let t = self
@@ -114,7 +114,7 @@ where
         Ok((self.setter)(obj, t))
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(fields(fact = "lens"), skip(self))]
     fn advance(&mut self, obj: &O) {
         self.inner_fact.advance(&(self.getter)(obj.clone()))
     }

@@ -215,6 +215,7 @@ impl<'a, T> Fact<'a, T> for BoolFact
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
+    #[tracing::instrument(fields(fact = "bool"), skip(self, g))]
     fn mutate(&self, t: T, g: &mut Generator<'_>) -> Mutation<T> {
         if !self.0 {
             g.fail("never() encountered.")?;
@@ -222,6 +223,7 @@ where
         Ok(t)
     }
 
+    #[tracing::instrument(fields(fact = "bool"), skip(self))]
     fn advance(&mut self, _: &T) {}
 }
 
@@ -243,6 +245,7 @@ impl<'a, T> Fact<'a, T> for EqFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
+    #[tracing::instrument(fields(fact = "eq"), skip(self, g))]
     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         let constant = self.constant.clone();
         match self.op {
@@ -268,6 +271,7 @@ where
         Ok(obj)
     }
 
+    #[tracing::instrument(fields(fact = "eq"), skip(self))]
     fn advance(&mut self, _: &T) {}
 }
 
@@ -281,6 +285,7 @@ impl<'a, T> Fact<'a, (T, T)> for SameFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
+    #[tracing::instrument(fields(fact = "same"), skip(self, g))]
     fn mutate(&self, mut obj: (T, T), g: &mut Generator<'a>) -> Mutation<(T, T)> {
         match self.op {
             EqOp::Equal => {
@@ -302,6 +307,7 @@ where
         Ok(obj)
     }
 
+    #[tracing::instrument(fields(fact = "same"), skip(self))]
     fn advance(&mut self, _: &(T, T)) {}
 }
 
@@ -415,6 +421,7 @@ impl<'a, T> Fact<'a, T> for ConsecutiveIntFact<T>
 where
     T: Bounds<'a> + num::PrimInt,
 {
+    #[tracing::instrument(fields(fact = "consecutive_int"), skip(self, g))]
     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         if obj != self.counter {
             g.fail(&self.context)?;
@@ -423,6 +430,7 @@ where
         Ok(obj)
     }
 
+    #[tracing::instrument(fields(fact = "consecutive_int"), skip(self))]
     fn advance(&mut self, _: &T) {
         self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
     }

@@ -1,3 +1,10 @@
+//! Lift a fact about an item in a sequence into a Fact about the entire sequence.
+//!
+//! When checking or mutating this `seq` fact, the inner Fact will have `advance()`
+//! called after each item. If the overall mutation fails due to a combination
+//! of internally inconsistent facts, then the facts must be "rolled back" for the next
+//! `satisfy()` attempt.
+
 use std::marker::PhantomData;
 
 use crate::*;
@@ -61,55 +68,18 @@ where
     T: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    fn check(&mut self, seq: &Vec<T>) -> Check {
-        let mut g = Generator::checker();
-
-        for (i, obj) in seq.iter().enumerate() {
-            let check = Check::from_mutation(self.inner_fact.mutate(obj.clone(), &mut g));
-            if let Ok(Ok(())) = check.clone().result() {
-                self.inner_fact.advance(&obj);
-            } else {
-                return check.map(|e| format!("seq({})[{}]: {}", self.label, i, e));
-            }
-        }
-        Check::pass()
+    #[tracing::instrument(fields(fact = "seq"), skip(self, g))]
+    fn mutate(&self, obj: Vec<T>, g: &mut Generator<'a>) -> Mutation<Vec<T>> {
+        tracing::trace!("");
+        obj.into_iter()
+            .map(|o| self.inner_fact.mutate(o, g))
+            .collect::<Result<Vec<_>, _>>()
     }
 
-    fn satisfy(&mut self, seq: Vec<T>, g: &mut Generator<'a>) -> ContrafactResult<Vec<T>> {
-        let satisfy_attempts = self.satisfy_attempts();
-        let mut last_failure: Vec<String> = vec![];
-        let mut next_seq = Vec::with_capacity(seq.len());
-        'item: for (i, obj) in seq.iter().enumerate() {
-            let mut next = obj.clone();
-            for _a in 0..satisfy_attempts {
-                next = self.inner_fact.mutate(next, g).unwrap();
-                if let Err(errs) = self
-                    .inner_fact
-                    .check(&next)
-                    .map(|e| format!("seq({})[{}]: {}", self.label, i, e))
-                    .result()?
-                {
-                    last_failure = errs
-                } else {
-                    self.inner_fact.advance(&obj);
-                    next_seq.push(next);
-                    continue 'item;
-                }
-            }
-            panic!(
-                "Could not satisfy a constraint even after {} attempts. Last check failure: {:?}",
-                satisfy_attempts, last_failure
-            );
-        }
-        Ok(next_seq)
-    }
-
-    fn mutate(&self, _: Vec<T>, _: &mut Generator<'a>) -> Mutation<Vec<T>> {
-        unimplemented!("satisfy() was implemented directly")
-    }
-
-    fn advance(&mut self, _: &Vec<T>) {
-        unimplemented!("satisfy() was implemented directly")
+    #[tracing::instrument(fields(fact = "seq"), skip(self))]
+    fn advance(&mut self, obj: &Vec<T>) {
+        tracing::trace!("seq");
+        obj.iter().for_each(|o| self.inner_fact.advance(o));
     }
 }
 

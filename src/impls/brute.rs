@@ -67,7 +67,9 @@ impl<'a, T> Fact<'a, T> for BruteFact<'a, T>
 where
     T: Bounds<'a>,
 {
+    #[tracing::instrument(fields(fact = "brute"), skip(self, g))]
     fn mutate(&self, mut t: T, g: &mut Generator<'a>) -> Mutation<T> {
+        tracing::trace!("brute");
         for _ in 0..=BRUTE_ITERATION_LIMIT {
             if (self.f)(&t)? {
                 return Ok(t);
@@ -81,7 +83,10 @@ where
         );
     }
 
-    fn advance(&mut self, _: &T) {}
+    #[tracing::instrument(fields(fact = "brute"), skip(self))]
+    fn advance(&mut self, _obj: &T) {
+        tracing::trace!("brute");
+    }
 }
 
 impl<'a, T> BruteFact<'a, T> {

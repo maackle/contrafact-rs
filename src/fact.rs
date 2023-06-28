@@ -41,6 +41,7 @@ where
     /// by using a special Generator which fails upon mutation. If this is for
     /// some reason unreasonable, a check function can be written by hand, but
     /// care must be taken to make sure it perfectly lines up with the mutation function.
+    #[tracing::instrument(fields(fact_impl = "Fact"), skip(self))]
     fn check(&mut self, obj: &T) -> Check {
         let check = check_raw(self, obj);
         self.advance(obj);
@@ -49,10 +50,12 @@ where
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
     /// constraint.
+    // #[tracing::instrument(skip(self, g))]
     fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T>;
 
     /// When checking or mutating a sequence of items, this gets called after
     /// each item to modify the state to get ready for the next item.
+    #[tracing::instrument(fields(fact_impl = "Fact"), skip(self))]
     fn advance(&mut self, obj: &T);
 
     /// Make this many attempts to satisfy a constraint before giving up and panicking.
@@ -68,7 +71,9 @@ where
 
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
+    #[tracing::instrument(fields(fact_impl = "Fact"), skip(self, g))]
     fn satisfy(&mut self, obj: T, g: &mut Generator<'a>) -> ContrafactResult<T> {
+        tracing::trace!("satisfy");
         let mut last_failure: Vec<String> = vec![];
         let mut next = obj.clone();
         for _i in 0..self.satisfy_attempts() {
@@ -86,6 +91,7 @@ where
         );
     }
 
+    #[tracing::instrument(fields(fact_impl = "Fact"), skip(self, g))]
     /// Build a new value such that it satisfies the constraint
     fn build_fallible(&mut self, g: &mut Generator<'a>) -> ContrafactResult<T> {
         let obj = T::arbitrary(g).unwrap();
@@ -93,6 +99,7 @@ where
     }
 
     /// Build a new value such that it satisfies the constraint, panicking on error
+    #[tracing::instrument(fields(fact_impl = "Fact"), skip(self, g))]
     fn build(&mut self, g: &mut Generator<'a>) -> T {
         self.build_fallible(g).unwrap()
     }
@@ -103,12 +110,12 @@ where
     T: Bounds<'a>,
     F: Fact<'a, T> + ?Sized,
 {
-    #[tracing::instrument(skip(self, g))]
+    #[tracing::instrument(fields(fact_impl = "Box"), skip(self, g))]
     fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         (*self).as_ref().mutate(obj, g)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(fields(fact_impl = "Box"), skip(self))]
     fn advance(&mut self, obj: &T) {
         (*self).as_mut().advance(obj)
     }
@@ -119,12 +126,12 @@ where
     T: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self))]
     fn check(&mut self, obj: &T) -> Check {
         collect_checks(self, obj)
     }
 
-    #[tracing::instrument(skip(self, g))]
+    #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self, g))]
     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         for f in self.iter() {
             obj = f.mutate(obj, g)?;
@@ -132,7 +139,7 @@ where
         Ok(obj)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self))]
     fn advance(&mut self, obj: &T) {
         for f in self.iter_mut() {
             f.advance(obj)
@@ -145,12 +152,12 @@ where
     T: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(fields(fact_impl = "Vec"), skip(self))]
     fn check(&mut self, obj: &T) -> Check {
         collect_checks(self.as_mut_slice(), obj)
     }
 
-    #[tracing::instrument(skip(self, g))]
+    #[tracing::instrument(fields(fact_impl = "Vec"), skip(self, g))]
     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         for f in self.iter() {
             obj = f.mutate(obj, g)?;
@@ -158,7 +165,7 @@ where
         Ok(obj)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(fields(fact_impl = "Vec"), skip(self))]
     fn advance(&mut self, obj: &T) {
         for f in self.iter_mut() {
             f.advance(obj)
@@ -166,6 +173,7 @@ where
     }
 }
 
+#[tracing::instrument(skip(fact))]
 pub(crate) fn check_raw<'a, T, F: Fact<'a, T>>(fact: &F, obj: &T) -> Check
 where
     T: Bounds<'a> + ?Sized,
@@ -175,6 +183,7 @@ where
     Check::from_mutation(fact.mutate(obj.clone(), &mut g))
 }
 
+#[tracing::instrument(skip(facts))]
 fn collect_checks<'a, T, F>(facts: &mut [F], obj: &T) -> Check
 where
     T: Bounds<'a>,

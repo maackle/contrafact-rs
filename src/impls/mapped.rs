@@ -67,12 +67,14 @@ impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
 where
     T: Bounds<'a>,
 {
+    #[tracing::instrument(fields(fact = "mapped"), skip(self, g))]
     fn mutate(&self, t: T, g: &mut Generator<'a>) -> Mutation<T> {
         (self.f)(&t)?
             .mutate(t, g)
             .map_check_err(|err| format!("mapped({}) > {}", self.reason, err))
     }
 
+    #[tracing::instrument(fields(fact = "mapped"), skip(self))]
     fn advance(&mut self, _: &T) {}
 }
 
