@@ -123,7 +123,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, eq, utils};
+    use crate::{eq, utils};
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -137,9 +137,14 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
-        let ones = build_seq(&mut g, 3, f());
-        check_seq(ones.as_slice(), f()).unwrap();
+        let f = || {
+            seq(
+                "list of ones",
+                lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1)),
+            )
+        };
+        let ones = f().build(&mut g);
+        f().check(&ones).unwrap();
 
         assert!(ones.iter().all(|s| s.x == 1));
     }

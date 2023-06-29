@@ -62,11 +62,11 @@ fn test_link() {
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = move || chain_fact(author.clone());
+    let fact = move || sized_seq(NUM as usize, chain_fact(author.clone()));
 
-    let mut chain = build_seq(&mut g, NUM as usize, fact());
+    let chain = fact().build(&mut g);
     dbg!(&chain);
-    check_seq(chain.as_mut_slice(), fact()).unwrap();
+    fact().check(&chain).unwrap();
 
     assert!(chain.iter().all(|c| c.author == "alice"));
     assert_eq!(chain.iter().last().unwrap().prev, NUM - 1);
@@ -79,11 +79,16 @@ fn test_wrapper() {
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = move || wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]);
+    let fact = move || {
+        sized_seq(
+            NUM as usize,
+            wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]),
+        )
+    };
 
-    let mut chain = build_seq(&mut g, NUM as usize, fact());
+    let chain = fact().build(&mut g);
     dbg!(&chain);
-    check_seq(chain.as_mut_slice(), fact()).unwrap();
+    fact().check(&chain).unwrap();
 
     assert!(chain.iter().all(|c| c.link.author == "alice"));
     assert!(chain.iter().all(|c| c.color != Color::Black));

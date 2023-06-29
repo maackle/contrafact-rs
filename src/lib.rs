@@ -85,6 +85,7 @@ pub use impls::brute::{brute, brute_fallible, BruteFact};
 pub use impls::lens::{lens, LensFact};
 pub use impls::mapped::{mapped, mapped_fallible, MappedFact};
 pub use impls::prism::{prism, PrismFact};
+pub use impls::seq::{seq, seq_, sized_seq, SeqFact};
 
 #[cfg(feature = "optics")]
 pub use impls::optical::{optical, OpticalFact};

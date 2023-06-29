@@ -28,6 +28,25 @@ where
     SeqFact::new(label.to_string(), inner_fact)
 }
 
+pub fn seq_<'a, T, F>(inner_fact: F) -> SeqFact<'a, T, F>
+where
+    T: Bounds<'a> + Clone,
+    F: Fact<'a, T>,
+{
+    SeqFact::new("___", inner_fact)
+}
+
+pub fn sized_seq<'a, T, F>(len: usize, inner_fact: F) -> FactsRef<'a, Vec<T>>
+where
+    T: Bounds<'a> + Clone + 'a,
+    F: Fact<'a, T> + 'a,
+{
+    facts![
+        LenFact::new(len),
+        SeqFact::new(format!("seq len {}", len), inner_fact)
+    ]
+}
+
 /// A fact which uses a seq to apply another fact. Use [`seq()`] to construct.
 #[derive(Clone)]
 pub struct SeqFact<'a, T, F>
@@ -83,6 +102,54 @@ where
     }
 }
 
+/// A fact which uses a seq to apply another fact. Use [`seq()`] to construct.
+#[derive(Clone)]
+pub struct LenFact<'a, T>
+where
+    T: Bounds<'a>,
+{
+    len: usize,
+    __phantom: PhantomData<&'a T>,
+}
+
+impl<'a, T> LenFact<'a, T>
+where
+    T: Bounds<'a>,
+{
+    /// Constructor. Supply a seq and an existing Fact to create a new Fact.
+    pub fn new(len: usize) -> Self
+    where
+        T: Bounds<'a>,
+    {
+        Self {
+            len,
+            __phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, T> Fact<'a, Vec<T>> for LenFact<'a, T>
+where
+    T: Bounds<'a>,
+{
+    #[tracing::instrument(fields(fact = "len"), skip(self, g))]
+    fn mutate(&self, mut obj: Vec<T>, g: &mut Generator<'a>) -> Mutation<Vec<T>> {
+        tracing::trace!("");
+
+        if obj.len() > self.len {
+            g.fail("LenFact: vec was too long")?;
+            obj = obj[0..self.len].to_vec();
+        }
+        while obj.len() < self.len {
+            obj.push(g.arbitrary("LenFact: vec was too short")?)
+        }
+        Ok(obj)
+    }
+
+    #[tracing::instrument(fields(fact = "len"), skip(self))]
+    fn advance(&mut self, obj: &Vec<T>) {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn test() {
+    fn test_seq() {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
@@ -111,5 +178,27 @@ mod tests {
 
         assert!(ones.len() >= 3);
         assert!(ones.iter().all(|s| *s == 1));
+    }
+
+    #[test]
+    fn test_len() {
+        observability::test_run().ok();
+        let mut g = utils::random_generator();
+
+        let ones: Vec<u8> = LenFact::new(5).build(&mut g);
+        LenFact::new(5).check(&ones).unwrap();
+
+        assert_eq!(ones.len(), 5);
+    }
+
+    #[test]
+    fn test_sized_seq() {
+        let mut g = utils::random_generator();
+
+        let f = || sized_seq(5, consecutive_int_(0));
+        let count: Vec<u8> = f().build(&mut g);
+        f().check(&count).unwrap();
+
+        assert_eq!(count, vec![0, 1, 2, 3, 4]);
     }
 }

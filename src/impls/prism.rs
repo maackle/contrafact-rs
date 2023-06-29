@@ -157,7 +157,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, utils};
+    use crate::utils;
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -187,16 +187,19 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            vec![
-                prism("E::x", E::x, crate::eq("must be 1", 1)),
-                prism("E::y", E::y, crate::eq("must be 2", 2)),
-            ]
+            seq(
+                "a seq",
+                vec![
+                    prism("E::x", E::x, crate::eq("must be 1", 1)),
+                    prism("E::y", E::y, crate::eq("must be 2", 2)),
+                ],
+            )
         };
 
-        let seq = build_seq(&mut g, 6, f());
-        check_seq(seq.as_slice(), f()).unwrap();
+        let items = f().build(&mut g);
+        f().check(&items).unwrap();
 
-        assert!(seq.iter().all(|e| match e {
+        assert!(items.iter().all(|e| match e {
             E::X(x) => *x == 1,
             E::Y(y) => *y == 2,
         }))
@@ -209,7 +212,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            vec![
+            seq_(vec![
                 prism(
                     "E::x",
                     E::x,
@@ -220,18 +223,22 @@ mod tests {
                     E::y,
                     crate::consecutive_int("must be increasing", 0),
                 ),
-            ]
+            ])
         };
 
-        let seq = build_seq(&mut g, 10, f());
-        check_seq(seq.as_slice(), f()).unwrap();
+        let items = f().build(&mut g);
+        f().check(&items).unwrap();
 
         // Assert that each variant of E is independently increasing
-        let (xs, ys): (Vec<_>, Vec<_>) = seq.into_iter().partition_map(|e| match e {
+        let (xs, ys): (Vec<_>, Vec<_>) = items.into_iter().partition_map(|e| match e {
             E::X(x) => Either::Left(x),
             E::Y(y) => Either::Right(y),
         });
-        check_seq(xs.as_slice(), crate::facts![crate::consecutive_int_(0u32)]).unwrap();
-        check_seq(ys.as_slice(), crate::facts![crate::consecutive_int_(0u32)]).unwrap();
+        seq_(crate::facts![crate::consecutive_int_(0u32)])
+            .check(&xs)
+            .unwrap();
+        seq_(crate::facts![crate::consecutive_int_(0u32)])
+            .check(&ys)
+            .unwrap();
     }
 }
