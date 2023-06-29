@@ -31,7 +31,7 @@ where
 /// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
 /// facts to change as the sequence advances.
 #[tracing::instrument(skip(g, fact))]
-pub fn build_seq<'a, T, F>(
+pub fn build_seq_fallible<'a, T, F>(
     g: &mut Generator<'a>,
     num: usize,
     mut fact: F,
@@ -43,11 +43,23 @@ where
     let mut seq = Vec::new();
     for _i in 0..num {
         tracing::trace!("i: {}", _i);
-        let obj = fact.build(g)?;
+        let obj = fact.build_fallible(g)?;
         fact.advance(&obj);
         seq.push(obj);
     }
     Ok(seq)
+}
+
+/// Build a sequence from scratch such that all Facts are satisfied.
+/// Each Fact will run [`Fact::advance`] after each item built, allowing stateful
+/// facts to change as the sequence advances.
+#[tracing::instrument(skip(g, fact))]
+pub fn build_seq<'a, T, F>(g: &mut Generator<'a>, num: usize, fact: F) -> Vec<T>
+where
+    T: Bounds<'a>,
+    F: Fact<'a, T>,
+{
+    build_seq_fallible(g, num, fact).unwrap()
 }
 
 /// Convenience macro for creating a collection of [`Fact`](crate::Fact)s

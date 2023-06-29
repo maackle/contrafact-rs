@@ -268,7 +268,7 @@ fn test_rho_fact() {
     let mut g = utils::random_generator();
 
     let mut fact = rho_fact(5, AlphaSigner);
-    let mut rho = fact.build(&mut g).unwrap();
+    let mut rho = fact.build(&mut g);
     assert!(fact.check(&rho).is_ok());
     assert_eq!(rho.sigma.id2, 10);
     assert_eq!(rho.sigma.sig, "5".to_string());
@@ -286,7 +286,7 @@ fn test_omega_fact() {
 
     let fact = omega_fact(11);
 
-    let beta = beta_fact().build(&mut g).unwrap();
+    let beta = beta_fact().build(&mut g);
 
     let mut valid1 = Omega::Alpha {
         id: 8,

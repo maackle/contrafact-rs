@@ -49,7 +49,7 @@ use crate::*;
 /// assert!(fact.check(&E::Y(99)).is_ok());
 ///
 /// let mut g = utils::random_generator();
-/// let e = fact.build(&mut g).unwrap();
+/// let e = fact.build(&mut g);
 /// match e {
 ///     E::X(x) => assert_eq!(x, 1),
 ///     _ => (),  // Y is not defined by the prism, so it can take on any value.
@@ -193,7 +193,7 @@ mod tests {
             ]
         };
 
-        let seq = build_seq(&mut g, 6, f()).unwrap();
+        let seq = build_seq(&mut g, 6, f());
         check_seq(seq.as_slice(), f()).unwrap();
 
         assert!(seq.iter().all(|e| match e {
@@ -223,7 +223,7 @@ mod tests {
             ]
         };
 
-        let seq = build_seq(&mut g, 10, f()).unwrap();
+        let seq = build_seq(&mut g, 10, f());
         check_seq(seq.as_slice(), f()).unwrap();
 
         // Assert that each variant of E is independently increasing

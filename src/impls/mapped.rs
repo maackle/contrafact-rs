@@ -132,7 +132,7 @@ fn test_mapped_fact() {
         ]
     };
 
-    let built = build_seq(&mut g, 12, composite_fact()).unwrap();
+    let built = build_seq(&mut g, 12, composite_fact());
     dbg!(&built);
     check_seq(built.as_slice(), composite_fact()).unwrap();
 }

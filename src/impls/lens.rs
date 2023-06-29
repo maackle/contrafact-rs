@@ -30,7 +30,7 @@ use crate::*;
 /// assert!(fact.check(&S {x: 2, y: 333}).is_err());
 ///
 /// let mut g = utils::random_generator();
-/// let a = fact.build(&mut g).unwrap();
+/// let a = fact.build(&mut g);
 /// assert_eq!(a.x, 1);
 /// ```
 //
@@ -138,7 +138,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
-        let ones = build_seq(&mut g, 3, f()).unwrap();
+        let ones = build_seq(&mut g, 3, f());
         check_seq(ones.as_slice(), f()).unwrap();
 
         assert!(ones.iter().all(|s| s.x == 1));

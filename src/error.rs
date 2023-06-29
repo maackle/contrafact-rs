@@ -27,9 +27,21 @@ pub enum MutationError {
     /// When running check, this is a failure which was generated instead of mutating the data
     Check(Failure),
     /// arbitrary failed to produce new data, which means we can't go on
+    #[from]
     Arbitrary(arbitrary::Error),
     /// There was some other bug in the Fact implementation
-    Internal(ContrafactError),
+    Exception(String),
+}
+
+impl PartialEq for MutationError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Check(s), Self::Check(o)) => s == o,
+            (Self::Arbitrary(s), Self::Arbitrary(o)) => s.to_string() == o.to_string(),
+            (Self::Exception(s), Self::Exception(o)) => s == o,
+            _ => false,
+        }
+    }
 }
 
 /// Alias
