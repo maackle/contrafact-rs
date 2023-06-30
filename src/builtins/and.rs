@@ -2,9 +2,20 @@ use std::marker::PhantomData;
 
 use crate::*;
 
-/// Fact that combines two `Fact`s, returning the OR of the results.
-///
-/// This is created by the `or` function.
+/// A Fact which applies two other facts.
+pub fn and<'a, F1, F2, T>(a: F1, b: F2) -> AndFact<'a, F1, F2, T>
+where
+    T: Bounds<'a>,
+    F1: Fact<'a, T>,
+    F2: Fact<'a, T>,
+{
+    AndFact::new(a, b)
+}
+
+/// A fact which applies two facts.
+/// This is the primary way to build up a complex fact from simpler facts.
+/// The [`facts!`] macro is a more convenient way to compose more than two facts
+/// together using [`AndFact`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AndFact<'a, F1, F2, T>
 where
