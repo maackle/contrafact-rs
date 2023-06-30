@@ -1,6 +1,6 @@
 [package]
 name = "contrafact"
-version = "0.2.0-dev.5"
+version = "0.2.0-rc.0"
 authors = ["Michael Dougherty <maackle.d@gmail.com>"]
 repository = "https://github.com/maackle/contrafact-rs/"
 license = "MIT"
