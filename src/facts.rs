@@ -31,7 +31,7 @@ pub use mapped::{mapped, mapped_fallible};
 pub use prism::{prism, PrismFact};
 pub use seq::{vec, vec_len, vec_of_length};
 
-pub(crate) use lambda::LambdaFact;
+// pub(crate) use lambda::LambdaFact;
 
 #[cfg(feature = "optics")]
 mod optical;

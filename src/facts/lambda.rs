@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 use crate::*;
 
@@ -23,36 +23,39 @@ use crate::*;
 /// fact.check(&list).unwrap();
 /// assert_eq!(list, vec![2, 4, 8, 16]);
 /// ```
-pub fn lambda<'a, S, T, F>(state: S, f: F) -> LambdaFact<'a, S, T, F>
+pub fn lambda<'a, S, T>(
+    state: S,
+    f: impl 'static + Send + Sync + Fn(&mut Generator, &mut S, T) -> Mutation<T>,
+) -> LambdaFact<'a, S, T>
 where
     S: Clone + Send + Sync,
     T: Bounds<'a>,
-    F: Clone + Send + Sync + FnMut(&mut Generator, &mut S, T) -> Mutation<T>,
 {
     LambdaFact {
         state,
-        fun: f,
+        fun: Arc::new(f),
         _phantom: PhantomData,
     }
 }
 
+pub type Lambda<S, T> =
+    Arc<dyn 'static + Send + Sync + Fn(&mut Generator, &mut S, T) -> Mutation<T>>;
+
 #[derive(Clone)]
-pub struct LambdaFact<'a, S, T, F>
+pub struct LambdaFact<'a, S, T>
 where
     S: Clone + Send + Sync,
     T: Bounds<'a>,
-    F: Clone + Send + Sync + FnMut(&mut Generator, &mut S, T) -> Mutation<T>,
 {
     state: S,
-    fun: F,
+    fun: Lambda<S, T>,
     _phantom: PhantomData<&'a T>,
 }
 
-impl<'a, S, T, F> Fact<'a, T> for LambdaFact<'a, S, T, F>
+impl<'a, S, T> Fact<'a, T> for LambdaFact<'a, S, T>
 where
     S: Clone + Send + Sync,
     T: Bounds<'a>,
-    F: Clone + Send + Sync + FnMut(&mut Generator, &mut S, T) -> Mutation<T>,
 {
     fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
         (self.fun)(g, &mut self.state, obj)
