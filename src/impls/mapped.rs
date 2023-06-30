@@ -34,7 +34,7 @@ where
 /// //   "if the number is greater than 9000,
 /// //    ensure that it's also divisible by 9,
 /// //    and otherwise, ensure that it's divisible by 10"
-/// let fact = mapped("reason", |n: &u32| {
+/// let mut fact = mapped("reason", |n: &u32| {
 ///     if *n > 9000 {
 ///         facts![ brute("divisible by 9", |n| *n % 9 == 0) ]
 ///     } else {
