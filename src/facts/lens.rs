@@ -118,7 +118,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{eq, utils};
+    use crate::facts::*;
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]

@@ -61,7 +61,7 @@ where
 
 #[test]
 fn test_lambda_fact() {
-    use crate::*;
+    use crate::facts::*;
     let mut g = utils::random_generator();
 
     let fact = sized_seq(

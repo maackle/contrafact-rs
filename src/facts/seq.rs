@@ -9,16 +9,18 @@ use std::marker::PhantomData;
 
 use crate::*;
 
+use super::and;
+
 /// Lifts a Fact about an item in a sequence into a fact about the whole sequence.
 ///
 ///
 /// ```
-/// use contrafact::*;
+/// use contrafact::{*, facts::*};
 ///
 /// let mut g = utils::random_generator();
 ///
 /// // `consecutive_int`
-/// let fact = seq(eq_(1));
+/// let fact = facts::seq(facts::eq_(1));
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![1, 1, 1, 1, 1]);
 /// ```
@@ -26,7 +28,7 @@ use crate::*;
 /// When using a Fact which modifies its state,
 ///
 /// ```
-/// use contrafact::*;
+/// use contrafact::{*, facts::*};
 ///
 /// let mut g = utils::random_generator();
 ///
@@ -46,13 +48,21 @@ where
     SeqFact::new(inner_fact)
 }
 
+/// Checks that a Vec is of a given length
+pub fn seq_len<'a, T>(len: usize) -> SeqLenFact<'a, T>
+where
+    T: Bounds<'a> + Clone + 'a,
+{
+    SeqLenFact::new(len)
+}
+
 /// Combines a LenFact with a SeqFact to ensure that the sequence is of a given length
 pub fn sized_seq<'a, T, F>(len: usize, inner_fact: F) -> impl Fact<'a, Vec<T>>
 where
     T: Bounds<'a> + Clone + 'a,
     F: Fact<'a, T> + 'a,
 {
-    facts![LenFact::new(len), SeqFact::new(inner_fact)]
+    and(seq_len(len), seq(inner_fact))
 }
 
 /// A fact which uses a seq to apply another fact. Use [`seq()`] to construct.
@@ -107,7 +117,7 @@ where
 
 /// A fact which uses a seq to apply another fact. Use [`seq()`] to construct.
 #[derive(Clone)]
-pub struct LenFact<'a, T>
+pub struct SeqLenFact<'a, T>
 where
     T: Bounds<'a>,
 {
@@ -115,7 +125,7 @@ where
     __phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> LenFact<'a, T>
+impl<'a, T> SeqLenFact<'a, T>
 where
     T: Bounds<'a>,
 {
@@ -131,7 +141,7 @@ where
     }
 }
 
-impl<'a, T> Fact<'a, Vec<T>> for LenFact<'a, T>
+impl<'a, T> Fact<'a, Vec<T>> for SeqLenFact<'a, T>
 where
     T: Bounds<'a>,
 {
@@ -157,7 +167,7 @@ mod tests {
         Arc,
     };
 
-    use super::*;
+    use crate::facts::*;
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -187,8 +197,8 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let ones: Vec<u8> = LenFact::new(5).build(&mut g);
-        LenFact::new(5).check(&ones).unwrap();
+        let ones: Vec<u8> = seq_len(5).build(&mut g);
+        seq_len(5).check(&ones).unwrap();
 
         assert_eq!(ones.len(), 5);
     }

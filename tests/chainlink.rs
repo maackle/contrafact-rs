@@ -1,5 +1,5 @@
 use arbitrary::*;
-use contrafact::{utils::random_generator, *};
+use contrafact::{facts::*, utils::random_generator, *};
 
 #[derive(Arbitrary, Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 enum Color {

@@ -89,7 +89,8 @@ impl<'a, T, O> MappedFact<'a, T, O> {
 
 #[test]
 fn test_mapped_fact() {
-    use crate::*;
+    use crate::facts::*;
+
     type T = (u8, u8);
 
     let numbers = vec![(1, 11), (2, 22), (3, 33), (4, 44)];

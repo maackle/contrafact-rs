@@ -1,23 +1,42 @@
-//! Some predicates borrowed from predicates-rs
-//! https://github.com/assert-rs/predicates-rs
-
+mod and;
+mod brute;
 mod consecutive_int;
 mod constant;
 mod eq;
 mod in_range;
 mod in_slice;
+mod lambda;
+mod lens;
+mod mapped;
 mod not;
 mod or;
+mod prism;
 mod same;
+mod seq;
 
-pub use consecutive_int::*;
-pub use constant::*;
-pub use eq::*;
-pub use in_range::*;
-pub use in_slice::*;
-pub use not::*;
-pub use or::*;
-pub use same::*;
+pub use consecutive_int::{consecutive_int, consecutive_int_};
+pub use constant::{always, never};
+pub use eq::{eq, eq_, ne, ne_};
+pub use in_range::{in_range, in_range_};
+pub use in_slice::{in_slice, in_slice_};
+pub use not::{not, not_};
+pub use or::or;
+pub use same::{different, same};
+
+pub use and::and;
+pub use brute::{brute, brute_fallible};
+pub use lambda::lambda;
+pub use lens::{lens, LensFact};
+pub use mapped::{mapped, mapped_fallible};
+pub use prism::{prism, PrismFact};
+pub use seq::{seq, seq_len, sized_seq};
+
+#[cfg(feature = "optics")]
+mod optical;
+#[cfg(feature = "optics")]
+pub use optical::*;
+
+pub(crate) use eq::EqOp;
 
 use crate::fact::check_raw;
 use crate::*;

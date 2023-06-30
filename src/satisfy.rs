@@ -18,7 +18,7 @@ macro_rules! facts {
 
     ( $fact_0:expr, $fact_1:expr $( , $fact_n:expr )* $(,)? ) => {{
         facts![
-            $crate::AndFact::new($fact_0, $fact_1),
+            $crate::facts::and($fact_0, $fact_1),
             $( $fact_n , )*
         ]
     }};

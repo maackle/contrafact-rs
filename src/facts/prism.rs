@@ -173,9 +173,9 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            seq(facts![
-                prism("E::x", E::x, crate::eq("must be 1", 1)),
-                prism("E::y", E::y, crate::eq("must be 2", 2)),
+            facts::seq(facts![
+                prism("E::x", E::x, facts::eq("must be 1", 1)),
+                prism("E::y", E::y, facts::eq("must be 2", 2)),
             ])
         };
 
@@ -195,16 +195,16 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            seq(facts![
+            facts::seq(facts![
                 prism(
                     "E::x",
                     E::x,
-                    crate::consecutive_int("must be increasing", 0),
+                    facts::consecutive_int("must be increasing", 0),
                 ),
                 prism(
                     "E::y",
                     E::y,
-                    crate::consecutive_int("must be increasing", 0),
+                    facts::consecutive_int("must be increasing", 0),
                 ),
             ])
         };
@@ -217,10 +217,10 @@ mod tests {
             E::X(x) => Either::Left(x),
             E::Y(y) => Either::Right(y),
         });
-        seq(crate::facts![crate::consecutive_int_(0u32)])
+        facts::seq(crate::facts![facts::consecutive_int_(0u32)])
             .check(&xs)
             .unwrap();
-        seq(crate::facts![crate::consecutive_int_(0u32)])
+        facts::seq(crate::facts![facts::consecutive_int_(0u32)])
             .check(&ys)
             .unwrap();
     }

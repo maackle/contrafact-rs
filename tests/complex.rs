@@ -1,5 +1,5 @@
 use arbitrary::Arbitrary;
-use contrafact::*;
+use contrafact::{facts::*, *};
 
 use either::Either;
 #[cfg(feature = "optics")]

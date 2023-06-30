@@ -11,7 +11,7 @@
 //! meets the constraint, or to generate new instances of `S` which meet the constraint.
 //!
 //! ```
-//! use contrafact::{Fact, eq, lens};
+//! use contrafact::{Fact, facts::{eq, lens}};
 //! use arbitrary::{Arbitrary, Unstructured};
 //!
 //! #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -58,13 +58,15 @@
 
 #![warn(missing_docs)]
 
-mod builtins;
 mod check;
 mod error;
 mod fact;
 mod generator;
-mod primitives;
 mod satisfy;
+
+/// Some built-in implementations of some useful facts
+pub mod facts;
+pub use facts::*;
 
 #[cfg(feature = "utils")]
 pub mod utils;
@@ -76,22 +78,6 @@ pub use error::*;
 pub use fact::{Bounds, Fact};
 pub use generator::*;
 pub use satisfy::*;
-
-pub use primitives::{
-    always, consecutive_int, consecutive_int_, different, eq, eq_, in_range, in_range_, in_slice,
-    in_slice_, ne, ne_, never, not, not_, or, same,
-};
-
-pub use builtins::and::{and, AndFact};
-pub use builtins::brute::{brute, brute_fallible, BruteFact};
-pub use builtins::lambda::lambda;
-pub use builtins::lens::{lens, LensFact};
-pub use builtins::mapped::{mapped, mapped_fallible, MappedFact};
-pub use builtins::prism::{prism, PrismFact};
-pub use builtins::seq::{seq, sized_seq, SeqFact};
-
-#[cfg(feature = "optics")]
-pub use builtins::optical::{optical, OpticalFact};
 
 pub use either;
 
