@@ -24,7 +24,7 @@ use crate::*;
 ///     y: u32,
 /// }
 ///
-/// let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq(1));
+/// let mut fact = lens1("S::x", |s: &mut S| &mut s.x, eq(1));
 ///
 /// assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
 /// assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
@@ -35,99 +35,64 @@ use crate::*;
 /// ```
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
-pub fn lens<'a, O, T, F, L, S>(label: S, lens: L, inner_fact: F) -> LensFact<'a, O, T, F>
+pub fn lens1<'a, O, T, L, S>(
+    label: impl ToString,
+    accessor: L,
+    inner_fact: Fact<'a, S, T>,
+) -> Fact<'a, Fact<'a, S, T>, O>
 where
-    O: Bounds<'a>,
-    T: Bounds<'a> + Clone,
-    S: ToString,
-    F: Factual<'a, T>,
+    O: Target<'a>,
+    T: Target<'a>,
+    S: State,
     L: 'a + Clone + Send + Sync + Fn(&mut O) -> &mut T,
 {
-    let lens2 = lens.clone();
-    let getter = move |mut o| lens(&mut o).clone();
+    let accessor2 = accessor.clone();
+    let getter = move |mut o| accessor(&mut o).clone();
     let setter = move |mut o, t: T| {
-        let r = lens2(&mut o);
+        let r = accessor2(&mut o);
         *r = t;
         o
     };
-    LensFact::new(label.to_string(), getter, setter, inner_fact)
+    lens2(label, getter, setter, inner_fact).label("lens1")
 }
 
-/// A fact which uses a lens to apply another fact. Use [`lens()`] to construct.
-#[derive(Clone)]
-pub struct LensFact<'a, O, T, F>
+pub fn lens2<'a, O, T, S>(
+    label: impl ToString,
+    getter: impl 'a + Clone + Send + Sync + Fn(O) -> T,
+    setter: impl 'a + Clone + Send + Sync + Fn(O, T) -> O,
+    inner_fact: Fact<'a, S, T>,
+) -> Fact<'a, Fact<'a, S, T>, O>
 where
-    T: Bounds<'a>,
-    O: Bounds<'a>,
-    F: Factual<'a, T>,
+    O: Target<'a>,
+    T: Target<'a>,
+    S: State,
 {
-    label: String,
-
-    getter: Arc<dyn 'a + Send + Sync + Fn(O) -> T>,
-    setter: Arc<dyn 'a + Send + Sync + Fn(O, T) -> O>,
-
-    /// The inner_fact about the inner substructure
-    inner_fact: F,
-
-    __phantom: PhantomData<&'a F>,
-}
-
-impl<'a, O, T, F> std::fmt::Debug for LensFact<'a, O, T, F>
-where
-    T: Bounds<'a>,
-    O: Bounds<'a>,
-    F: Factual<'a, T>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LensFact")
-            .field("label", &self.label)
-            .field("fact", &self.inner_fact)
-            .finish()
-    }
-}
-
-impl<'a, O, T, F> LensFact<'a, O, T, F>
-where
-    T: Bounds<'a>,
-    O: Bounds<'a>,
-    F: Factual<'a, T>,
-{
-    /// Constructor. Supply a lens and an existing Fact to create a new Fact.
-    pub fn new<L, G, S>(label: L, getter: G, setter: S, inner_fact: F) -> Self
-    where
-        T: Bounds<'a>,
-        O: Bounds<'a>,
-        F: Factual<'a, T>,
-        L: ToString,
-        G: 'a + Send + Sync + Fn(O) -> T,
-        S: 'a + Send + Sync + Fn(O, T) -> O,
-    {
-        Self {
-            label: label.to_string(),
-            getter: Arc::new(getter),
-            setter: Arc::new(setter),
-            inner_fact,
-            __phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, O, T, F> Factual<'a, O> for LensFact<'a, O, T, F>
-where
-    T: Bounds<'a>,
-    O: Bounds<'a> + Clone,
-    F: Factual<'a, T>,
-{
-    #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: O) -> Mutation<O> {
-        let t = (self.getter)(obj.clone());
-        let t = self
-            .inner_fact
+    let label = label.to_string();
+    stateful("lens", inner_fact, move |g, fact, obj: O| {
+        let t = getter(obj.clone());
+        let t = fact
             .mutate(g, t)
-            .map_check_err(|err| format!("lens({}) > {}", self.label, err))?;
-        Ok((self.setter)(obj, t))
-    }
+            .map_check_err(|err| format!("lens1({}) > {}", label, err))?;
+        Ok(setter(obj, t))
+    })
 }
+
+// impl<'a, O, T, F> Factual<'a, O> for LensFact<'a, O, T, F>
+// where
+//     T: Bounds<'a>,
+//     O: Bounds<'a> + Clone,
+//     F: Factual<'a, T>,
+// {
+//     #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
+//     fn mutate(&mut self, g: &mut Generator<'a>, obj: O) -> Mutation<O> {
+//         let t = (self.getter)(obj.clone());
+//         let t = self
+//             .inner_fact
+//             .mutate(g, t)
+//             .map_check_err(|err| format!("lens1({}) > {}", self.label, err))?;
+//         Ok((self.setter)(obj, t))
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -146,7 +111,7 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let f = || vec(lens("S::x", |s: &mut S| &mut s.x, eq(1)));
+        let f = || vec(lens1("S::x", |s: &mut S| &mut s.x, eq(1)));
         let ones = f().build(&mut g);
         f().check(&ones).unwrap();
 

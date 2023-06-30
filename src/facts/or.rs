@@ -1,11 +1,11 @@
 use super::*;
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<'a, A, B, Item>(a: A, b: B) -> Fact<'a, (A, B), Item>
+pub fn or<'a, A, B, T>(a: Fact<'a, A, T>, b: Fact<'a, B, T>) -> Fact<'a, Fact2<'a, A, B, T>, T>
 where
-    A: Factual<'a, Item>,
-    B: Factual<'a, Item>,
-    Item: Bounds<'a>,
+    T: Target<'a>,
+    A: State,
+    B: State,
 {
     stateful("or", (a, b), |g, (a, b), obj| {
         use rand::{thread_rng, Rng};

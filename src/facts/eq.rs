@@ -5,7 +5,7 @@ use super::*;
 /// Specifies an equality constraint
 pub fn eq<'a, T>(constant: T) -> Fact<'a, (), T>
 where
-    T: Bounds<'a> + PartialEq + Clone + Display,
+    T: Target<'a> + PartialEq + Clone + Display,
 {
     let label = format!("eq({})", constant);
     stateless(label, move |g, mut obj| {
@@ -21,7 +21,7 @@ where
 pub fn ne<'a, S, T>(constant: T) -> Fact<'a, (), T>
 where
     S: ToString,
-    T: Bounds<'a> + PartialEq + Display,
+    T: Target<'a> + PartialEq + Display,
 {
     not(eq(constant)).label("ne")
 }

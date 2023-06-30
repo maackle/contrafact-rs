@@ -20,7 +20,7 @@
 //!     y: u32,
 //! }
 //!
-//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq(1));
+//! let mut fact = lens1("S::x", |s: &mut S| &mut s.x, eq(1));
 //!
 //! assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
 //! assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
@@ -63,7 +63,6 @@ mod error;
 mod fact;
 /// Some built-in implementations of some useful facts
 pub mod facts;
-mod factual;
 mod generator;
 pub use facts::*;
 
@@ -74,8 +73,7 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{stateful, stateless, Fact, StatelessFact};
-pub use factual::{Bounds, Factual};
+pub use fact::{stateful, stateless, Fact, Fact2, State, StatelessFact, Target};
 pub use generator::*;
 
 pub use either;

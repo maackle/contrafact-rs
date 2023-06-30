@@ -130,11 +130,11 @@ impl AlphaSigner {
 
 #[allow(unused)]
 fn alpha_fact() -> impl Factual<'static, Alpha> {
-    facts![lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
+    facts![lens1("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
 }
 
 fn beta_fact() -> impl Factual<'static, Beta> {
-    facts![lens("Beta::id", |a: &mut Beta| &mut a.id, id_fact(None))]
+    facts![lens1("Beta::id", |a: &mut Beta| &mut a.id, id_fact(None))]
 }
 
 /// Just a pair of an Alpha with optional Beta.
@@ -167,13 +167,13 @@ fn id_fact(id: Option<Id>) -> impl Factual<'static, Id> {
 /// - All Ids should match each other. If there is a Beta, its id should match too.
 fn pi_fact(id: Id) -> impl Factual<'static, Pi> {
     let alpha_fact = facts![
-        lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
-        // lens("Alpha::data", |a: &mut Alpha| a.data(), eq(data)),
+        lens1("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
+        // lens1("Alpha::data", |a: &mut Alpha| a.data(), eq(data)),
     ];
-    let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, id_fact(Some(id)));
+    let beta_fact = lens1("Beta::id", |b: &mut Beta| &mut b.id, id_fact(Some(id)));
     facts![
         pi_beta_match(),
-        lens("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
+        lens1("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
         prism("Pi::beta", |o: &mut Pi| o.1.as_mut(), beta_fact),
     ]
 }
@@ -202,7 +202,7 @@ fn omega_fact(id: Id) -> impl Factual<'static, Omega> {
 
     facts![
         omega_pi,
-        lens("Omega::id", |o: &mut Omega| o.id_mut(), id_fact(Some(id))),
+        lens1("Omega::id", |o: &mut Omega| o.id_mut(), id_fact(Some(id))),
     ]
 }
 
@@ -227,7 +227,7 @@ fn sigma_fact() -> impl Factual<'static, Sigma> {
         same(),
     );
     facts![
-        lens("Sigma::id", |o: &mut Sigma| o.alpha.id(), id_fact(None)),
+        lens1("Sigma::id", |o: &mut Sigma| o.alpha.id(), id_fact(None)),
         id2_fact
     ]
 }
@@ -249,7 +249,7 @@ fn rho_fact(id: Id, signer: AlphaSigner) -> impl Factual<'static, Rho> {
     #[cfg(not(feature = "optics"))]
     {
         facts![
-            lens("Rho -> Sigma", |rho: &mut Rho| &mut rho.sigma, sigma_fact()),
+            lens1("Rho -> Sigma", |rho: &mut Rho| &mut rho.sigma, sigma_fact()),
             rho_pi
         ]
     }

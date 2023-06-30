@@ -20,7 +20,7 @@ where
     OpticalFact::new(label.to_string(), optics, inner_fact)
 }
 
-/// A fact which uses a lens to apply another fact. Use [`lens()`] to construct.
+/// A fact which uses a lens to apply another fact. Use [`lens1()`] to construct.
 #[derive(Clone)]
 pub struct OpticalFact<'a, Src, Img, Optics, F>
 where
@@ -78,7 +78,7 @@ where
 
                 self.inner_fact
                     .check(img)
-                    .map(|err| format!("lens({}){{{:?}}} > {}", label, self.optics.clone(), err))
+                    .map(|err| format!("lens1({}){{{:?}}} > {}", label, self.optics.clone(), err))
             })
             .collect::<Vec<_>>()
             .into()
@@ -100,7 +100,7 @@ where
 }
 
 #[test]
-fn test_lens() {
+fn test_lens1() {
     let x = (1u8, (2u8, (3u8, 4u8)));
 
     let mut fact = OpticalFact {

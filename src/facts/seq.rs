@@ -37,10 +37,10 @@ use super::and;
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![0, 1, 2, 3, 4]);
 /// ```
-pub fn vec<'a, T, F>(inner_fact: F) -> Fact<'a, F, Vec<T>>
+pub fn vec<'a, S, T>(inner_fact: Fact<'a, S, T>) -> Fact<'a, Fact<'a, S, T>, Vec<T>>
 where
-    T: Bounds<'a> + Clone,
-    F: Factual<'a, T>,
+    T: Target<'a> + Clone,
+    S: State,
 {
     stateful("vec", inner_fact, |g, f, obj: Vec<T>| {
         obj.into_iter()
@@ -56,7 +56,7 @@ where
 /// Checks that a Vec is of a given length
 pub fn vec_len<'a, T>(len: usize) -> StatelessFact<'a, Vec<T>>
 where
-    T: Bounds<'a> + Clone + 'a,
+    T: Target<'a> + Clone + 'a,
 {
     stateless("vec_len", move |g, mut obj: Vec<T>| {
         if obj.len() > len {
@@ -81,10 +81,13 @@ where
 }
 
 /// Combines a LenFact with a VecFact to ensure that the vector is of a given length
-pub fn vec_of_length<'a, T, F>(len: usize, inner_fact: F) -> impl Factual<'a, Vec<T>>
+pub fn vec_of_length<'a, S, T>(
+    len: usize,
+    inner_fact: Fact<'a, S, T>,
+) -> Fact<'a, Fact2<'a, (), Fact<'a, S, T>, Vec<T>>, Vec<T>>
 where
-    T: Bounds<'a> + Clone + 'a,
-    F: Factual<'a, T> + 'a,
+    S: State,
+    T: Target<'a> + 'a,
 {
     and(vec_len(len), vec(inner_fact))
 }

@@ -25,8 +25,8 @@ struct Wrapper {
 /// consecutive `prev` values starting with 0.
 fn chain_fact<'a>(author: String) -> impl Factual<'a, Link> {
     facts![
-        lens("Link::author", |o: &mut Link| &mut o.author, eq(author),),
-        lens(
+        lens1("Link::author", |o: &mut Link| &mut o.author, eq(author),),
+        lens1(
             "Link::prev",
             |o: &mut Link| &mut o.prev,
             consecutive_int("increasing prev", 0),
@@ -38,12 +38,12 @@ fn chain_fact<'a>(author: String) -> impl Factual<'a, Link> {
 /// of the wrapper is in the given set.
 fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> impl Factual<'a, Wrapper> {
     facts![
-        lens(
+        lens1(
             "Wrapper::color",
             |o: &mut Wrapper| &mut o.color,
             in_slice("valid color", valid_colors),
         ),
-        lens(
+        lens1(
             "Wrapper::link",
             |o: &mut Wrapper| &mut o.link,
             chain_fact(author),

@@ -34,7 +34,7 @@ use crate::*;
 /// ```
 pub fn brute<'a, T, F>(label: impl ToString, f: F) -> Fact<'a, (), T>
 where
-    T: Bounds<'a>,
+    T: Target<'a>,
     F: 'a + Send + Sync + Fn(&T) -> bool,
 {
     let label = label.to_string();
@@ -46,7 +46,7 @@ where
 /// A version of [`brute`] which allows the closure to return the reason for failure
 pub fn brute_labeled<'a, T, F>(f: F) -> Fact<'a, (), T>
 where
-    T: Bounds<'a>,
+    T: Target<'a>,
     F: 'a + Send + Sync + Fn(&T) -> ContrafactResult<BruteResult>,
 {
     stateless("brute_labeled", move |g, mut obj| {

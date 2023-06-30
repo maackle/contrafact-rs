@@ -15,7 +15,7 @@ mod seq;
 pub use consecutive_int::{consecutive_int, consecutive_int_};
 pub use constant::{always, never};
 pub use eq::{eq, ne};
-pub use in_range::{in_range, in_range_};
+pub use in_range::in_range;
 pub use in_slice::{in_slice, in_slice_};
 pub use not::not;
 pub use or::or;
@@ -23,8 +23,8 @@ pub use same::{different, same};
 
 pub use and::and;
 pub use brute::brute;
-pub use lens::{lens, LensFact};
-pub use prism::{prism, PrismFact};
+pub use lens::{lens1, lens2};
+pub use prism::prism;
 pub use seq::{vec, vec_len, vec_of_length};
 
 // pub(crate) use lambda::LambdaFact;
@@ -35,4 +35,3 @@ mod optical;
 pub use optical::*;
 
 use crate::*;
-use std::marker::PhantomData;

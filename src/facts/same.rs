@@ -3,7 +3,7 @@ use super::{brute::brute_labeled, *};
 /// Specifies an equality constraint between two items in a tuple
 pub fn same<'a, T>() -> StatelessFact<'a, (T, T)>
 where
-    T: Bounds<'a> + PartialEq,
+    T: Target<'a> + PartialEq,
 {
     stateless("same", |g, mut obj: (T, T)| {
         let o = obj.clone();
@@ -16,7 +16,7 @@ where
 /// Specifies an inequality constraint between two items in a tuple
 pub fn different<'a, T>() -> StatelessFact<'a, (T, T)>
 where
-    T: Bounds<'a> + PartialEq,
+    T: Target<'a> + PartialEq,
 {
     brute_labeled(|(a, b)| {
         if a == b {
