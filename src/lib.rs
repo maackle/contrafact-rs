@@ -74,7 +74,7 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{stateful, stateless, Fact};
+pub use fact::{stateful, stateless, Fact, StatelessFact};
 pub use factual::{Bounds, Factual};
 pub use generator::*;
 

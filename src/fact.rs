@@ -72,6 +72,9 @@ where
     }
 }
 
+/// A Fact with unit state
+pub type StatelessFact<'a, T> = Fact<'a, (), T>;
+
 #[test]
 fn test_lambda_fact() {
     use crate::facts::*;
