@@ -27,7 +27,7 @@
 //!
 //! // NB: don't actually construct a Generator this way! See the docs for [[`Generator`]].
 //! let mut g = contrafact::utils::random_generator();
-//! let a = fact.build(&mut g).unwrap();
+//! let a = fact.build(&mut g);
 //! assert_eq!(a.x, 1);
 //! ```
 //!

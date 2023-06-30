@@ -43,7 +43,7 @@ where
 /// }
 ///
 /// let mut g = utils::random_generator();
-/// assert!(div_by(3).build(&mut g).unwrap() % 3 == 0);
+/// assert!(div_by(3).build(&mut g) % 3 == 0);
 /// ```
 pub fn brute<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
