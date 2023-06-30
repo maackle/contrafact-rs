@@ -29,8 +29,13 @@ pub enum MutationError {
     /// arbitrary failed to produce new data, which means we can't go on
     #[from]
     Arbitrary(arbitrary::Error),
+
+    /// Contrafact experienced a problem
+    #[from]
+    Internal(ContrafactError),
+
     /// There was some other bug in the Fact implementation
-    Exception(String),
+    User(String),
 }
 
 impl PartialEq for MutationError {
@@ -38,7 +43,8 @@ impl PartialEq for MutationError {
         match (self, other) {
             (Self::Check(s), Self::Check(o)) => s == o,
             (Self::Arbitrary(s), Self::Arbitrary(o)) => s.to_string() == o.to_string(),
-            (Self::Exception(s), Self::Exception(o)) => s == o,
+            (Self::Internal(s), Self::Internal(o)) => s == o,
+            (Self::User(s), Self::User(o)) => s == o,
             _ => false,
         }
     }

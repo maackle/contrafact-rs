@@ -25,7 +25,7 @@ use crate::*;
 /// ```
 pub fn lambda<'a, S, T>(
     state: S,
-    f: impl 'a + Send + Sync + Fn(&mut Generator, &mut S, T) -> Mutation<T>,
+    f: impl 'a + Send + Sync + Fn(&mut Generator<'a>, &mut S, T) -> Mutation<T>,
 ) -> LambdaFact<'a, S, T>
 where
     S: Clone + Send + Sync,
@@ -40,7 +40,7 @@ where
 
 /// Create a lambda with unit state
 pub fn lambda_unit<'a, T>(
-    f: impl 'a + Send + Sync + Fn(&mut Generator, T) -> Mutation<T>,
+    f: impl 'a + Send + Sync + Fn(&mut Generator<'a>, T) -> Mutation<T>,
 ) -> LambdaFact<'a, (), T>
 where
     T: Bounds<'a>,
@@ -49,7 +49,7 @@ where
 }
 
 pub type Lambda<'a, S, T> =
-    Arc<dyn 'a + Send + Sync + Fn(&mut Generator, &mut S, T) -> Mutation<T>>;
+    Arc<dyn 'a + Send + Sync + Fn(&mut Generator<'a>, &mut S, T) -> Mutation<T>>;
 
 #[derive(Clone)]
 pub struct LambdaFact<'a, S, T>

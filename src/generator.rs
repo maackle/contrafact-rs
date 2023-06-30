@@ -94,13 +94,13 @@ impl<'a> Generator<'a> {
         err: impl ToString,
     ) -> Mutation<&T> {
         if choices.is_empty() {
-            return Err(MutationError::Exception("Empty choices".to_string())).into();
+            return Err(MutationError::User("Empty choices".to_string())).into();
         }
         if choices.len() == 1 {
             return Ok(&choices[0]).into();
         }
         if !self.check && self.arb.is_empty() {
-            return Err(MutationError::Exception("Ran out of entropy".to_string())).into();
+            return Err(MutationError::User("Ran out of entropy".to_string())).into();
         }
         self.with(err, |u| u.choose(choices))
     }
@@ -116,12 +116,12 @@ impl<'a> Generator<'a> {
         T: Arbitrary<'a> + PartialOrd + Copy + Int,
     {
         if range.start() > range.end() {
-            return Err(MutationError::Exception("Invalid range".to_string())).into();
+            return Err(MutationError::User("Invalid range".to_string())).into();
         } else if range.start() == range.end() {
             return Ok(*range.start()).into();
         }
         if !self.check && self.arb.is_empty() {
-            return Err(MutationError::Exception("Ran out of entropy".to_string())).into();
+            return Err(MutationError::User("Ran out of entropy".to_string())).into();
         }
         self.with(err, |u| u.int_in_range(range))
     }
@@ -152,7 +152,7 @@ pub mod test {
         let mut gen = crate::generator::Generator::from(&[0, 1, 2, 3, 4, 5][..]);
         assert_eq!(
             gen.int_in_range(5..=4, "error"),
-            Err(MutationError::Exception("Invalid range".to_string()))
+            Err(MutationError::User("Invalid range".to_string()))
         );
     }
 
@@ -178,7 +178,7 @@ pub mod test {
         assert_eq!(gen.len(), 0);
         assert_eq!(
             gen.int_in_range(0..=3, "error"),
-            Err(MutationError::Exception("Ran out of entropy".to_string()))
+            Err(MutationError::User("Ran out of entropy".to_string()))
         );
     }
 
@@ -189,7 +189,7 @@ pub mod test {
         let choices: [usize; 0] = [];
         assert_eq!(
             gen.choose(&choices, "error"),
-            Err(MutationError::Exception("Empty choices".to_string()))
+            Err(MutationError::User("Empty choices".to_string()))
         );
     }
 
@@ -216,7 +216,7 @@ pub mod test {
         // This is the only case where we can't choose a value, because we have 2 choices and 6 bytes.
         assert_eq!(
             gen.choose(&choices, "error"),
-            Err(MutationError::Exception("Ran out of entropy".to_string()))
+            Err(MutationError::User("Ran out of entropy".to_string()))
         );
     }
 
@@ -235,7 +235,7 @@ pub mod test {
         // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
         assert_eq!(
             gen.choose(&choices, "error"),
-            Err(MutationError::Exception("Ran out of entropy".to_string()))
+            Err(MutationError::User("Ran out of entropy".to_string()))
         );
     }
 
@@ -262,7 +262,7 @@ pub mod test {
         // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
         assert_eq!(
             gen.choose(&choices, "error"),
-            Err(MutationError::Exception("Ran out of entropy".to_string()))
+            Err(MutationError::User("Ran out of entropy".to_string()))
         );
     }
 

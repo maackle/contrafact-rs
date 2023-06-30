@@ -24,7 +24,7 @@ pub use or::or;
 pub use same::{different, same};
 
 pub use and::and;
-pub use brute::{brute, brute_fallible};
+pub use brute::brute;
 pub use lambda::{lambda, lambda_unit};
 pub use lens::{lens, LensFact};
 pub use mapped::{mapped, mapped_fallible};
