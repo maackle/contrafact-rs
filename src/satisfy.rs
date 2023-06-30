@@ -9,7 +9,7 @@
 ///
 /// let eq1 = eq_(1);
 /// let not2 = not_(eq_(2));
-/// let fact: FactsRef<'static, u32> = facts![eq1, not2];
+/// let mut fact = facts![eq1, not2];
 /// assert!(fact.check(&1).is_ok());
 /// ```
 #[macro_export]

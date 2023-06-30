@@ -129,7 +129,7 @@ where
     O: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    fn mutate(&self, mut obj: O, g: &mut Generator<'a>) -> Mutation<O> {
+    fn mutate(&mut self, mut obj: O, g: &mut Generator<'a>) -> Mutation<O> {
         if let Some(t) = (self.prism)(&mut obj) {
             *t = self
                 .inner_fact
@@ -137,20 +137,6 @@ where
                 .map_check_err(|err| format!("prism({}) > {}", self.label, err))?;
         }
         Ok(obj)
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn advance(&mut self, obj: &O) {
-        unsafe {
-            // We can convert the immutable ref to a mutable one because `advance`
-            // never mutates the value, but we need `prism` to return a mutable
-            // reference so it can be reused in `mutate`
-            let o = obj as *const O;
-            let o = o as *mut O;
-            if let Some(t) = (self.prism)(&mut *o) {
-                self.inner_fact.advance(t)
-            }
-        }
     }
 }
 
@@ -187,13 +173,10 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            seq(
-                "a seq",
-                facts![
-                    prism("E::x", E::x, crate::eq("must be 1", 1)),
-                    prism("E::y", E::y, crate::eq("must be 2", 2)),
-                ],
-            )
+            seq(facts![
+                prism("E::x", E::x, crate::eq("must be 1", 1)),
+                prism("E::y", E::y, crate::eq("must be 2", 2)),
+            ])
         };
 
         let items = f().build(&mut g);
@@ -212,7 +195,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            seq_(facts![
+            seq(facts![
                 prism(
                     "E::x",
                     E::x,
@@ -234,10 +217,10 @@ mod tests {
             E::X(x) => Either::Left(x),
             E::Y(y) => Either::Right(y),
         });
-        seq_(crate::facts![crate::consecutive_int_(0u32)])
+        seq(crate::facts![crate::consecutive_int_(0u32)])
             .check(&xs)
             .unwrap();
-        seq_(crate::facts![crate::consecutive_int_(0u32)])
+        seq(crate::facts![crate::consecutive_int_(0u32)])
             .check(&ys)
             .unwrap();
     }

@@ -84,7 +84,7 @@ where
             .into()
     }
 
-    fn mutate(&self, mut obj: Src, g: &mut Generator<'a>) -> Src {
+    fn mutate(&mut self, mut obj: Src, g: &mut Generator<'a>) -> Src {
         for img in obj.traverse_mut(self.optics.clone()) {
             *img = self.inner_fact.mutate(img.clone(), g);
         }

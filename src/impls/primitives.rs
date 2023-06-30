@@ -216,15 +216,12 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     #[tracing::instrument(fields(fact = "bool"), skip(self, g))]
-    fn mutate(&self, t: T, g: &mut Generator<'_>) -> Mutation<T> {
+    fn mutate(&mut self, t: T, g: &mut Generator<'_>) -> Mutation<T> {
         if !self.0 {
             g.fail("never() encountered.")?;
         }
         Ok(t)
     }
-
-    #[tracing::instrument(fields(fact = "bool"), skip(self))]
-    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -246,7 +243,7 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     #[tracing::instrument(fields(fact = "eq"), skip(self, g))]
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         let constant = self.constant.clone();
         match self.op {
             EqOp::Equal => {
@@ -270,9 +267,6 @@ where
         }
         Ok(obj)
     }
-
-    #[tracing::instrument(fields(fact = "eq"), skip(self))]
-    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -286,7 +280,7 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     #[tracing::instrument(fields(fact = "same"), skip(self, g))]
-    fn mutate(&self, mut obj: (T, T), g: &mut Generator<'a>) -> Mutation<(T, T)> {
+    fn mutate(&mut self, mut obj: (T, T), g: &mut Generator<'a>) -> Mutation<(T, T)> {
         match self.op {
             EqOp::Equal => {
                 if obj.0 != obj.1 {
@@ -306,9 +300,6 @@ where
         }
         Ok(obj)
     }
-
-    #[tracing::instrument(fields(fact = "same"), skip(self))]
-    fn advance(&mut self, _: &(T, T)) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -326,7 +317,7 @@ where
     T: 'b + Bounds<'a> + Clone,
     // I: Iterator<Item = &'b T>,
 {
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         Ok(if !self.slice.contains(&obj) {
             g.choose(
                 self.slice,
@@ -340,8 +331,6 @@ where
             obj
         })
     }
-
-    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -366,7 +355,7 @@ where
 
 impl<'a, R, T> Fact<'a, T> for InRangeFact<R, T>
 where
-    R: Send + Sync + RangeBounds<T> + std::fmt::Debug,
+    R: Send + Sync + RangeBounds<T> + std::fmt::Debug + Clone,
     T: Bounds<'a>
         + PartialEq
         + PartialOrd
@@ -379,7 +368,7 @@ where
         + num::Bounded
         + num::One,
 {
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         if !self.range.contains(&obj) {
             let rand = g.arbitrary(format!(
                 "{}: expected {:?} to be contained in {:?}",
@@ -407,8 +396,6 @@ where
         }
         Ok(obj)
     }
-
-    fn advance(&mut self, _: &T) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -422,17 +409,13 @@ where
     T: Bounds<'a> + num::PrimInt,
 {
     #[tracing::instrument(fields(fact = "consecutive_int"), skip(self, g))]
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         if obj != self.counter {
             g.fail(&self.context)?;
             obj = self.counter.clone();
         }
-        Ok(obj)
-    }
-
-    #[tracing::instrument(fields(fact = "consecutive_int"), skip(self))]
-    fn advance(&mut self, _: &T) {
         self.counter = self.counter.checked_add(&T::from(1).unwrap()).unwrap();
+        Ok(obj)
     }
 }
 
@@ -458,11 +441,11 @@ where
     P2: Fact<'a, T> + Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         use rand::{thread_rng, Rng};
 
-        let a = check_raw(&self.a, &obj).is_ok();
-        let b = check_raw(&self.b, &obj).is_ok();
+        let a = check_raw(&mut self.a, &obj).is_ok();
+        let b = check_raw(&mut self.b, &obj).is_ok();
         match (a, b) {
             (true, _) => Ok(obj),
             (_, true) => Ok(obj),
@@ -480,10 +463,6 @@ where
                 }
             }
         }
-    }
-
-    fn advance(&mut self, _: &T) {
-        todo!("advance the correct fact")
     }
 }
 
@@ -503,9 +482,9 @@ where
     F: Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         for _ in 0..BRUTE_ITERATION_LIMIT {
-            if check_raw(&self.fact, &obj).is_err() {
+            if check_raw(&mut self.fact, &obj).is_err() {
                 break;
             }
             obj = g
@@ -514,8 +493,6 @@ where
         }
         Ok(obj)
     }
-
-    fn advance(&mut self, _: &T) {}
 }
 
 #[cfg(test)]
@@ -528,7 +505,7 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let eq1 = seq_(eq("must be 1", 1));
+        let eq1 = seq(eq("must be 1", 1));
 
         let ones = eq1.clone().build(&mut g);
         eq1.clone().check(&ones).unwrap();
@@ -545,8 +522,8 @@ mod tests {
         let eq2 = eq("must be 2", 2);
         let mut either = or("can be 1 or 2", eq1, eq2);
 
-        let ones = seq_(either.clone()).build(&mut g);
-        seq_(either.clone()).check(&ones).unwrap();
+        let ones = seq(either.clone()).build(&mut g);
+        seq(either.clone()).check(&ones).unwrap();
         assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
         assert_eq!(either.check(&3).result().unwrap().unwrap_err().len(), 1);
@@ -558,7 +535,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let eq1 = eq("must be 1", 1);
-        let not1 = seq_(not_(eq1));
+        let not1 = seq(not_(eq1));
 
         let nums = not1.clone().build(&mut g);
         not1.clone().check(&nums).unwrap();
@@ -572,13 +549,13 @@ mod tests {
         let mut g = utils::random_generator();
 
         {
-            let f = seq_(same::<u8>());
+            let f = seq(same::<u8>());
             let nums = f.clone().build(&mut g);
             f.clone().check(&nums).unwrap();
             assert!(nums.iter().all(|(a, b)| a == b));
         }
         {
-            let f = seq_(different::<u8>());
+            let f = seq(different::<u8>());
             let nums = f.clone().build(&mut g);
             f.clone().check(&nums).unwrap();
             assert!(nums.iter().all(|(a, b)| a != b));
@@ -596,8 +573,8 @@ mod tests {
         let over9000 = in_range("must be over 9000", 9001..);
         let under9000 = in_range("must be under 9000 (and no less than zero)", ..9000u32);
 
-        let nonpositive1 = seq_(not_(positive1));
-        let nonpositive2 = seq_(not_(positive2));
+        let nonpositive1 = seq(not_(positive1));
+        let nonpositive2 = seq(not_(positive2));
 
         let smallish_nums = smallish.clone().build(&mut g);
         let over9000_nums = over9000.clone().build(&mut g);

@@ -68,7 +68,7 @@ where
     T: Bounds<'a>,
 {
     #[tracing::instrument(fields(fact = "brute"), skip(self, g))]
-    fn mutate(&self, mut t: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, mut t: T, g: &mut Generator<'a>) -> Mutation<T> {
         tracing::trace!("brute");
         for _ in 0..=BRUTE_ITERATION_LIMIT {
             if (self.f)(&t)? {
@@ -81,11 +81,6 @@ where
             "Exceeded iteration limit of {} while attempting to meet a BruteFact. Context: {}",
             BRUTE_ITERATION_LIMIT, self.label
         );
-    }
-
-    #[tracing::instrument(fields(fact = "brute"), skip(self))]
-    fn advance(&mut self, _obj: &T) {
-        tracing::trace!("brute");
     }
 }
 

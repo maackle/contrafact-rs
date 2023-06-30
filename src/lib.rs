@@ -72,7 +72,7 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{Bounds, BoxFact, Fact};
+pub use fact::{Bounds, Fact};
 pub use generator::*;
 pub use satisfy::*;
 
@@ -83,10 +83,11 @@ pub use impls::primitives::{
 
 pub use impls::and::AndFact;
 pub use impls::brute::{brute, brute_fallible, BruteFact};
+pub use impls::fun::fun;
 pub use impls::lens::{lens, LensFact};
 pub use impls::mapped::{mapped, mapped_fallible, MappedFact};
 pub use impls::prism::{prism, PrismFact};
-pub use impls::seq::{seq, seq_, sized_seq, SeqFact};
+pub use impls::seq::{seq, sized_seq, SeqFact};
 
 #[cfg(feature = "optics")]
 pub use impls::optical::{optical, OpticalFact};

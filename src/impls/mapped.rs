@@ -3,11 +3,12 @@ use std::sync::Arc;
 use crate::{fact::Bounds, *};
 
 /// A version of [`mapped`] whose closure returns a Result
-pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
+pub fn mapped_fallible<'a, T, F, O, S>(reason: S, f: F) -> MappedFact<'a, T, O>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Send + Sync + Fn(&T) -> Mutation<BoxFact<'a, T>>,
+    O: Fact<'a, T>,
+    F: 'a + Send + Sync + Fn(&T) -> Mutation<O>,
 {
     MappedFact::new(reason.to_string(), f)
 }
@@ -46,11 +47,12 @@ where
 /// assert!(fact.check(&9009).is_ok());
 /// assert!(fact.check(&9010).is_err());
 /// ```
-pub fn mapped<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
+pub fn mapped<'a, T, F, O, S>(reason: S, f: F) -> MappedFact<'a, T, O>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Send + Sync + Fn(&T) -> BoxFact<'a, T>,
+    O: Fact<'a, T>,
+    F: 'a + Send + Sync + Fn(&T) -> O,
 {
     MappedFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
@@ -58,31 +60,26 @@ where
 /// A fact which is mapped from the data to be checked/mutated.
 /// Use [`mapped`] to construct.
 #[derive(Clone)]
-pub struct MappedFact<'a, T> {
+pub struct MappedFact<'a, T, O> {
     reason: String,
-    f: Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<BoxFact<'a, T>>>,
+    f: Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<O>>,
 }
 
-impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
+impl<'a, T, O> Fact<'a, T> for MappedFact<'a, T, O>
 where
     T: Bounds<'a>,
+    O: Fact<'a, T>,
 {
     #[tracing::instrument(fields(fact = "mapped"), skip(self, g))]
-    fn mutate(&self, t: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, t: T, g: &mut Generator<'a>) -> Mutation<T> {
         (self.f)(&t)?
             .mutate(t, g)
             .map_check_err(|err| format!("mapped({}) > {}", self.reason, err))
     }
-
-    #[tracing::instrument(fields(fact = "mapped"), skip(self))]
-    fn advance(&mut self, _: &T) {}
 }
 
-impl<'a, T> MappedFact<'a, T> {
-    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<BoxFact<'a, T>>>(
-        reason: String,
-        f: F,
-    ) -> Self {
+impl<'a, T, O> MappedFact<'a, T, O> {
+    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<O>>(reason: String, f: F) -> Self {
         Self {
             reason,
             f: Arc::new(f),
@@ -104,7 +101,7 @@ fn test_mapped_fact() {
     //     then the second element must be divisible by 4.
     let divisibility_fact = || {
         mapped("reason", |t: &T| {
-            Box::new(lens(
+            lens(
                 "T.1",
                 |(_, n)| n,
                 if t.0 % 2 == 0 {
@@ -112,12 +109,12 @@ fn test_mapped_fact() {
                 } else {
                     brute("divisible by 4", |n: &u8| n % 4 == 0)
                 },
-            ))
+            )
         })
     };
 
     // assert that there was a failure
-    seq_(divisibility_fact())
+    seq(divisibility_fact())
         .check(&numbers)
         .result()
         .unwrap()
@@ -125,7 +122,7 @@ fn test_mapped_fact() {
 
     // TODO: return all errors in the seq, not just the first
     // assert_eq!(
-    //     dbg!(seq_(divisibility_fact())
+    //     dbg!(seq(divisibility_fact())
     //         .check(&numbers)
     //         .result()
     //         .unwrap()
@@ -141,7 +138,7 @@ fn test_mapped_fact() {
     let mut g = utils::random_generator();
 
     let composite_fact = || {
-        seq_(facts![
+        seq(facts![
             lens("T.0", |(i, _)| i, consecutive_int("increasing", 0)),
             divisibility_fact(),
         ])

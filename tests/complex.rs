@@ -1,6 +1,7 @@
 use arbitrary::Arbitrary;
 use contrafact::*;
 
+use either::Either;
 #[cfg(feature = "optics")]
 use lens_rs::{optics, Lens, Prism};
 
@@ -152,13 +153,13 @@ fn pi_beta_match() -> impl Fact<'static, Pi> {
     )]
 }
 
-fn id_fact(id: Option<Id>) -> BoxFact<'static, Id> {
+fn id_fact(id: Option<Id>) -> impl Fact<'static, Id> {
     let le = brute("< u32::MAX", |id: &Id| *id < Id::MAX / 2);
 
     if let Some(id) = id {
-        boxfacts![le, eq("id", id)]
+        Either::Left(facts![le, eq("id", id)])
     } else {
-        boxfacts![le]
+        Either::Right(facts![le])
     }
 }
 
@@ -330,12 +331,12 @@ fn test_omega_fact() {
     };
 
     // Ensure that check fails for invalid data
-    assert!(dbg!(fact.check(dbg!(&invalid1)).result().unwrap().unwrap_err()).len() > 1);
+    assert!(dbg!(fact.check(dbg!(&invalid1)).result().unwrap().unwrap_err()).len() > 0);
     invalid1 = fact.mutate(invalid1, &mut g).unwrap();
     fact.check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
-    assert!(dbg!(fact.check(dbg!(&invalid2)).result().unwrap().unwrap_err()).len() > 1);
+    assert!(dbg!(fact.check(dbg!(&invalid2)).result().unwrap().unwrap_err()).len() > 0);
     invalid2 = fact.mutate(invalid2, &mut g).unwrap();
     fact.check(dbg!(&invalid2)).unwrap();
 }

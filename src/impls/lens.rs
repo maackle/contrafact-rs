@@ -30,7 +30,7 @@ use crate::*;
 /// assert!(fact.check(&S {x: 2, y: 333}).is_err());
 ///
 /// let mut g = utils::random_generator();
-/// let a = fact.build(&mut g).unwrap();
+/// let a = fact.build(&mut g);
 /// assert_eq!(a.x, 1);
 /// ```
 //
@@ -105,18 +105,13 @@ where
     F: Fact<'a, T>,
 {
     #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
-    fn mutate(&self, obj: O, g: &mut Generator<'a>) -> Mutation<O> {
+    fn mutate(&mut self, obj: O, g: &mut Generator<'a>) -> Mutation<O> {
         let t = (self.getter)(obj.clone());
         let t = self
             .inner_fact
             .mutate(t, g)
             .map_check_err(|err| format!("lens({}) > {}", self.label, err))?;
         Ok((self.setter)(obj, t))
-    }
-
-    #[tracing::instrument(fields(fact = "lens"), skip(self))]
-    fn advance(&mut self, obj: &O) {
-        self.inner_fact.advance(&(self.getter)(obj.clone()))
     }
 }
 
@@ -137,12 +132,7 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let f = || {
-            seq(
-                "list of ones",
-                lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1)),
-            )
-        };
+        let f = || seq(lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1)));
         let ones = f().build(&mut g);
         f().check(&ones).unwrap();
 

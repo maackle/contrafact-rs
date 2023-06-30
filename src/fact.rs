@@ -1,4 +1,5 @@
 use arbitrary::*;
+use either::Either;
 
 use crate::*;
 
@@ -19,8 +20,8 @@ impl<'a, T> Bounds<'a> for T where
 {
 }
 
-/// Type alias for a boxed Fact. Implements [`Fact`] itself.
-pub type BoxFact<'a, T> = Box<dyn 'a + Fact<'a, T>>;
+// /// Type alias for a boxed Fact. Implements [`Fact`] itself.
+// pub type BoxFact<'a, T> = Box<dyn 'a + Fact<'a, T>>;
 
 // pub trait Facts<T: Bounds<'static>>: Fact<'static, T> {}
 // impl<T: Bounds<'static>, F: Facts<T>> Fact<'static, T> for F {}
@@ -28,7 +29,7 @@ pub type BoxFact<'a, T> = Box<dyn 'a + Fact<'a, T>>;
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some arbitrary existing
 /// data into a shape which passes that same assertion (mutate)
-pub trait Fact<'a, T>: Send + Sync
+pub trait Fact<'a, T>: Send + Sync + Clone
 where
     T: Bounds<'a>,
 {
@@ -41,19 +42,13 @@ where
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self))]
     fn check(&mut self, obj: &T) -> Check {
         let check = check_raw(self, obj);
-        self.advance(obj);
         check
     }
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
     /// constraint.
     // #[tracing::instrument(skip(self, g))]
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T>;
-
-    /// When checking or mutating a sequence of items, this gets called after
-    /// each item to modify the state to get ready for the next item.
-    #[tracing::instrument(fields(fact_impl = "Fact"), skip(self))]
-    fn advance(&mut self, obj: &T);
+    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T>;
 
     /// Make this many attempts to satisfy a constraint before giving up and panicking.
     ///
@@ -74,11 +69,13 @@ where
         let mut last_failure: Vec<String> = vec![];
         let mut next = obj.clone();
         for _i in 0..self.satisfy_attempts() {
-            next = self.mutate(next, g).unwrap();
-            if let Err(errs) = check_raw(self, &next).result()? {
+            let mut m = self.clone();
+            let mut c = self.clone();
+            next = m.mutate(next, g).unwrap();
+            if let Err(errs) = check_raw(&mut c, &next).result()? {
                 last_failure = errs;
             } else {
-                self.advance(&obj);
+                *self = m;
                 return Ok(next);
             }
         }
@@ -102,19 +99,29 @@ where
     }
 }
 
-impl<'a, T, F> Fact<'a, T> for Box<F>
+// impl<'a, T, F> Fact<'a, T> for Box<F>
+// where
+//     T: Bounds<'a>,
+//     F: Fact<'a, T> + ?Sized,
+// {
+//     #[tracing::instrument(fields(fact_impl = "Box"), skip(self, g))]
+//     fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+//         (*self).as_mut().mutate(obj, g)
+//     }
+// }
+
+impl<'a, T, F1, F2> Fact<'a, T> for Either<F1, F2>
 where
     T: Bounds<'a>,
-    F: Fact<'a, T> + ?Sized,
+    F1: Fact<'a, T> + ?Sized,
+    F2: Fact<'a, T> + ?Sized,
 {
-    #[tracing::instrument(fields(fact_impl = "Box"), skip(self, g))]
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
-        (*self).as_ref().mutate(obj, g)
-    }
-
-    #[tracing::instrument(fields(fact_impl = "Box"), skip(self))]
-    fn advance(&mut self, obj: &T) {
-        (*self).as_mut().advance(obj)
+    #[tracing::instrument(fields(fact_impl = "Either"), skip(self, g))]
+    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+        match self {
+            Either::Left(f) => f.mutate(obj, g),
+            Either::Right(f) => f.mutate(obj, g),
+        }
     }
 }
 
@@ -129,7 +136,7 @@ where
 //     }
 
 //     #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self, g))]
-//     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+//     fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
 //         for f in self.iter() {
 //             obj = f.mutate(obj, g)?;
 //         }
@@ -155,7 +162,7 @@ where
 //     }
 
 //     #[tracing::instrument(fields(fact_impl = "Vec"), skip(self, g))]
-//     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+//     fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
 //         for f in self.iter() {
 //             obj = f.mutate(obj, g)?;
 //         }
@@ -171,7 +178,7 @@ where
 // }
 
 #[tracing::instrument(skip(fact))]
-pub(crate) fn check_raw<'a, T, F: Fact<'a, T>>(fact: &F, obj: &T) -> Check
+pub(crate) fn check_raw<'a, T, F: Fact<'a, T>>(fact: &mut F, obj: &T) -> Check
 where
     T: Bounds<'a> + ?Sized,
     F: Fact<'a, T> + ?Sized,

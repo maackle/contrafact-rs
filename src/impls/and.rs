@@ -38,14 +38,9 @@ where
     F2: Fact<'a, T> + Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
         let obj = self.a.mutate(obj, g)?;
         let obj = self.b.mutate(obj, g)?;
         Ok(obj)
-    }
-
-    fn advance(&mut self, obj: &T) {
-        self.a.advance(obj);
-        self.b.advance(obj);
     }
 }

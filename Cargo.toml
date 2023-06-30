@@ -23,6 +23,7 @@ rand = { version = "0.7", optional = true }
 
 # lens
 lens-rs = { version = "0.3", optional = true }
+either = "1.5"
 
 [dev-dependencies]
 either = "1.5"
@@ -31,14 +32,9 @@ observability = "0.1"
 [features]
 default = ["utils"]
 
-utils = [
-    "once_cell",
-    "rand",
-]
+utils = ["once_cell", "rand"]
 
-optics = [
-    "lens-rs",
-]
+optics = ["lens-rs"]
 
 [package.metadata.inwelling]
 lens-rs_generator = true
