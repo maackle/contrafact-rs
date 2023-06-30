@@ -72,6 +72,20 @@ where
     __phantom: PhantomData<&'a F>,
 }
 
+impl<'a, O, T, F> std::fmt::Debug for LensFact<'a, O, T, F>
+where
+    T: Bounds<'a>,
+    O: Bounds<'a>,
+    F: Factual<'a, T>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LensFact")
+            .field("label", &self.label)
+            .field("fact", &self.inner_fact)
+            .finish()
+    }
+}
+
 impl<'a, O, T, F> LensFact<'a, O, T, F>
 where
     T: Bounds<'a>,

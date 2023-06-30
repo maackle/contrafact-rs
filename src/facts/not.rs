@@ -10,7 +10,7 @@ where
     T: Bounds<'a>,
 {
     let context = context.to_string();
-    stateless(move |g, obj| {
+    stateless("not", move |g, obj| {
         let label = format!("not({})", context.clone());
         let fact = fact.clone();
         brute(label, move |o| fact.clone().check(o).is_err()).mutate(g, obj)

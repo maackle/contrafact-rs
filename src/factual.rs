@@ -25,7 +25,7 @@ impl<'a, T> Bounds<'a> for T where
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some arbitrary existing
 /// data into a shape which passes that same assertion (mutate)
-pub trait Factual<'a, T>: Send + Sync + Clone
+pub trait Factual<'a, T>: Send + Sync + Clone + std::fmt::Debug
 where
     T: Bounds<'a>,
 {
@@ -37,7 +37,8 @@ where
     /// care must be taken to make sure it perfectly lines up with the mutation function.
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self))]
     fn check(mut self, obj: &T) -> Check {
-        check_raw(&mut self, obj)
+        let mut g = Generator::checker();
+        Check::from_mutation(self.mutate(&mut g, obj.clone()))
     }
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
@@ -67,7 +68,7 @@ where
             let mut m = self.clone();
             let mut c = self.clone();
             next = m.mutate(g, next).unwrap();
-            if let Err(errs) = check_raw(&mut c, &next).result()? {
+            if let Err(errs) = self.clone().check(&next).result()? {
                 last_failure = errs;
             } else {
                 *self = m;
@@ -109,15 +110,15 @@ where
     }
 }
 
-#[tracing::instrument(skip(fact))]
-pub(crate) fn check_raw<'a, T, F: Factual<'a, T>>(fact: &mut F, obj: &T) -> Check
-where
-    T: Bounds<'a> + ?Sized,
-    F: Factual<'a, T> + ?Sized,
-{
-    let mut g = Generator::checker();
-    Check::from_mutation(fact.mutate(&mut g, obj.clone()))
-}
+// #[tracing::instrument(skip(fact))]
+// pub(crate) fn check_raw<'a, T, F: Factual<'a, T>>(fact: &mut F, obj: &T) -> Check
+// where
+//     T: Bounds<'a> + ?Sized,
+//     F: Factual<'a, T> + ?Sized,
+// {
+//     let mut g = Generator::checker();
+//     Check::from_mutation(fact.mutate(&mut g, obj.clone()))
+// }
 
 #[tracing::instrument(skip(facts))]
 fn collect_checks<'a, T, F>(facts: Vec<F>, obj: &T) -> Check

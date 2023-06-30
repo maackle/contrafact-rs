@@ -1,49 +1,18 @@
 use super::*;
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<'a, A, T, S, Item>(context: S, a: A, b: T) -> OrFact<'a, A, T, Item>
+pub fn or<'a, A, B, Item>(context: impl ToString, a: A, b: B) -> Fact<'a, (A, B), Item>
 where
-    S: ToString,
     A: Factual<'a, Item>,
-    T: Factual<'a, Item>,
+    B: Factual<'a, Item>,
     Item: Bounds<'a>,
 {
-    OrFact {
-        context: context.to_string(),
-        a,
-        b,
-        _phantom: PhantomData,
-    }
-}
-
-/// Fact that combines two `Fact`s, returning the OR of the results.
-///
-/// This is created by the `or` function.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OrFact<'a, M1, M2, Item>
-where
-    M1: Factual<'a, Item>,
-    M2: Factual<'a, Item>,
-    Item: ?Sized + Bounds<'a>,
-{
-    context: String,
-    pub(crate) a: M1,
-    pub(crate) b: M2,
-    _phantom: PhantomData<&'a Item>,
-}
-
-impl<'a, P1, P2, T> Factual<'a, T> for OrFact<'a, P1, P2, T>
-where
-    P1: Factual<'a, T> + Factual<'a, T>,
-    P2: Factual<'a, T> + Factual<'a, T>,
-    T: Bounds<'a>,
-{
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
+    stateful("or", (a, b), |g, (a, b), obj| {
         use rand::{thread_rng, Rng};
 
-        let a = check_raw(&mut self.a, &obj).is_ok();
-        let b = check_raw(&mut self.b, &obj).is_ok();
-        match (a, b) {
+        let a_ok = a.clone().check(&obj).is_ok();
+        let b_ok = b.clone().check(&obj).is_ok();
+        match (a_ok, b_ok) {
             (true, _) => Ok(obj),
             (_, true) => Ok(obj),
             (false, false) => {
@@ -54,13 +23,13 @@ where
                     a, b
                 ))?;
                 if thread_rng().gen::<bool>() {
-                    self.a.mutate(g, obj)
+                    a.mutate(g, obj)
                 } else {
-                    self.b.mutate(g, obj)
+                    b.mutate(g, obj)
                 }
             }
         }
-    }
+    })
 }
 
 #[test]

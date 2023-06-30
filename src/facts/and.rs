@@ -7,7 +7,7 @@ where
     F1: Factual<'a, T>,
     F2: Factual<'a, T>,
 {
-    stateful((a, b), |g, (a, b), obj| {
+    stateful("and", (a, b), |g, (a, b), obj| {
         let obj = a.mutate(g, obj)?;
         let obj = b.mutate(g, obj)?;
         Ok(obj)

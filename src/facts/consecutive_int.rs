@@ -6,7 +6,7 @@ where
     S: Bounds<'a> + std::fmt::Debug + PartialEq + num::PrimInt,
 {
     let context = context.to_string();
-    stateful(initial, move |g, counter, mut obj| {
+    stateful("consecutive_int", initial, move |g, counter, mut obj| {
         if obj != *counter {
             g.fail(&context)?;
             obj = counter.clone();

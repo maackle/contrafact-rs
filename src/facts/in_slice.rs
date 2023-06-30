@@ -6,7 +6,7 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     let context = context.to_string();
-    stateless(move |g, obj| {
+    stateless("in_slice", move |g, obj| {
         Ok(if !slice.contains(&obj) {
             let reason = || {
                 format!(

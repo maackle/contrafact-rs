@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 use crate::*;
 
@@ -24,6 +24,7 @@ use crate::*;
 /// assert_eq!(list, vec![2, 4, 8, 16]);
 /// ```
 pub fn stateful<'a, S, T>(
+    label: impl ToString,
     state: S,
     f: impl 'a + Send + Sync + Fn(&mut Generator<'a>, &mut S, T) -> Mutation<T>,
 ) -> Fact<'a, S, T>
@@ -32,6 +33,7 @@ where
     T: Bounds<'a>,
 {
     Fact {
+        label: label.to_string(),
         state,
         fun: Arc::new(f),
         _phantom: PhantomData,
@@ -40,12 +42,13 @@ where
 
 /// Create a lambda with unit state
 pub fn stateless<'a, T>(
+    label: impl ToString,
     f: impl 'a + Send + Sync + Fn(&mut Generator<'a>, T) -> Mutation<T>,
 ) -> Fact<'a, (), T>
 where
     T: Bounds<'a>,
 {
-    stateful((), move |g, (), obj| f(g, obj))
+    stateful(label, (), move |g, (), obj| f(g, obj))
 }
 
 pub type Lambda<'a, S, T> =
@@ -59,16 +62,42 @@ where
 {
     state: S,
     fun: Lambda<'a, S, T>,
+    label: String,
     _phantom: PhantomData<&'a T>,
+}
+
+impl<'a, S, T> std::fmt::Debug for Fact<'a, S, T>
+where
+    S: Clone + Send + Sync + Debug,
+    T: Bounds<'a>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Fact")
+            .field("label", &self.label)
+            .field("state", &self.state)
+            .finish()
+    }
 }
 
 impl<'a, S, T> Factual<'a, T> for Fact<'a, S, T>
 where
-    S: Clone + Send + Sync,
+    S: Clone + Send + Sync + Debug,
     T: Bounds<'a>,
 {
     fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
         (self.fun)(g, &mut self.state, obj)
+    }
+}
+
+impl<'a, S, T> Fact<'a, S, T>
+where
+    S: Clone + Send + Sync + Debug,
+    T: Bounds<'a>,
+{
+    /// Change the label
+    pub fn label(mut self, label: impl ToString) -> Self {
+        self.label = label.to_string();
+        self
     }
 }
 
@@ -81,7 +110,7 @@ fn test_lambda_fact() {
     let mut g = utils::random_generator();
 
     let geom = |k, s| {
-        stateful(s, move |g, s, mut v| {
+        stateful("geom", s, move |g, s, mut v| {
             g.set(&mut v, s, || {
                 format!("value is not geometrically increasing by {k} starting from {s}")
             })?;

@@ -38,7 +38,7 @@ where
     F: 'a + Send + Sync + Fn(&T) -> bool,
 {
     let reason = reason.to_string();
-    brute_labeled(move |v| Ok(f(v).then_some(()).ok_or_else(|| reason.clone())))
+    brute_labeled(move |v| Ok(f(v).then_some(()).ok_or_else(|| reason.clone()))).label("brute")
 }
 
 /// A version of [`brute`] which allows the closure to return the reason for failure
@@ -47,7 +47,7 @@ where
     T: Bounds<'a>,
     F: 'a + Send + Sync + Fn(&T) -> ContrafactResult<BruteResult>,
 {
-    stateless(move |g, mut obj| {
+    stateless("brute_labeled", move |g, mut obj| {
         let mut last_reason = "".to_string();
         for _ in 0..=BRUTE_ITERATION_LIMIT {
             if let Err(reason) = f(&obj)? {

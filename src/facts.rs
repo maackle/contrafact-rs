@@ -34,6 +34,5 @@ mod optical;
 #[cfg(feature = "optics")]
 pub use optical::*;
 
-use crate::factual::check_raw;
 use crate::*;
 use std::marker::PhantomData;

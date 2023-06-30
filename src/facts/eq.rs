@@ -7,7 +7,7 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     let ctx = context.to_string();
-    stateless(move |g, mut obj| {
+    stateless("eq", move |g, mut obj| {
         if obj != constant {
             g.fail(format!("{}: expected {:?} == {:?}", ctx, obj, constant))?;
             obj = constant.clone();
@@ -30,7 +30,7 @@ where
     S: ToString,
     T: Bounds<'a> + PartialEq,
 {
-    not(context, eq_(constant))
+    not(context, eq_(constant)).label("ne")
 }
 
 /// Specifies an inequality constraint with no context

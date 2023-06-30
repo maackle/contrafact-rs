@@ -123,6 +123,20 @@ where
     }
 }
 
+impl<'a, O, T, F> std::fmt::Debug for PrismFact<'a, O, T, F>
+where
+    T: Bounds<'a>,
+    O: Bounds<'a>,
+    F: Factual<'a, T>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PrismFact")
+            .field("label", &self.label)
+            .field("fact", &self.inner_fact)
+            .finish()
+    }
+}
+
 impl<'a, O, T, F> Factual<'a, O> for PrismFact<'a, O, T, F>
 where
     T: Bounds<'a> + Clone,

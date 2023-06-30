@@ -37,20 +37,47 @@ use super::and;
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![0, 1, 2, 3, 4]);
 /// ```
-pub fn vec<'a, T, F>(inner_fact: F) -> VecFact<'a, T, F>
+pub fn vec<'a, T, F>(inner_fact: F) -> Fact<'a, F, Vec<T>>
 where
     T: Bounds<'a> + Clone,
     F: Factual<'a, T>,
 {
-    VecFact::new(inner_fact)
+    stateful("vec", inner_fact, |g, f, obj: Vec<T>| {
+        obj.into_iter()
+            .enumerate()
+            .map(|(i, o)| {
+                f.mutate(g, o)
+                    .map_check_err(|e| format!("seq[{}]: {}", i, e))
+            })
+            .collect::<Result<Vec<_>, _>>()
+    })
 }
 
 /// Checks that a Vec is of a given length
-pub fn vec_len<'a, T>(len: usize) -> SeqLenFact<'a, T>
+pub fn vec_len<'a, T>(len: usize) -> StatelessFact<'a, Vec<T>>
 where
     T: Bounds<'a> + Clone + 'a,
 {
-    SeqLenFact::new(len)
+    stateless("vec_len", move |g, mut obj: Vec<T>| {
+        if obj.len() > len {
+            g.fail(format!(
+                "vec should be of length {} but is actually of length {}",
+                len,
+                obj.len()
+            ))?;
+            obj = obj[0..len].to_vec();
+        }
+        while obj.len() < len {
+            obj.push(g.arbitrary(|| {
+                format!(
+                    "vec should be of length {} but is actually of length {}",
+                    len,
+                    obj.len()
+                )
+            })?)
+        }
+        Ok(obj)
+    })
 }
 
 /// Combines a LenFact with a VecFact to ensure that the vector is of a given length
@@ -60,101 +87,6 @@ where
     F: Factual<'a, T> + 'a,
 {
     and(vec_len(len), vec(inner_fact))
-}
-
-/// A fact which uses a seq to apply another fact. Use [`vec()`] to construct.
-#[derive(Clone)]
-pub struct VecFact<'a, T, F>
-where
-    T: Bounds<'a>,
-    F: Factual<'a, T>,
-{
-    /// The inner_fact about the inner substructure
-    inner_fact: F,
-
-    __phantom: PhantomData<&'a T>,
-}
-
-impl<'a, T, F> VecFact<'a, T, F>
-where
-    T: Bounds<'a>,
-    F: Factual<'a, T>,
-{
-    /// Constructor. Supply a seq and an existing Fact to create a new Fact.
-    pub fn new(inner_fact: F) -> Self
-    where
-        T: Bounds<'a>,
-        F: Factual<'a, T>,
-    {
-        Self {
-            inner_fact,
-            __phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, T, F> Factual<'a, Vec<T>> for VecFact<'a, T, F>
-where
-    T: Bounds<'a>,
-    F: Factual<'a, T>,
-{
-    #[tracing::instrument(fields(fact = "seq"), skip(self, g))]
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: Vec<T>) -> Mutation<Vec<T>> {
-        tracing::trace!("");
-        obj.into_iter()
-            .enumerate()
-            .map(|(i, o)| {
-                self.inner_fact
-                    .mutate(g, o)
-                    .map_check_err(|e| format!("seq[{}]: {}", i, e))
-            })
-            .collect::<Result<Vec<_>, _>>()
-    }
-}
-
-/// A fact which uses a seq to apply another fact. Use [`vec()`] to construct.
-#[derive(Clone)]
-pub struct SeqLenFact<'a, T>
-where
-    T: Bounds<'a>,
-{
-    len: usize,
-    __phantom: PhantomData<&'a T>,
-}
-
-impl<'a, T> SeqLenFact<'a, T>
-where
-    T: Bounds<'a>,
-{
-    /// Constructor. Supply a seq and an existing Fact to create a new Fact.
-    pub fn new(len: usize) -> Self
-    where
-        T: Bounds<'a>,
-    {
-        Self {
-            len,
-            __phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, T> Factual<'a, Vec<T>> for SeqLenFact<'a, T>
-where
-    T: Bounds<'a>,
-{
-    #[tracing::instrument(fields(fact = "len"), skip(self, g))]
-    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: Vec<T>) -> Mutation<Vec<T>> {
-        tracing::trace!("");
-
-        if obj.len() > self.len {
-            g.fail("LenFact: vec was too long")?;
-            obj = obj[0..self.len].to_vec();
-        }
-        while obj.len() < self.len {
-            obj.push(g.arbitrary(|| "LenFact: vec was too short")?)
-        }
-        Ok(obj)
-    }
 }
 
 #[cfg(test)]
@@ -221,7 +153,7 @@ mod tests {
 
         let piecewise = move || {
             let count = Arc::new(AtomicU8::new(0));
-            stateful((), move |g, (), mut obj| {
+            stateful("piecewise", (), move |g, (), mut obj| {
                 let c = count.fetch_add(1, Ordering::SeqCst);
                 if c < 3 {
                     g.set(&mut obj, &999, || "i'm being difficult, haha")?;
