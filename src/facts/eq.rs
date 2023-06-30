@@ -1,23 +1,25 @@
-use super::*;
+use super::{lambda::LambdaFact, *};
 
 /// Specifies an equality constraint
-pub fn eq<S, T>(context: S, constant: T) -> EqFact<T>
+pub fn eq<'a, S, T>(context: S, constant: T) -> LambdaFact<'a, (), T>
 where
     S: ToString,
-    T: std::fmt::Debug + PartialEq,
+    T: Bounds<'a> + PartialEq + Clone,
 {
-    EqFact {
-        context: context.to_string(),
-        constant,
-        op: EqOp::Equal,
-        _phantom: PhantomData,
-    }
+    let ctx = context.to_string();
+    lambda_unit(move |g, mut obj| {
+        if obj != constant {
+            g.fail(format!("{}: expected {:?} == {:?}", ctx, obj, constant))?;
+            obj = constant.clone();
+        }
+        Ok(obj)
+    })
 }
 
 /// Specifies an equality constraint with no context
-pub fn eq_<T>(constant: T) -> EqFact<T>
+pub fn eq_<'a, T>(constant: T) -> LambdaFact<'a, (), T>
 where
-    T: std::fmt::Debug + PartialEq,
+    T: Bounds<'a> + PartialEq + Clone,
 {
     eq("eq", constant)
 }
