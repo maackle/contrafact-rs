@@ -6,7 +6,6 @@ mod eq;
 mod in_range;
 mod in_slice;
 mod lens;
-mod mapped;
 mod not;
 mod or;
 mod prism;
@@ -25,7 +24,6 @@ pub use same::{different, same};
 pub use and::and;
 pub use brute::brute;
 pub use lens::{lens, LensFact};
-pub use mapped::{mapped, mapped_fallible};
 pub use prism::{prism, PrismFact};
 pub use seq::{vec, vec_len, vec_of_length};
 
