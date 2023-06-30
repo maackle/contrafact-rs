@@ -132,7 +132,7 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let f = || seq(lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1)));
+        let f = || vec(lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1)));
         let ones = f().build(&mut g);
         f().check(&ones).unwrap();
 

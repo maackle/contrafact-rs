@@ -62,7 +62,7 @@ fn test_link() {
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = move || sized_seq(NUM as usize, chain_fact(author.clone()));
+    let fact = move || vec_of_length(NUM as usize, chain_fact(author.clone()));
 
     let chain = fact().build(&mut g);
     dbg!(&chain);
@@ -80,7 +80,7 @@ fn test_wrapper() {
     const NUM: u32 = 10;
     let author = "alice".to_string();
     let fact = move || {
-        sized_seq(
+        vec_of_length(
             NUM as usize,
             wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]),
         )

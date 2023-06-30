@@ -11,7 +11,7 @@ use crate::*;
 
 use super::and;
 
-/// Lifts a Fact about an item in a sequence into a fact about the whole sequence.
+/// Lifts a Fact about an item in a Vec into a fact about the whole Vec.
 ///
 ///
 /// ```
@@ -20,7 +20,7 @@ use super::and;
 /// let mut g = utils::random_generator();
 ///
 /// // `consecutive_int`
-/// let fact = facts::seq(facts::eq_(1));
+/// let fact = facts::vec(facts::eq_(1));
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![1, 1, 1, 1, 1]);
 /// ```
@@ -33,41 +33,38 @@ use super::and;
 /// let mut g = utils::random_generator();
 ///
 /// // `consecutive_int`
-/// let fact = seq(consecutive_int_(0));
+/// let fact = vec(consecutive_int_(0));
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![0, 1, 2, 3, 4]);
 /// ```
-///
-//
-// TODO: can rewrite this in terms of PrismFact for DRYness
-pub fn seq<'a, T, F>(inner_fact: F) -> SeqFact<'a, T, F>
+pub fn vec<'a, T, F>(inner_fact: F) -> VecFact<'a, T, F>
 where
     T: Bounds<'a> + Clone,
     F: Fact<'a, T>,
 {
-    SeqFact::new(inner_fact)
+    VecFact::new(inner_fact)
 }
 
 /// Checks that a Vec is of a given length
-pub fn seq_len<'a, T>(len: usize) -> SeqLenFact<'a, T>
+pub fn vec_len<'a, T>(len: usize) -> SeqLenFact<'a, T>
 where
     T: Bounds<'a> + Clone + 'a,
 {
     SeqLenFact::new(len)
 }
 
-/// Combines a LenFact with a SeqFact to ensure that the sequence is of a given length
-pub fn sized_seq<'a, T, F>(len: usize, inner_fact: F) -> impl Fact<'a, Vec<T>>
+/// Combines a LenFact with a VecFact to ensure that the vector is of a given length
+pub fn vec_of_length<'a, T, F>(len: usize, inner_fact: F) -> impl Fact<'a, Vec<T>>
 where
     T: Bounds<'a> + Clone + 'a,
     F: Fact<'a, T> + 'a,
 {
-    and(seq_len(len), seq(inner_fact))
+    and(vec_len(len), vec(inner_fact))
 }
 
-/// A fact which uses a seq to apply another fact. Use [`seq()`] to construct.
+/// A fact which uses a seq to apply another fact. Use [`vec()`] to construct.
 #[derive(Clone)]
-pub struct SeqFact<'a, T, F>
+pub struct VecFact<'a, T, F>
 where
     T: Bounds<'a>,
     F: Fact<'a, T>,
@@ -78,7 +75,7 @@ where
     __phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T, F> SeqFact<'a, T, F>
+impl<'a, T, F> VecFact<'a, T, F>
 where
     T: Bounds<'a>,
     F: Fact<'a, T>,
@@ -96,7 +93,7 @@ where
     }
 }
 
-impl<'a, T, F> Fact<'a, Vec<T>> for SeqFact<'a, T, F>
+impl<'a, T, F> Fact<'a, Vec<T>> for VecFact<'a, T, F>
 where
     T: Bounds<'a>,
     F: Fact<'a, T>,
@@ -115,7 +112,7 @@ where
     }
 }
 
-/// A fact which uses a seq to apply another fact. Use [`seq()`] to construct.
+/// A fact which uses a seq to apply another fact. Use [`vec()`] to construct.
 #[derive(Clone)]
 pub struct SeqLenFact<'a, T>
 where
@@ -183,7 +180,7 @@ mod tests {
 
         let f = facts![
             brute("len must be >= 3", |v: &Vec<_>| v.len() >= 3),
-            seq(eq("must be 1", 1)),
+            vec(eq("must be 1", 1)),
         ];
         let ones = f.clone().build(&mut g);
         f.check(&ones).unwrap();
@@ -197,8 +194,8 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let ones: Vec<u8> = seq_len(5).build(&mut g);
-        seq_len(5).check(&ones).unwrap();
+        let ones: Vec<u8> = vec_len(5).build(&mut g);
+        vec_len(5).check(&ones).unwrap();
 
         assert_eq!(ones.len(), 5);
     }
@@ -207,7 +204,7 @@ mod tests {
     fn test_sized_seq() {
         let mut g = utils::random_generator();
 
-        let f = || sized_seq(5, consecutive_int_(0));
+        let f = || vec_of_length(5, consecutive_int_(0));
         let count: Vec<u8> = f().build(&mut g);
         f().check(&count).unwrap();
 
@@ -236,7 +233,7 @@ mod tests {
         // Assert that the consecutive_int fact does not advance when there
         // is a failure for the facts to agree
         {
-            let f = sized_seq(10, facts!(consecutive_int_(0), piecewise()));
+            let f = vec_of_length(10, facts!(consecutive_int_(0), piecewise()));
             let items = f.build(&mut g);
             assert_eq!(items, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
         }

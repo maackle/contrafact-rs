@@ -173,7 +173,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            facts::seq(facts![
+            facts::vec(facts![
                 prism("E::x", E::x, facts::eq("must be 1", 1)),
                 prism("E::y", E::y, facts::eq("must be 2", 2)),
             ])
@@ -195,7 +195,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            facts::seq(facts![
+            facts::vec(facts![
                 prism(
                     "E::x",
                     E::x,
@@ -217,10 +217,10 @@ mod tests {
             E::X(x) => Either::Left(x),
             E::Y(y) => Either::Right(y),
         });
-        facts::seq(crate::facts![facts::consecutive_int_(0u32)])
+        facts::vec(crate::facts![facts::consecutive_int_(0u32)])
             .check(&xs)
             .unwrap();
-        facts::seq(crate::facts![facts::consecutive_int_(0u32)])
+        facts::vec(crate::facts![facts::consecutive_int_(0u32)])
             .check(&ys)
             .unwrap();
     }

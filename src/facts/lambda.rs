@@ -10,7 +10,7 @@ use crate::*;
 /// use contrafact::*;
 /// let mut g = utils::random_generator();
 ///
-/// let mut fact = sized_seq(
+/// let mut fact = vec_of_length(
 ///     4,
 ///     lambda(2, move |g, s, mut v| {
 ///         g.set(&mut v, s, "value is not geometrically increasing by 2")?;
@@ -64,7 +64,7 @@ fn test_lambda_fact() {
     use crate::facts::*;
     let mut g = utils::random_generator();
 
-    let fact = sized_seq(
+    let fact = vec_of_length(
         4,
         lambda(2, move |g, s, mut v| {
             g.set(&mut v, s, "value is not geometrically increasing by 2")?;

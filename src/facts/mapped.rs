@@ -115,7 +115,7 @@ fn test_mapped_fact() {
     };
 
     // assert that there was a failure
-    seq(divisibility_fact())
+    vec(divisibility_fact())
         .check(&numbers)
         .result()
         .unwrap()
@@ -123,7 +123,7 @@ fn test_mapped_fact() {
 
     // TODO: return all errors in the seq, not just the first
     // assert_eq!(
-    //     dbg!(seq(divisibility_fact())
+    //     dbg!(vec(divisibility_fact())
     //         .check(&numbers)
     //         .result()
     //         .unwrap()
@@ -139,7 +139,7 @@ fn test_mapped_fact() {
     let mut g = utils::random_generator();
 
     let composite_fact = || {
-        seq(facts![
+        vec(facts![
             lens("T.0", |(i, _)| i, consecutive_int("increasing", 0)),
             divisibility_fact(),
         ])

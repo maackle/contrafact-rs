@@ -29,7 +29,7 @@ pub use lambda::lambda;
 pub use lens::{lens, LensFact};
 pub use mapped::{mapped, mapped_fallible};
 pub use prism::{prism, PrismFact};
-pub use seq::{seq, seq_len, sized_seq};
+pub use seq::{vec, vec_len, vec_of_length};
 
 #[cfg(feature = "optics")]
 mod optical;
@@ -52,7 +52,7 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let eq1 = seq(eq("must be 1", 1));
+        let eq1 = vec(eq("must be 1", 1));
 
         let ones = eq1.clone().build(&mut g);
         eq1.clone().check(&ones).unwrap();
@@ -69,8 +69,8 @@ mod tests {
         let eq2 = eq("must be 2", 2);
         let either = or("can be 1 or 2", eq1, eq2);
 
-        let ones = seq(either.clone()).build(&mut g);
-        seq(either.clone()).check(&ones).unwrap();
+        let ones = vec(either.clone()).build(&mut g);
+        vec(either.clone()).check(&ones).unwrap();
         assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
         assert_eq!(either.check(&3).result().unwrap().unwrap_err().len(), 1);
@@ -82,7 +82,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let eq1 = eq("must be 1", 1);
-        let not1 = seq(not_(eq1));
+        let not1 = vec(not_(eq1));
 
         let nums = not1.clone().build(&mut g);
         not1.clone().check(&nums).unwrap();
@@ -96,13 +96,13 @@ mod tests {
         let mut g = utils::random_generator();
 
         {
-            let f = seq(same::<u8>());
+            let f = vec(same::<u8>());
             let nums = f.clone().build(&mut g);
             f.clone().check(&nums).unwrap();
             assert!(nums.iter().all(|(a, b)| a == b));
         }
         {
-            let f = seq(different::<u8>());
+            let f = vec(different::<u8>());
             let nums = f.clone().build(&mut g);
             f.clone().check(&nums).unwrap();
             assert!(nums.iter().all(|(a, b)| a != b));
@@ -120,8 +120,8 @@ mod tests {
         let over9000 = in_range("must be over 9000", 9001..);
         let under9000 = in_range("must be under 9000 (and no less than zero)", ..9000u32);
 
-        let nonpositive1 = seq(not_(positive1));
-        let nonpositive2 = seq(not_(positive2));
+        let nonpositive1 = vec(not_(positive1));
+        let nonpositive2 = vec(not_(positive2));
 
         let smallish_nums = smallish.clone().build(&mut g);
         let over9000_nums = over9000.clone().build(&mut g);

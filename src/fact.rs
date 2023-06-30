@@ -3,10 +3,6 @@ use either::Either;
 
 use crate::*;
 
-/// When running `Fact::satisfy`, repeat mutate+check this many times, in case
-/// repetition helps ease into the constraint.
-pub(crate) const SATISFY_ATTEMPTS: usize = 7;
-
 // TODO: we can remove the Clone requirement if:
 // - make `Mutate` track list of errors so that it can know if a mutation occurred.
 // - make `mutate()` take a mut ref
