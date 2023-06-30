@@ -13,7 +13,7 @@ pub fn never<S: ToString>(context: S) -> ConstantFact {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstantFact(bool, String);
 
-impl<'a, T> Fact<'a, T> for ConstantFact
+impl<'a, T> Factual<'a, T> for ConstantFact
 where
     T: Bounds<'a> + PartialEq + Clone,
 {

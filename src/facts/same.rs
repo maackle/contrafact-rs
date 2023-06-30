@@ -28,7 +28,7 @@ pub struct SameFact<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T> Fact<'a, (T, T)> for SameFact<T>
+impl<'a, T> Factual<'a, (T, T)> for SameFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {

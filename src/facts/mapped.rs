@@ -1,18 +1,14 @@
-use std::sync::Arc;
-
-use crate::{fact::Bounds, *};
-
-use super::lambda::LambdaFact;
+use crate::{factual::Bounds, *};
 
 /// A version of [`mapped`] whose closure returns a Result
-pub fn mapped_fallible<'a, T, F, O, S>(reason: impl ToString, f: F) -> LambdaFact<'a, (), T>
+pub fn mapped_fallible<'a, T, F, O, S>(reason: impl ToString, f: F) -> Fact<'a, (), T>
 where
     T: Bounds<'a>,
-    O: Fact<'a, T>,
+    O: Factual<'a, T>,
     F: 'a + Send + Sync + Fn(&T) -> ContrafactResult<O>,
 {
     let reason = reason.to_string();
-    lambda_unit(move |g, obj| {
+    stateless(move |g, obj| {
         f(&obj)?
             .mutate(g, obj)
             .map_check_err(|err| format!("mapped({}) > {}", reason, err))
@@ -53,14 +49,14 @@ where
 /// assert!(fact.clone().check(&9009).is_ok());
 /// assert!(fact.clone().check(&9010).is_err());
 /// ```
-pub fn mapped<'a, T, F, O>(reason: impl ToString, f: F) -> LambdaFact<'a, (), T>
+pub fn mapped<'a, T, F, O>(reason: impl ToString, f: F) -> Fact<'a, (), T>
 where
     T: Bounds<'a>,
-    O: Fact<'a, T>,
+    O: Factual<'a, T>,
     F: 'a + Send + Sync + Fn(&T) -> O,
 {
     let reason = reason.to_string();
-    lambda_unit(move |g, obj| {
+    stateless(move |g, obj| {
         f(&obj)
             .mutate(g, obj)
             .map_check_err(|err| format!("mapped({}) > {}", reason, err))

@@ -5,7 +5,6 @@ mod constant;
 mod eq;
 mod in_range;
 mod in_slice;
-mod lambda;
 mod lens;
 mod mapped;
 mod not;
@@ -25,7 +24,6 @@ pub use same::{different, same};
 
 pub use and::and;
 pub use brute::brute;
-pub use lambda::{lambda, lambda_unit};
 pub use lens::{lens, LensFact};
 pub use mapped::{mapped, mapped_fallible};
 pub use prism::{prism, PrismFact};
@@ -40,7 +38,7 @@ pub use optical::*;
 
 pub(crate) use eq::EqOp;
 
-use crate::fact::check_raw;
+use crate::factual::check_raw;
 use crate::*;
 use std::marker::PhantomData;
 

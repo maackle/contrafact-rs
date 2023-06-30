@@ -63,7 +63,7 @@ where
     phantom: PhantomData<T>,
 }
 
-impl<'a, R, T> Fact<'a, T> for InRangeFact<R, T>
+impl<'a, R, T> Factual<'a, T> for InRangeFact<R, T>
 where
     R: Send + Sync + RangeBounds<T> + std::fmt::Debug + Clone,
     T: Bounds<'a>

@@ -6,8 +6,8 @@ use crate::*;
 pub fn and<'a, F1, F2, T>(a: F1, b: F2) -> AndFact<'a, F1, F2, T>
 where
     T: Bounds<'a>,
-    F1: Fact<'a, T>,
-    F2: Fact<'a, T>,
+    F1: Factual<'a, T>,
+    F2: Factual<'a, T>,
 {
     AndFact::new(a, b)
 }
@@ -19,8 +19,8 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AndFact<'a, F1, F2, T>
 where
-    F1: Fact<'a, T>,
-    F2: Fact<'a, T>,
+    F1: Factual<'a, T>,
+    F2: Factual<'a, T>,
     T: ?Sized + Bounds<'a>,
 {
     pub(crate) a: F1,
@@ -30,8 +30,8 @@ where
 
 impl<'a, F1, F2, T> AndFact<'a, F1, F2, T>
 where
-    F1: Fact<'a, T>,
-    F2: Fact<'a, T>,
+    F1: Factual<'a, T>,
+    F2: Factual<'a, T>,
     T: ?Sized + Bounds<'a>,
 {
     /// Constructor
@@ -44,10 +44,10 @@ where
     }
 }
 
-impl<'a, F1, F2, T> Fact<'a, T> for AndFact<'a, F1, F2, T>
+impl<'a, F1, F2, T> Factual<'a, T> for AndFact<'a, F1, F2, T>
 where
-    F1: Fact<'a, T> + Fact<'a, T>,
-    F2: Fact<'a, T> + Fact<'a, T>,
+    F1: Factual<'a, T> + Factual<'a, T>,
+    F2: Factual<'a, T> + Factual<'a, T>,
     T: Bounds<'a>,
 {
     fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {

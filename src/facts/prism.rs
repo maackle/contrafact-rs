@@ -64,7 +64,7 @@ where
     O: Bounds<'a>,
     S: ToString,
     T: Bounds<'a> + Clone,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
     P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
 {
     // let getter = |o| prism(&mut o).cloned();
@@ -86,7 +86,7 @@ pub struct PrismFact<'a, O, T, F>
 where
     T: Bounds<'a>,
     O: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     label: String,
     // getter: Arc<dyn 'a + Send + Sync + Fn(O) -> Option<T>>,
@@ -100,14 +100,14 @@ impl<'a, O, T, F> PrismFact<'a, O, T, F>
 where
     T: Bounds<'a>,
     O: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     /// Constructor. Supply a prism and an existing Fact to create a new Fact.
     pub fn new<P>(label: String, prism: P, /*getter: G, setter: S,*/ inner_fact: F) -> Self
     where
         T: Bounds<'a>,
         O: Bounds<'a>,
-        F: Fact<'a, T>,
+        F: Factual<'a, T>,
         P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
         // G: Fn(O) -> Option<T>,
         // S: Fn(O, T) -> Option<O>,
@@ -123,11 +123,11 @@ where
     }
 }
 
-impl<'a, O, T, F> Fact<'a, O> for PrismFact<'a, O, T, F>
+impl<'a, O, T, F> Factual<'a, O> for PrismFact<'a, O, T, F>
 where
     T: Bounds<'a> + Clone,
     O: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     fn mutate(&mut self, g: &mut Generator<'a>, mut obj: O) -> Mutation<O> {
         if let Some(t) = (self.prism)(&mut obj) {

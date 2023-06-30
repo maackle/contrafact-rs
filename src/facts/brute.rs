@@ -1,10 +1,4 @@
-use std::sync::Arc;
-
-use crate::{fact::Bounds, Fact, BRUTE_ITERATION_LIMIT};
-
-use crate::{lambda_unit, ContrafactResult, Generator, Mutation};
-
-use super::lambda::LambdaFact;
+use crate::*;
 
 /// A constraint defined only by a predicate closure. Mutation occurs by brute
 /// force, randomly trying values until one matches the constraint.
@@ -37,7 +31,7 @@ use super::lambda::LambdaFact;
 /// let mut g = utils::random_generator();
 /// assert!(div_by(3).build(&mut g) % 3 == 0);
 /// ```
-pub fn brute<'a, T, F>(reason: impl ToString, f: F) -> LambdaFact<'a, (), T>
+pub fn brute<'a, T, F>(reason: impl ToString, f: F) -> Fact<'a, (), T>
 where
     T: Bounds<'a>,
     F: 'a + Send + Sync + Fn(&T) -> bool,
@@ -47,12 +41,12 @@ where
 }
 
 /// A version of [`brute`] which allows the closure to return the reason for failure
-pub fn brute_labeled<'a, T, F>(f: F) -> LambdaFact<'a, (), T>
+pub fn brute_labeled<'a, T, F>(f: F) -> Fact<'a, (), T>
 where
     T: Bounds<'a>,
     F: 'a + Send + Sync + Fn(&T) -> ContrafactResult<BruteResult>,
 {
-    lambda_unit(move |g, mut obj| {
+    stateless(move |g, mut obj| {
         let mut last_reason = "".to_string();
         for _ in 0..=BRUTE_ITERATION_LIMIT {
             if let Err(reason) = f(&obj)? {

@@ -4,8 +4,8 @@ use super::*;
 pub fn or<'a, A, T, S, Item>(context: S, a: A, b: T) -> OrFact<'a, A, T, Item>
 where
     S: ToString,
-    A: Fact<'a, Item>,
-    T: Fact<'a, Item>,
+    A: Factual<'a, Item>,
+    T: Factual<'a, Item>,
     Item: Bounds<'a>,
 {
     OrFact {
@@ -22,8 +22,8 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OrFact<'a, M1, M2, Item>
 where
-    M1: Fact<'a, Item>,
-    M2: Fact<'a, Item>,
+    M1: Factual<'a, Item>,
+    M2: Factual<'a, Item>,
     Item: ?Sized + Bounds<'a>,
 {
     context: String,
@@ -32,10 +32,10 @@ where
     _phantom: PhantomData<&'a Item>,
 }
 
-impl<'a, P1, P2, T> Fact<'a, T> for OrFact<'a, P1, P2, T>
+impl<'a, P1, P2, T> Factual<'a, T> for OrFact<'a, P1, P2, T>
 where
-    P1: Fact<'a, T> + Fact<'a, T>,
-    P2: Fact<'a, T> + Fact<'a, T>,
+    P1: Factual<'a, T> + Factual<'a, T>,
+    P2: Factual<'a, T> + Factual<'a, T>,
     T: Bounds<'a>,
 {
     fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {

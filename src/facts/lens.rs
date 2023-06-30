@@ -40,7 +40,7 @@ where
     O: Bounds<'a>,
     T: Bounds<'a> + Clone,
     S: ToString,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
     L: 'a + Clone + Send + Sync + Fn(&mut O) -> &mut T,
 {
     let lens2 = lens.clone();
@@ -59,7 +59,7 @@ pub struct LensFact<'a, O, T, F>
 where
     T: Bounds<'a>,
     O: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     label: String,
 
@@ -76,14 +76,14 @@ impl<'a, O, T, F> LensFact<'a, O, T, F>
 where
     T: Bounds<'a>,
     O: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     /// Constructor. Supply a lens and an existing Fact to create a new Fact.
     pub fn new<L, G, S>(label: L, getter: G, setter: S, inner_fact: F) -> Self
     where
         T: Bounds<'a>,
         O: Bounds<'a>,
-        F: Fact<'a, T>,
+        F: Factual<'a, T>,
         L: ToString,
         G: 'a + Send + Sync + Fn(O) -> T,
         S: 'a + Send + Sync + Fn(O, T) -> O,
@@ -98,11 +98,11 @@ where
     }
 }
 
-impl<'a, O, T, F> Fact<'a, O> for LensFact<'a, O, T, F>
+impl<'a, O, T, F> Factual<'a, O> for LensFact<'a, O, T, F>
 where
     T: Bounds<'a>,
     O: Bounds<'a> + Clone,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
     fn mutate(&mut self, g: &mut Generator<'a>, obj: O) -> Mutation<O> {

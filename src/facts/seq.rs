@@ -40,7 +40,7 @@ use super::and;
 pub fn vec<'a, T, F>(inner_fact: F) -> VecFact<'a, T, F>
 where
     T: Bounds<'a> + Clone,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     VecFact::new(inner_fact)
 }
@@ -54,10 +54,10 @@ where
 }
 
 /// Combines a LenFact with a VecFact to ensure that the vector is of a given length
-pub fn vec_of_length<'a, T, F>(len: usize, inner_fact: F) -> impl Fact<'a, Vec<T>>
+pub fn vec_of_length<'a, T, F>(len: usize, inner_fact: F) -> impl Factual<'a, Vec<T>>
 where
     T: Bounds<'a> + Clone + 'a,
-    F: Fact<'a, T> + 'a,
+    F: Factual<'a, T> + 'a,
 {
     and(vec_len(len), vec(inner_fact))
 }
@@ -67,7 +67,7 @@ where
 pub struct VecFact<'a, T, F>
 where
     T: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     /// The inner_fact about the inner substructure
     inner_fact: F,
@@ -78,13 +78,13 @@ where
 impl<'a, T, F> VecFact<'a, T, F>
 where
     T: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     /// Constructor. Supply a seq and an existing Fact to create a new Fact.
     pub fn new(inner_fact: F) -> Self
     where
         T: Bounds<'a>,
-        F: Fact<'a, T>,
+        F: Factual<'a, T>,
     {
         Self {
             inner_fact,
@@ -93,10 +93,10 @@ where
     }
 }
 
-impl<'a, T, F> Fact<'a, Vec<T>> for VecFact<'a, T, F>
+impl<'a, T, F> Factual<'a, Vec<T>> for VecFact<'a, T, F>
 where
     T: Bounds<'a>,
-    F: Fact<'a, T>,
+    F: Factual<'a, T>,
 {
     #[tracing::instrument(fields(fact = "seq"), skip(self, g))]
     fn mutate(&mut self, g: &mut Generator<'a>, obj: Vec<T>) -> Mutation<Vec<T>> {
@@ -138,7 +138,7 @@ where
     }
 }
 
-impl<'a, T> Fact<'a, Vec<T>> for SeqLenFact<'a, T>
+impl<'a, T> Factual<'a, Vec<T>> for SeqLenFact<'a, T>
 where
     T: Bounds<'a>,
 {
@@ -221,7 +221,7 @@ mod tests {
 
         let piecewise = move || {
             let count = Arc::new(AtomicU8::new(0));
-            lambda((), move |g, (), mut obj| {
+            stateful((), move |g, (), mut obj| {
                 let c = count.fetch_add(1, Ordering::SeqCst);
                 if c < 3 {
                     g.set(&mut obj, &999, "i'm being difficult, haha")?;

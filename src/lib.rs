@@ -61,10 +61,10 @@
 mod check;
 mod error;
 mod fact;
-mod generator;
-
 /// Some built-in implementations of some useful facts
 pub mod facts;
+mod factual;
+mod generator;
 pub use facts::*;
 
 #[cfg(feature = "utils")]
@@ -74,7 +74,8 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{Bounds, Fact};
+pub use fact::{stateful, stateless, Fact};
+pub use factual::{Bounds, Factual};
 pub use generator::*;
 
 pub use either;

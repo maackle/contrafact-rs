@@ -30,7 +30,7 @@ where
     slice: &'a [T],
 }
 
-impl<'a, 'b: 'a, T> Fact<'a, T> for InSliceFact<'b, T>
+impl<'a, 'b: 'a, T> Factual<'a, T> for InSliceFact<'b, T>
 where
     T: 'b + Bounds<'a> + Clone,
     // I: Iterator<Item = &'b T>,

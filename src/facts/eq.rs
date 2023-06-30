@@ -1,13 +1,13 @@
-use super::{lambda::LambdaFact, *};
+use super::*;
 
 /// Specifies an equality constraint
-pub fn eq<'a, S, T>(context: S, constant: T) -> LambdaFact<'a, (), T>
+pub fn eq<'a, S, T>(context: S, constant: T) -> Fact<'a, (), T>
 where
     S: ToString,
     T: Bounds<'a> + PartialEq + Clone,
 {
     let ctx = context.to_string();
-    lambda_unit(move |g, mut obj| {
+    stateless(move |g, mut obj| {
         if obj != constant {
             g.fail(format!("{}: expected {:?} == {:?}", ctx, obj, constant))?;
             obj = constant.clone();
@@ -17,7 +17,7 @@ where
 }
 
 /// Specifies an equality constraint with no context
-pub fn eq_<'a, T>(constant: T) -> LambdaFact<'a, (), T>
+pub fn eq_<'a, T>(constant: T) -> Fact<'a, (), T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
@@ -60,7 +60,7 @@ pub enum EqOp {
     NotEqual,
 }
 
-impl<'a, T> Fact<'a, T> for EqFact<T>
+impl<'a, T> Factual<'a, T> for EqFact<T>
 where
     T: Bounds<'a> + PartialEq + Clone,
 {
