@@ -40,9 +40,8 @@ where
     /// some reason unreasonable, a check function can be written by hand, but
     /// care must be taken to make sure it perfectly lines up with the mutation function.
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self))]
-    fn check(&mut self, obj: &T) -> Check {
-        let check = check_raw(self, obj);
-        check
+    fn check(mut self, obj: &T) -> Check {
+        check_raw(&mut self, obj)
     }
 
     /// Apply a mutation which moves the obj closer to satisfying the overall
@@ -87,14 +86,14 @@ where
 
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self, g))]
     /// Build a new value such that it satisfies the constraint
-    fn build_fallible(&mut self, g: &mut Generator<'a>) -> ContrafactResult<T> {
+    fn build_fallible(mut self, g: &mut Generator<'a>) -> ContrafactResult<T> {
         let obj = T::arbitrary(g).unwrap();
         self.satisfy(g, obj)
     }
 
     /// Build a new value such that it satisfies the constraint, panicking on error
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self, g))]
-    fn build(&mut self, g: &mut Generator<'a>) -> T {
+    fn build(self, g: &mut Generator<'a>) -> T {
         self.build_fallible(g).unwrap()
     }
 }
@@ -125,13 +124,13 @@ where
 }
 
 #[tracing::instrument(skip(facts))]
-fn collect_checks<'a, T, F>(facts: &mut [F], obj: &T) -> Check
+fn collect_checks<'a, T, F>(facts: Vec<F>, obj: &T) -> Check
 where
     T: Bounds<'a>,
     F: Fact<'a, T>,
 {
     let checks = facts
-        .iter_mut()
+        .into_iter()
         .enumerate()
         .map(|(i, f)| {
             Ok(f.check(obj)

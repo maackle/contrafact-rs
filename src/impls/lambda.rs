@@ -64,7 +64,7 @@ fn test_lambda_fact() {
     use crate::*;
     let mut g = utils::random_generator();
 
-    let mut fact = sized_seq(
+    let fact = sized_seq(
         4,
         lambda(2, move |g, s, mut v| {
             g.set(&mut v, s, "value is not geometrically increasing by 2")?;

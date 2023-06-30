@@ -268,14 +268,14 @@ fn test_rho_fact() {
     observability::test_run().ok();
     let mut g = utils::random_generator();
 
-    let mut fact = rho_fact(5, AlphaSigner);
-    let mut rho = fact.build(&mut g);
-    assert!(fact.check(&rho).is_ok());
+    let fact = rho_fact(5, AlphaSigner);
+    let mut rho = fact.clone().build(&mut g);
+    assert!(fact.clone().check(&rho).is_ok());
     assert_eq!(rho.sigma.id2, 10);
     assert_eq!(rho.sigma.sig, "5".to_string());
 
     rho.sigma.id2 = 9;
-    assert!(fact.check(&rho).is_err());
+    assert!(fact.clone().check(&rho).is_err());
 
     dbg!(rho);
 }
@@ -307,10 +307,10 @@ fn test_omega_fact() {
     };
 
     valid1 = fact.mutate(&mut g, valid1).unwrap();
-    fact.check(dbg!(&valid1)).unwrap();
+    fact.clone().check(dbg!(&valid1)).unwrap();
 
     valid2 = fact.mutate(&mut g, valid2).unwrap();
-    fact.check(dbg!(&valid2)).unwrap();
+    fact.clone().check(dbg!(&valid2)).unwrap();
 
     let mut invalid1 = Omega::Alpha {
         id: 8,
@@ -331,12 +331,30 @@ fn test_omega_fact() {
     };
 
     // Ensure that check fails for invalid data
-    assert!(dbg!(fact.check(dbg!(&invalid1)).result().unwrap().unwrap_err()).len() > 0);
+    assert!(
+        dbg!(fact
+            .clone()
+            .check(dbg!(&invalid1))
+            .result()
+            .unwrap()
+            .unwrap_err())
+        .len()
+            > 0
+    );
     invalid1 = fact.mutate(&mut g, invalid1).unwrap();
-    fact.check(dbg!(&invalid1)).unwrap();
+    fact.clone().check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
-    assert!(dbg!(fact.check(dbg!(&invalid2)).result().unwrap().unwrap_err()).len() > 0);
+    assert!(
+        dbg!(fact
+            .clone()
+            .check(dbg!(&invalid2))
+            .result()
+            .unwrap()
+            .unwrap_err())
+        .len()
+            > 0
+    );
     invalid2 = fact.mutate(&mut g, invalid2).unwrap();
-    fact.check(dbg!(&invalid2)).unwrap();
+    fact.clone().check(dbg!(&invalid2)).unwrap();
 }

@@ -26,8 +26,8 @@ use crate::*;
 ///
 /// let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
 ///
-/// assert!(fact.check(&S {x: 1, y: 333}).is_ok());
-/// assert!(fact.check(&S {x: 2, y: 333}).is_err());
+/// assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
+/// assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
 ///
 /// let mut g = utils::random_generator();
 /// let a = fact.build(&mut g);

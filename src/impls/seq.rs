@@ -171,14 +171,11 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let ff = || {
-            facts![
-                brute("len must be >= 3", |v: &Vec<_>| v.len() >= 3),
-                seq(eq("must be 1", 1)),
-            ]
-        };
-        let mut f = ff();
-        let ones = f.build(&mut g);
+        let f = facts![
+            brute("len must be >= 3", |v: &Vec<_>| v.len() >= 3),
+            seq(eq("must be 1", 1)),
+        ];
+        let ones = f.clone().build(&mut g);
         f.check(&ones).unwrap();
 
         assert!(ones.len() >= 3);
@@ -229,7 +226,7 @@ mod tests {
         // Assert that the consecutive_int fact does not advance when there
         // is a failure for the facts to agree
         {
-            let mut f = sized_seq(10, facts!(consecutive_int_(0), piecewise()));
+            let f = sized_seq(10, facts!(consecutive_int_(0), piecewise()));
             let items = f.build(&mut g);
             assert_eq!(items, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
         }
@@ -240,7 +237,7 @@ mod tests {
             let mut f = facts!(eq_(0), piecewise());
             for _ in 0..3 {
                 let val = f.mutate(&mut g, 0).unwrap();
-                assert!(f.check(&val).is_err());
+                assert!(f.clone().check(&val).is_err());
             }
             let val = f.mutate(&mut g, 0).unwrap();
             f.check(&val).unwrap();

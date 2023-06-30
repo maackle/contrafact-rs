@@ -42,10 +42,10 @@ where
 ///     }
 /// });
 ///
-/// assert!(fact.check(&50).is_ok());
-/// assert!(fact.check(&99).is_err());
-/// assert!(fact.check(&9009).is_ok());
-/// assert!(fact.check(&9010).is_err());
+/// assert!(fact.clone().check(&50).is_ok());
+/// assert!(fact.clone().check(&99).is_err());
+/// assert!(fact.clone().check(&9009).is_ok());
+/// assert!(fact.clone().check(&9010).is_err());
 /// ```
 pub fn mapped<'a, T, F, O, S>(reason: S, f: F) -> MappedFact<'a, T, O>
 where

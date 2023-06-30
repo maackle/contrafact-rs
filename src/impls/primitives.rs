@@ -520,7 +520,7 @@ mod tests {
 
         let eq1 = eq("must be 1", 1);
         let eq2 = eq("must be 2", 2);
-        let mut either = or("can be 1 or 2", eq1, eq2);
+        let either = or("can be 1 or 2", eq1, eq2);
 
         let ones = seq(either.clone()).build(&mut g);
         seq(either.clone()).check(&ones).unwrap();

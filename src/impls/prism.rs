@@ -44,9 +44,9 @@ use crate::*;
 ///
 /// let mut fact = prism("E::x", E::x, eq("must be 1", 1));
 ///
-/// assert!(fact.check(&E::X(1)).is_ok());
-/// assert!(fact.check(&E::X(2)).is_err());
-/// assert!(fact.check(&E::Y(99)).is_ok());
+/// assert!(fact.clone().check(&E::X(1)).is_ok());
+/// assert!(fact.clone().check(&E::X(2)).is_err());
+/// assert!(fact.clone().check(&E::Y(99)).is_ok());
 ///
 /// let mut g = utils::random_generator();
 /// let e = fact.build(&mut g);

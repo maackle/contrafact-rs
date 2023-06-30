@@ -22,8 +22,8 @@
 //!
 //! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
 //!
-//! assert!(fact.check(&S {x: 1, y: 333}).is_ok());
-//! assert!(fact.check(&S {x: 2, y: 333}).is_err());
+//! assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
+//! assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
 //!
 //! // NB: don't actually construct a Generator this way! See the docs for [[`Generator`]].
 //! let mut g = contrafact::utils::random_generator();
