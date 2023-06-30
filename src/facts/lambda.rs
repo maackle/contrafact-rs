@@ -23,7 +23,7 @@ use crate::*;
 /// fact.check(&list).unwrap();
 /// assert_eq!(list, vec![2, 4, 8, 16]);
 /// ```
-pub fn lambda<'a, T, S, F>(state: S, f: F) -> LambdaFact<'a, T, S, F>
+pub fn lambda<'a, S, T, F>(state: S, f: F) -> LambdaFact<'a, S, T, F>
 where
     S: Clone + Send + Sync,
     T: Bounds<'a>,
@@ -37,7 +37,7 @@ where
 }
 
 #[derive(Clone)]
-pub struct LambdaFact<'a, T, S, F>
+pub struct LambdaFact<'a, S, T, F>
 where
     S: Clone + Send + Sync,
     T: Bounds<'a>,
@@ -48,7 +48,7 @@ where
     _phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T, S, F> Fact<'a, T> for LambdaFact<'a, T, S, F>
+impl<'a, S, T, F> Fact<'a, T> for LambdaFact<'a, S, T, F>
 where
     S: Clone + Send + Sync,
     T: Bounds<'a>,
@@ -64,16 +64,29 @@ fn test_lambda_fact() {
     use crate::facts::*;
     let mut g = utils::random_generator();
 
-    let fact = vec_of_length(
-        4,
-        lambda(2, move |g, s, mut v| {
-            g.set(&mut v, s, "value is not geometrically increasing by 2")?;
-            *s *= 2;
+    let geom = |k, s| {
+        lambda(s, move |g, s, mut v| {
+            g.set(
+                &mut v,
+                s,
+                format!("value is not geometrically increasing by {k} starting from {s}"),
+            )?;
+            *s *= k;
             Ok(v)
-        }),
-    );
+        })
+    };
 
-    let list = fact.clone().build(&mut g);
-    fact.check(&list).unwrap();
-    assert_eq!(list, vec![2, 4, 8, 16]);
+    let fact = |k, s| vec_of_length(4, geom(k, s));
+
+    {
+        let list = fact(2, 2).build(&mut g);
+        assert_eq!(list, vec![2, 4, 8, 16]);
+        fact(2, 2).check(&list).unwrap();
+    }
+
+    {
+        let list = fact(3, 4).build(&mut g);
+        assert_eq!(list, vec![4, 12, 36, 108]);
+        fact(3, 4).check(&list).unwrap();
+    }
 }

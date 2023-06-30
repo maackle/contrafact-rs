@@ -67,6 +67,8 @@ mod generator;
 pub mod facts;
 pub use facts::*;
 
+mod builder;
+
 #[cfg(feature = "utils")]
 pub mod utils;
 
