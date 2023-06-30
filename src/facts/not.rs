@@ -4,11 +4,11 @@ use super::*;
 // TODO: `not` in particular would really benefit from Facts having accessible
 // labels, since currently you can only get context about why a `not` fact passed,
 // not why it fails.
-pub fn not<'a, T>(fact: StatelessFact<'a, T>) -> StatelessFact<'a, T>
+pub fn not<'a, T>(fact: LambdaUnit<'a, T>) -> LambdaUnit<'a, T>
 where
     T: Target<'a>,
 {
-    stateless("not", move |g, obj| {
+    lambda_unit("not", move |g, obj| {
         let label = format!("not({:?})", fact);
         let fact = fact.clone();
         brute(label, move |o| fact.clone().check(o).is_err()).mutate(g, obj)
@@ -18,7 +18,7 @@ where
 // /// Negates a fact, with no context given
 // pub fn not<'a, F, T>(fact: F) -> Fact<'a, (), T>
 // where
-//     F: 'a + Factual<'a, T>,
+//     F: 'a + Fact<'a, T>,
 //     T: Bounds<'a>,
 // {
 //     not("not", fact)

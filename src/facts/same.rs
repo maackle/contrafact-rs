@@ -1,11 +1,11 @@
 use super::{brute::brute_labeled, *};
 
 /// Specifies an equality constraint between two items in a tuple
-pub fn same<'a, T>() -> StatelessFact<'a, (T, T)>
+pub fn same<'a, T>() -> LambdaUnit<'a, (T, T)>
 where
     T: Target<'a> + PartialEq,
 {
-    stateless("same", |g, mut obj: (T, T)| {
+    lambda_unit("same", |g, mut obj: (T, T)| {
         let o = obj.clone();
         let reason = move || format!("must be same: expected {:?} == {:?}", o.0.clone(), o.1);
         g.set(&mut obj.0, &obj.1, reason)?;
@@ -14,7 +14,7 @@ where
 }
 
 /// Specifies an inequality constraint between two items in a tuple
-pub fn different<'a, T>() -> StatelessFact<'a, (T, T)>
+pub fn different<'a, T>() -> LambdaUnit<'a, (T, T)>
 where
     T: Target<'a> + PartialEq,
 {

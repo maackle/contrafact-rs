@@ -1,12 +1,12 @@
 use super::*;
 
 /// Specifies a membership constraint
-pub fn in_slice<'a, T>(context: impl ToString, slice: &'a [T]) -> StatelessFact<'a, T>
+pub fn in_slice<'a, T>(context: impl ToString, slice: &'a [T]) -> LambdaUnit<'a, T>
 where
     T: Target<'a> + PartialEq + Clone,
 {
     let context = context.to_string();
-    stateless("in_slice", move |g, obj| {
+    lambda_unit("in_slice", move |g, obj| {
         Ok(if !slice.contains(&obj) {
             let reason = || {
                 format!(
@@ -22,7 +22,7 @@ where
 }
 
 /// Specifies a membership constraint
-pub fn in_slice_<'a, T>(slice: &'a [T]) -> StatelessFact<'a, T>
+pub fn in_slice_<'a, T>(slice: &'a [T]) -> LambdaUnit<'a, T>
 where
     T: Target<'a> + PartialEq + Clone,
 {

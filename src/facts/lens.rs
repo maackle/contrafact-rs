@@ -1,8 +1,7 @@
-use std::{marker::PhantomData, sync::Arc};
-
 use crate::*;
 
-/// Lifts a Fact about a subset of some data into a Fact about the superset.
+/// Lifts a Fact about a subset of some data into a Fact about the superset,
+/// using a single function to specify a getter/setter pair.
 ///
 /// In other words, if type `O` contains a `T`, and you have a `Fact<'a, T>`,
 /// `LensFact` lets you lift that fact into a `Fact<'a, O>`.
@@ -38,8 +37,8 @@ use crate::*;
 pub fn lens1<'a, O, T, L>(
     label: impl ToString,
     accessor: L,
-    inner_fact: impl Factual<'a, T>,
-) -> impl Factual<'a, O>
+    inner_fact: impl Fact<'a, T>,
+) -> impl Fact<'a, O>
 where
     O: Target<'a>,
     T: Target<'a>,
@@ -52,21 +51,28 @@ where
         *r = t;
         o
     };
-    lens2(label, getter, setter, inner_fact).label("lens1")
+    lens2(label, getter, setter, inner_fact).labeled("lens1")
 }
 
+/// Lifts a Fact about a subset of some data into a Fact about the superset, using
+/// explicit getter and setter functions.
+///
+/// This is a more general version of [`lens1`]. This can be useful particularly
+/// when the setter requires modifications other than replacing the item specified
+/// by the getter, for instance if your data contains some kind of digest of the data
+/// being focused on, then the digest must also be recomputed when the focus is modified.
 pub fn lens2<'a, O, T>(
     label: impl ToString,
     getter: impl 'a + Clone + Send + Sync + Fn(O) -> T,
     setter: impl 'a + Clone + Send + Sync + Fn(O, T) -> O,
-    inner_fact: impl Factual<'a, T>,
-) -> impl Factual<'a, O>
+    inner_fact: impl Fact<'a, T>,
+) -> impl Fact<'a, O>
 where
     O: Target<'a>,
     T: Target<'a>,
 {
     let label = label.to_string();
-    stateful("lens", inner_fact, move |g, fact, obj: O| {
+    lambda("lens", inner_fact, move |g, fact, obj: O| {
         let t = getter(obj.clone());
         let t = fact
             .mutate(g, t)
@@ -74,23 +80,6 @@ where
         Ok(setter(obj, t))
     })
 }
-
-// impl<'a, O, T, F> Factual<'a, O> for LensFact<'a, O, T, F>
-// where
-//     T: Bounds<'a>,
-//     O: Bounds<'a> + Clone,
-//     F: Factual<'a, T>,
-// {
-//     #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
-//     fn mutate(&mut self, g: &mut Generator<'a>, obj: O) -> Mutation<O> {
-//         let t = (self.getter)(obj.clone());
-//         let t = self
-//             .inner_fact
-//             .mutate(g, t)
-//             .map_check_err(|err| format!("lens1({}) > {}", self.label, err))?;
-//         Ok((self.setter)(obj, t))
-//     }
-// }
 
 #[cfg(test)]
 mod tests {

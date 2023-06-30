@@ -27,11 +27,10 @@ pub use lens::{lens1, lens2};
 pub use prism::prism;
 pub use seq::{vec, vec_len, vec_of_length};
 
-// pub(crate) use lambda::LambdaFact;
-
-#[cfg(feature = "optics")]
-mod optical;
-#[cfg(feature = "optics")]
-pub use optical::*;
+// Optical facts are experimental and currently not supported
+// #[cfg(feature = "optics")]
+// mod optical;
+// #[cfg(feature = "optics")]
+// pub use optical::*;
 
 use crate::*;

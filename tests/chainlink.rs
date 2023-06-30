@@ -23,7 +23,7 @@ struct Wrapper {
 
 /// Fact: all Links in a chain are by the same `author`, and any chain link has
 /// consecutive `prev` values starting with 0.
-fn chain_fact<'a>(author: String) -> impl Factual<'a, Link> {
+fn chain_fact<'a>(author: String) -> impl Fact<'a, Link> {
     facts![
         lens1("Link::author", |o: &mut Link| &mut o.author, eq(author),),
         lens1(
@@ -36,7 +36,7 @@ fn chain_fact<'a>(author: String) -> impl Factual<'a, Link> {
 
 /// Fact: the Links within each wrapper form a valid chain, and the color
 /// of the wrapper is in the given set.
-fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> impl Factual<'a, Wrapper> {
+fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> impl Fact<'a, Wrapper> {
     facts![
         lens1(
             "Wrapper::color",

@@ -1,13 +1,11 @@
 use super::*;
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<'a, A, B, T>(a: Fact<'a, A, T>, b: Fact<'a, B, T>) -> Fact<'a, Fact2<'a, A, B, T>, T>
+pub fn or<'a, T>(a: impl Fact<'a, T>, b: impl Fact<'a, T>) -> impl Fact<'a, T>
 where
     T: Target<'a>,
-    A: State,
-    B: State,
 {
-    stateful("or", (a, b), |g, (a, b), obj| {
+    lambda("or", (a, b), |g, (a, b), obj| {
         use rand::{thread_rng, Rng};
 
         let a_ok = a.clone().check(&obj).is_ok();

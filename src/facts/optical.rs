@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use arbitrary::Unstructured;
 use lens_rs::*;
 
-use crate::{fact::Bounds, Fact, *};
+use crate::{fact::Target, Fact, *};
 
 pub fn optical<'a, Src, Img, Optics, F, L>(
     label: L,
@@ -11,8 +11,8 @@ pub fn optical<'a, Src, Img, Optics, F, L>(
     inner_fact: F,
 ) -> OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
     L: ToString,
@@ -24,8 +24,8 @@ where
 #[derive(Clone)]
 pub struct OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
@@ -41,8 +41,8 @@ where
 
 impl<'a, Src, Img, Optics, F> OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
@@ -58,8 +58,8 @@ where
 
 impl<'a, Src, Img, Optics, F> Fact<'a, Src> for OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {

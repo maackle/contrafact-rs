@@ -1,5 +1,3 @@
-use std::{marker::PhantomData, sync::Arc};
-
 use crate::*;
 
 /// Lifts a Fact about some *optional* subset of data into a Fact about the
@@ -62,15 +60,15 @@ use crate::*;
 pub fn prism<'a, O, T, P>(
     label: impl ToString,
     prism: P,
-    inner_fact: impl Factual<'a, T>,
-) -> impl Factual<'a, O>
+    inner_fact: impl Fact<'a, T>,
+) -> impl Fact<'a, O>
 where
     O: Target<'a>,
     T: Target<'a>,
     P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
 {
     let label = label.to_string();
-    stateful("prism", inner_fact, move |g, fact, mut obj| {
+    lambda("prism", inner_fact, move |g, fact, mut obj| {
         if let Some(t) = prism(&mut obj) {
             *t = fact
                 .mutate(g, t.clone())

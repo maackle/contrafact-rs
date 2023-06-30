@@ -5,8 +5,6 @@
 //! of internally inconsistent facts, then the facts must be "rolled back" for the next
 //! `satisfy()` attempt.
 
-use std::marker::PhantomData;
-
 use crate::*;
 
 use super::and;
@@ -37,11 +35,11 @@ use super::and;
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![0, 1, 2, 3, 4]);
 /// ```
-pub fn vec<'a, T>(inner_fact: impl Factual<'a, T>) -> impl Factual<'a, Vec<T>>
+pub fn vec<'a, T>(inner_fact: impl Fact<'a, T>) -> impl Fact<'a, Vec<T>>
 where
     T: Target<'a> + Clone,
 {
-    stateful("vec", inner_fact, |g, f, obj: Vec<T>| {
+    lambda("vec", inner_fact, |g, f, obj: Vec<T>| {
         obj.into_iter()
             .enumerate()
             .map(|(i, o)| {
@@ -53,11 +51,11 @@ where
 }
 
 /// Checks that a Vec is of a given length
-pub fn vec_len<'a, T>(len: usize) -> StatelessFact<'a, Vec<T>>
+pub fn vec_len<'a, T>(len: usize) -> LambdaUnit<'a, Vec<T>>
 where
     T: Target<'a> + Clone + 'a,
 {
-    stateless("vec_len", move |g, mut obj: Vec<T>| {
+    lambda_unit("vec_len", move |g, mut obj: Vec<T>| {
         if obj.len() > len {
             g.fail(format!(
                 "vec should be of length {} but is actually of length {}",
@@ -80,7 +78,7 @@ where
 }
 
 /// Combines a LenFact with a VecFact to ensure that the vector is of a given length
-pub fn vec_of_length<'a, T>(len: usize, inner_fact: impl Factual<'a, T>) -> impl Factual<'a, Vec<T>>
+pub fn vec_of_length<'a, T>(len: usize, inner_fact: impl Fact<'a, T>) -> impl Fact<'a, Vec<T>>
 where
     T: Target<'a> + 'a,
 {
@@ -151,7 +149,7 @@ mod tests {
 
         let piecewise = move || {
             let count = Arc::new(AtomicU8::new(0));
-            stateful("piecewise", (), move |g, (), mut obj| {
+            lambda("piecewise", (), move |g, (), mut obj| {
                 let c = count.fetch_add(1, Ordering::SeqCst);
                 if c < 3 {
                     g.set(&mut obj, &999, || "i'm being difficult, haha")?;

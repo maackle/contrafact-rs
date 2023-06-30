@@ -3,7 +3,7 @@ use std::ops::{Bound, RangeBounds};
 use super::*;
 
 /// Specifies a range constraint
-pub fn in_range<'a, R, T>(context: impl ToString, range: R) -> StatelessFact<'a, T>
+pub fn in_range<'a, R, T>(context: impl ToString, range: R) -> Lambda<'a, (), T>
 where
     R: 'a + Send + Sync + RangeBounds<T> + std::fmt::Debug,
     T: Target<'a>
@@ -16,7 +16,7 @@ where
         + num::One,
 {
     let context = context.to_string();
-    stateless("in_range", move |g, mut obj| {
+    lambda_unit("in_range", move |g, mut obj| {
         if !range.contains(&obj) {
             let rand = g.arbitrary(|| {
                 format!(

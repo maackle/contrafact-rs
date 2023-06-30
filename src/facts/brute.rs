@@ -25,14 +25,14 @@ use crate::*;
 /// use arbitrary::Unstructured;
 /// use contrafact::*;
 ///
-/// fn div_by(n: usize) -> impl Factual<'static, usize> {
+/// fn div_by(n: usize) -> impl Fact<'static, usize> {
 ///     facts![brute(format!("Is divisible by {}", n), move |x| x % n == 0)]
 /// }
 ///
 /// let mut g = utils::random_generator();
 /// assert!(div_by(3).build(&mut g) % 3 == 0);
 /// ```
-pub fn brute<'a, T, F>(label: impl ToString, f: F) -> Fact<'a, (), T>
+pub fn brute<'a, T, F>(label: impl ToString, f: F) -> Lambda<'a, (), T>
 where
     T: Target<'a>,
     F: 'a + Send + Sync + Fn(&T) -> bool,
@@ -40,16 +40,16 @@ where
     let label = label.to_string();
     // TODO figure out this label stuff
     let label2 = label.clone();
-    brute_labeled(move |v| Ok(f(v).then_some(()).ok_or_else(|| label.clone()))).label(label2)
+    brute_labeled(move |v| Ok(f(v).then_some(()).ok_or_else(|| label.clone()))).labeled(label2)
 }
 
 /// A version of [`brute`] which allows the closure to return the reason for failure
-pub fn brute_labeled<'a, T, F>(f: F) -> Fact<'a, (), T>
+pub fn brute_labeled<'a, T, F>(f: F) -> Lambda<'a, (), T>
 where
     T: Target<'a>,
     F: 'a + Send + Sync + Fn(&T) -> ContrafactResult<BruteResult>,
 {
-    stateless("brute_labeled", move |g, mut obj| {
+    lambda_unit("brute_labeled", move |g, mut obj| {
         let mut last_reason = "".to_string();
         for _ in 0..=BRUTE_ITERATION_LIMIT {
             if let Err(reason) = f(&obj)? {
