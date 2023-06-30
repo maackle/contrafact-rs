@@ -25,3 +25,17 @@ where
 {
     not("not", fact)
 }
+
+#[test]
+fn test_not() {
+    observability::test_run().ok();
+    let mut g = utils::random_generator();
+
+    let eq1 = eq("must be 1", 1);
+    let not1 = vec(not_(eq1));
+
+    let nums = not1.clone().build(&mut g);
+    not1.clone().check(&nums).unwrap();
+
+    assert!(nums.iter().all(|x| *x != 1));
+}

@@ -151,7 +151,7 @@ where
             obj = obj[0..self.len].to_vec();
         }
         while obj.len() < self.len {
-            obj.push(g.arbitrary("LenFact: vec was too short")?)
+            obj.push(g.arbitrary(|| "LenFact: vec was too short")?)
         }
         Ok(obj)
     }
@@ -224,7 +224,7 @@ mod tests {
             stateful((), move |g, (), mut obj| {
                 let c = count.fetch_add(1, Ordering::SeqCst);
                 if c < 3 {
-                    g.set(&mut obj, &999, "i'm being difficult, haha")?;
+                    g.set(&mut obj, &999, || "i'm being difficult, haha")?;
                 }
                 Ok(obj)
             })

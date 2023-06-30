@@ -80,10 +80,12 @@ where
 {
     fn mutate(&mut self, g: &mut Generator<'a>, mut obj: T) -> Mutation<T> {
         if !self.range.contains(&obj) {
-            let rand = g.arbitrary(format!(
-                "{}: expected {:?} to be contained in {:?}",
-                self.context, obj, self.range
-            ))?;
+            let rand = g.arbitrary(|| {
+                format!(
+                    "{}: expected {:?} to be contained in {:?}",
+                    self.context, obj, self.range
+                )
+            })?;
             obj = match (self.range.start_bound(), self.range.end_bound()) {
                 (Bound::Unbounded, Bound::Unbounded) => rand,
                 (Bound::Included(a), Bound::Included(b)) if b.clone() - a.clone() >= T::one() => {
@@ -106,4 +108,34 @@ where
         }
         Ok(obj)
     }
+}
+
+#[test]
+fn test_in_range() {
+    observability::test_run().ok();
+    let mut g = utils::random_generator();
+
+    let positive1 = in_range("must be positive", 1..=i32::MAX);
+    let positive2 = in_range("must be positive", 1..);
+    let smallish = in_range("must be small in magnitude", -10..100);
+    let over9000 = in_range("must be over 9000", 9001..);
+    let under9000 = in_range("must be under 9000 (and no less than zero)", ..9000u32);
+
+    let nonpositive1 = vec(not_(positive1));
+    let nonpositive2 = vec(not_(positive2));
+
+    let smallish_nums = smallish.clone().build(&mut g);
+    let over9000_nums = over9000.clone().build(&mut g);
+    let under9000_nums = under9000.clone().build(&mut g);
+    let nonpositive1_nums = nonpositive1.clone().build(&mut g);
+    let nonpositive2_nums = nonpositive2.clone().build(&mut g);
+
+    dbg!(&under9000_nums);
+
+    smallish.clone().check(&smallish_nums).unwrap();
+    over9000.clone().check(&over9000_nums).unwrap();
+    under9000.clone().check(&under9000_nums).unwrap();
+    nonpositive1.clone().check(&nonpositive1_nums).unwrap();
+    nonpositive2.clone().check(&nonpositive2_nums).unwrap();
+    assert!(nonpositive1_nums.iter().all(|x| *x <= 0));
 }

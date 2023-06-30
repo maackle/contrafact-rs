@@ -16,7 +16,8 @@ use crate::*;
 /// ALSO **NOTE**: It is usually best to place this constraint at the beginning
 /// of a chain when doing mutation, because if the closure specifies a weak
 /// constraint, the mutation may drastically alter the data, potentially undoing
-/// constraints that were met by previous mutations.
+/// constraints that were met by previous mutations. It's also probably not a
+/// good idea to combine two different brute facts
 ///
 /// There is a fixed iteration limit, beyond which this will panic.
 ///
@@ -50,8 +51,8 @@ where
         let mut last_reason = "".to_string();
         for _ in 0..=BRUTE_ITERATION_LIMIT {
             if let Err(reason) = f(&obj)? {
-                obj = g.arbitrary(&reason)?;
-                last_reason = reason;
+                last_reason = reason.clone();
+                obj = g.arbitrary(|| reason)?;
             } else {
                 return Ok(obj);
             }

@@ -2,7 +2,7 @@ use super::*;
 
 /// A constraint which is always met
 pub fn always<'a, T: Bounds<'a>>() -> StatelessFact<'a, T> {
-    stateless(|g, obj| Ok(obj))
+    stateless(|_, obj| Ok(obj))
 }
 
 /// A constraint which is never met

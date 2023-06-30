@@ -62,3 +62,19 @@ where
         }
     }
 }
+
+#[test]
+fn test_or() {
+    observability::test_run().ok();
+    let mut g = utils::random_generator();
+
+    let eq1 = eq("must be 1", 1);
+    let eq2 = eq("must be 2", 2);
+    let either = or("can be 1 or 2", eq1, eq2);
+
+    let ones = vec(either.clone()).build(&mut g);
+    vec(either.clone()).check(&ones).unwrap();
+    assert!(ones.iter().all(|x| *x == 1 || *x == 2));
+
+    assert_eq!(either.check(&3).result().unwrap().unwrap_err().len(), 1);
+}

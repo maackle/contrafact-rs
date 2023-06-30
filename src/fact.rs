@@ -82,11 +82,9 @@ fn test_lambda_fact() {
 
     let geom = |k, s| {
         stateful(s, move |g, s, mut v| {
-            g.set(
-                &mut v,
-                s,
-                format!("value is not geometrically increasing by {k} starting from {s}"),
-            )?;
+            g.set(&mut v, s, || {
+                format!("value is not geometrically increasing by {k} starting from {s}")
+            })?;
             *s *= k;
             Ok(v)
         })
