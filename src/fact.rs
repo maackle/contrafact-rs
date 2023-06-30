@@ -22,11 +22,8 @@ impl<'a, T> Bounds<'a> for T where
 /// Type alias for a boxed Fact. Implements [`Fact`] itself.
 pub type BoxFact<'a, T> = Box<dyn 'a + Fact<'a, T>>;
 
-/// Type alias for a Vec of boxed Facts. Implements [`Fact`] itself.
-pub type FactsRef<'a, T> = Vec<BoxFact<'a, T>>;
-
-/// Type alias for a static Vec of boxed Facts. Implements [`Fact`] itself.
-pub type Facts<T> = FactsRef<'static, T>;
+// pub trait Facts<T: Bounds<'static>>: Fact<'static, T> {}
+// impl<T: Bounds<'static>, F: Facts<T>> Fact<'static, T> for F {}
 
 /// A declarative representation of a constraint on some data, which can be
 /// used to both make an assertion (check) or to mold some arbitrary existing
@@ -121,57 +118,57 @@ where
     }
 }
 
-impl<'a, T, F> Fact<'a, T> for &mut [F]
-where
-    T: Bounds<'a>,
-    F: Fact<'a, T>,
-{
-    #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self))]
-    fn check(&mut self, obj: &T) -> Check {
-        collect_checks(self, obj)
-    }
+// impl<'a, T, F> Fact<'a, T> for &mut [F]
+// where
+//     T: Bounds<'a>,
+//     F: Fact<'a, T>,
+// {
+//     #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self))]
+//     fn check(&mut self, obj: &T) -> Check {
+//         collect_checks(self, obj)
+//     }
 
-    #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self, g))]
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
-        for f in self.iter() {
-            obj = f.mutate(obj, g)?;
-        }
-        Ok(obj)
-    }
+//     #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self, g))]
+//     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+//         for f in self.iter() {
+//             obj = f.mutate(obj, g)?;
+//         }
+//         Ok(obj)
+//     }
 
-    #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self))]
-    fn advance(&mut self, obj: &T) {
-        for f in self.iter_mut() {
-            f.advance(obj)
-        }
-    }
-}
+//     #[tracing::instrument(fields(fact_impl = "&mut[]"), skip(self))]
+//     fn advance(&mut self, obj: &T) {
+//         for f in self.iter_mut() {
+//             f.advance(obj)
+//         }
+//     }
+// }
 
-impl<'a, T, F> Fact<'a, T> for Vec<F>
-where
-    T: Bounds<'a>,
-    F: Fact<'a, T>,
-{
-    #[tracing::instrument(fields(fact_impl = "Vec"), skip(self))]
-    fn check(&mut self, obj: &T) -> Check {
-        collect_checks(self.as_mut_slice(), obj)
-    }
+// impl<'a, T, F> Fact<'a, T> for Vec<F>
+// where
+//     T: Bounds<'a>,
+//     F: Fact<'a, T>,
+// {
+//     #[tracing::instrument(fields(fact_impl = "Vec"), skip(self))]
+//     fn check(&mut self, obj: &T) -> Check {
+//         collect_checks(self.as_mut_slice(), obj)
+//     }
 
-    #[tracing::instrument(fields(fact_impl = "Vec"), skip(self, g))]
-    fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
-        for f in self.iter() {
-            obj = f.mutate(obj, g)?;
-        }
-        Ok(obj)
-    }
+//     #[tracing::instrument(fields(fact_impl = "Vec"), skip(self, g))]
+//     fn mutate(&self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+//         for f in self.iter() {
+//             obj = f.mutate(obj, g)?;
+//         }
+//         Ok(obj)
+//     }
 
-    #[tracing::instrument(fields(fact_impl = "Vec"), skip(self))]
-    fn advance(&mut self, obj: &T) {
-        for f in self.iter_mut() {
-            f.advance(obj)
-        }
-    }
-}
+//     #[tracing::instrument(fields(fact_impl = "Vec"), skip(self))]
+//     fn advance(&mut self, obj: &T) {
+//         for f in self.iter_mut() {
+//             f.advance(obj)
+//         }
+//     }
+// }
 
 #[tracing::instrument(skip(fact))]
 pub(crate) fn check_raw<'a, T, F: Fact<'a, T>>(fact: &F, obj: &T) -> Check

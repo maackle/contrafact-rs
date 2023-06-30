@@ -72,7 +72,7 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{Bounds, BoxFact, Fact, Facts, FactsRef};
+pub use fact::{Bounds, BoxFact, Fact};
 pub use generator::*;
 pub use satisfy::*;
 
@@ -81,6 +81,7 @@ pub use impls::primitives::{
     in_slice_, ne, ne_, never, not, not_, or, same,
 };
 
+pub use impls::and::AndFact;
 pub use impls::brute::{brute, brute_fallible, BruteFact};
 pub use impls::lens::{lens, LensFact};
 pub use impls::mapped::{mapped, mapped_fallible, MappedFact};

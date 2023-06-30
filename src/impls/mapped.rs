@@ -7,7 +7,7 @@ pub fn mapped_fallible<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Send + Sync + Fn(&T) -> Mutation<FactsRef<'a, T>>,
+    F: 'a + Send + Sync + Fn(&T) -> Mutation<BoxFact<'a, T>>,
 {
     MappedFact::new(reason.to_string(), f)
 }
@@ -50,7 +50,7 @@ pub fn mapped<'a, T, F, S>(reason: S, f: F) -> MappedFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Send + Sync + Fn(&T) -> FactsRef<'a, T>,
+    F: 'a + Send + Sync + Fn(&T) -> BoxFact<'a, T>,
 {
     MappedFact::new(reason.to_string(), move |x| Ok(f(x)))
 }
@@ -60,7 +60,7 @@ where
 #[derive(Clone)]
 pub struct MappedFact<'a, T> {
     reason: String,
-    f: Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<FactsRef<'a, T>>>,
+    f: Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<BoxFact<'a, T>>>,
 }
 
 impl<'a, T> Fact<'a, T> for MappedFact<'a, T>
@@ -79,7 +79,7 @@ where
 }
 
 impl<'a, T> MappedFact<'a, T> {
-    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<FactsRef<'a, T>>>(
+    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<BoxFact<'a, T>>>(
         reason: String,
         f: F,
     ) -> Self {
@@ -104,15 +104,15 @@ fn test_mapped_fact() {
     //     then the second element must be divisible by 4.
     let divisibility_fact = || {
         mapped("reason", |t: &T| {
-            facts![lens(
+            Box::new(lens(
                 "T.1",
                 |(_, n)| n,
                 if t.0 % 2 == 0 {
                     brute("divisible by 3", |n: &u8| n % 3 == 0)
                 } else {
                     brute("divisible by 4", |n: &u8| n % 4 == 0)
-                }
-            ),]
+                },
+            ))
         })
     };
 

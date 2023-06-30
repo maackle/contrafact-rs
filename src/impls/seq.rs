@@ -36,7 +36,7 @@ where
     SeqFact::new("___", inner_fact)
 }
 
-pub fn sized_seq<'a, T, F>(len: usize, inner_fact: F) -> FactsRef<'a, Vec<T>>
+pub fn sized_seq<'a, T, F>(len: usize, inner_fact: F) -> impl Fact<'a, Vec<T>>
 where
     T: Bounds<'a> + Clone + 'a,
     F: Fact<'a, T> + 'a,

@@ -128,20 +128,20 @@ impl AlphaSigner {
 }
 
 #[allow(unused)]
-fn alpha_fact() -> Facts<Alpha> {
+fn alpha_fact() -> impl Fact<'static, Alpha> {
     facts![lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
 }
 
-fn beta_fact() -> Facts<Beta> {
+fn beta_fact() -> impl Fact<'static, Beta> {
     facts![lens("Beta::id", |a: &mut Beta| &mut a.id, id_fact(None))]
 }
 
 /// Just a pair of an Alpha with optional Beta.
-/// An intermediate type not used "in production" but useful for writing Facts against
+/// An intermediate type not used "in production" but useful for writing Fact 'static, against
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 struct Pi(Alpha, Option<Beta>);
 
-fn pi_beta_match() -> Facts<Pi> {
+fn pi_beta_match() -> impl Fact<'static, Pi> {
     facts![brute(
         "Pi alpha has matching beta iff beta is Some",
         |p: &Pi| match p {
@@ -152,19 +152,19 @@ fn pi_beta_match() -> Facts<Pi> {
     )]
 }
 
-fn id_fact(id: Option<Id>) -> Facts<Id> {
+fn id_fact(id: Option<Id>) -> BoxFact<'static, Id> {
     let le = brute("< u32::MAX", |id: &Id| *id < Id::MAX / 2);
 
     if let Some(id) = id {
-        facts![le, eq("id", id)]
+        boxfacts![le, eq("id", id)]
     } else {
-        facts![le]
+        boxfacts![le]
     }
 }
 
 /// - id must be set as specified
 /// - All Ids should match each other. If there is a Beta, its id should match too.
-fn pi_fact(id: Id) -> Facts<Pi> {
+fn pi_fact(id: Id) -> impl Fact<'static, Pi> {
     let alpha_fact = facts![
         lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
         // lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
@@ -182,7 +182,7 @@ fn pi_fact(id: Id) -> Facts<Pi> {
 /// - If Omega::AlphaBeta, then Alpha::Beta,
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
-fn omega_fact(id: Id) -> Facts<Omega> {
+fn omega_fact(id: Id) -> impl Fact<'static, Omega> {
     let omega_pi = LensFact::new(
         "Omega -> Pi",
         |o| match o {
@@ -206,7 +206,7 @@ fn omega_fact(id: Id) -> Facts<Omega> {
 }
 
 #[allow(unused)]
-fn sigma_fact() -> Facts<Sigma> {
+fn sigma_fact() -> impl Fact<'static, Sigma> {
     let id2_fact = LensFact::new(
         "Sigma::id is correct",
         |mut s: Sigma| (s.id2, *(s.alpha.id()) * 2),
@@ -233,7 +233,7 @@ fn sigma_fact() -> Facts<Sigma> {
 
 /// The inner Sigma is correct wrt to signature
 /// XXX: this is a little wonky, probably room for improvement.
-fn rho_fact(id: Id, signer: AlphaSigner) -> Facts<Rho> {
+fn rho_fact(id: Id, signer: AlphaSigner) -> impl Fact<'static, Rho> {
     let rho_pi = LensFact::new(
         "Rho -> Pi",
         |rho: Rho| Pi(rho.sigma.alpha, rho.beta),

@@ -1,5 +1,3 @@
-use crate::*;
-
 /// Convenience macro for creating a collection of [`Fact`](crate::Fact)s
 /// of different types.
 /// Each Fact will be boxed and added to a Vec as a trait object, with their
@@ -16,11 +14,24 @@ use crate::*;
 /// ```
 #[macro_export]
 macro_rules! facts {
-    ( $( $fact:expr ),+ $(,)?) => {{
-        let mut fs: $crate::FactsRef<_> = Vec::new();
-        $(
-            fs.push(Box::new($fact));
-        )+
-        fs
+
+    ( $fact:expr $(,)?) => { $fact };
+
+    ( $fact_0:expr, $fact_1:expr $( , $fact_n:expr )* $(,)? ) => {{
+        facts![
+            $crate::AndFact::new($fact_0, $fact_1),
+            $( $fact_n , )*
+        ]
+    }};
+}
+
+/// Box the result of [`facts!`]
+#[macro_export]
+macro_rules! boxfacts {
+
+    ( $($fact_n:expr),+ ) => {{
+        Box::new(facts![
+            $( $fact_n ),+
+        ])
     }};
 }

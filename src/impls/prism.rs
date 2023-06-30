@@ -189,7 +189,7 @@ mod tests {
         let f = || {
             seq(
                 "a seq",
-                vec![
+                facts![
                     prism("E::x", E::x, crate::eq("must be 1", 1)),
                     prism("E::y", E::y, crate::eq("must be 2", 2)),
                 ],
@@ -212,7 +212,7 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            seq_(vec![
+            seq_(facts![
                 prism(
                     "E::x",
                     E::x,

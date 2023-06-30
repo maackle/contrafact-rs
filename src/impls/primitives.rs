@@ -482,7 +482,9 @@ where
         }
     }
 
-    fn advance(&mut self, _: &T) {}
+    fn advance(&mut self, _: &T) {
+        todo!("advance the correct fact")
+    }
 }
 
 #[derive(Debug, Clone)]
