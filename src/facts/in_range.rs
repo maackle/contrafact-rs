@@ -121,8 +121,8 @@ fn test_in_range() {
     let over9000 = in_range("must be over 9000", 9001..);
     let under9000 = in_range("must be under 9000 (and no less than zero)", ..9000u32);
 
-    let nonpositive1 = vec(not_(positive1));
-    let nonpositive2 = vec(not_(positive2));
+    let nonpositive1 = vec(not(positive1));
+    let nonpositive2 = vec(not(positive2));
 
     let smallish_nums = smallish.clone().build(&mut g);
     let over9000_nums = over9000.clone().build(&mut g);

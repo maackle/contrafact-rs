@@ -14,10 +14,10 @@ mod seq;
 
 pub use consecutive_int::{consecutive_int, consecutive_int_};
 pub use constant::{always, never};
-pub use eq::{eq, eq_, ne, ne_};
+pub use eq::{eq, ne};
 pub use in_range::{in_range, in_range_};
 pub use in_slice::{in_slice, in_slice_};
-pub use not::{not, not_};
+pub use not::not;
 pub use or::or;
 pub use same::{different, same};
 

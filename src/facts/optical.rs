@@ -106,12 +106,12 @@ fn test_lens() {
     let mut fact = OpticalFact {
         label: "".into(),
         optics: optics!(_1._1._1),
-        inner_fact: eq_(3),
+        inner_fact: eq(3),
         __phantom: PhantomData::<&((u8, (u8, (u8, u8))), u8)>,
     };
 
     assert_eq!(fact.check(&x).errors().len(), 1);
 
-    fact.inner_fact = eq_(4);
+    fact.inner_fact = eq(4);
     assert!(fact.check(&x).is_ok());
 }

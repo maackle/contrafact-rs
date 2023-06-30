@@ -24,7 +24,7 @@ use crate::*;
 ///     y: u32,
 /// }
 ///
-/// let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
+/// let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq(1));
 ///
 /// assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
 /// assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
@@ -146,7 +146,7 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let f = || vec(lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1)));
+        let f = || vec(lens("S::x", |s: &mut S| &mut s.x, eq(1)));
         let ones = f().build(&mut g);
         f().check(&ones).unwrap();
 

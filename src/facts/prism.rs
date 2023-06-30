@@ -42,7 +42,7 @@ use crate::*;
 ///     }
 /// }
 ///
-/// let mut fact = prism("E::x", E::x, eq("must be 1", 1));
+/// let mut fact = prism("E::x", E::x, eq(1));
 ///
 /// assert!(fact.clone().check(&E::X(1)).is_ok());
 /// assert!(fact.clone().check(&E::X(2)).is_err());
@@ -188,8 +188,8 @@ mod tests {
 
         let f = || {
             facts::vec(facts![
-                prism("E::x", E::x, facts::eq("must be 1", 1)),
-                prism("E::y", E::y, facts::eq("must be 2", 2)),
+                prism("E::x", E::x, facts::eq(1)),
+                prism("E::y", E::y, facts::eq(2)),
             ])
         };
 

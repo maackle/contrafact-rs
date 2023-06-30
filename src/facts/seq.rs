@@ -20,7 +20,7 @@ use super::and;
 /// let mut g = utils::random_generator();
 ///
 /// // `consecutive_int`
-/// let fact = facts::vec(facts::eq_(1));
+/// let fact = facts::vec(facts::eq(1));
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![1, 1, 1, 1, 1]);
 /// ```
@@ -112,7 +112,7 @@ mod tests {
 
         let f = facts![
             brute("len must be >= 3", |v: &Vec<_>| v.len() >= 3),
-            vec(eq("must be 1", 1)),
+            vec(eq(1)),
         ];
         let ones = f.clone().build(&mut g);
         f.check(&ones).unwrap();
@@ -173,7 +173,7 @@ mod tests {
         // Assert that piecewise() messes everything up during the
         // first 3 mutations, and cooperates afterwards
         {
-            let mut f = facts!(eq_(0), piecewise());
+            let mut f = facts!(eq(0), piecewise());
             for _ in 0..3 {
                 let val = f.mutate(&mut g, 0).unwrap();
                 assert!(f.clone().check(&val).is_err());

@@ -157,7 +157,7 @@ fn id_fact(id: Option<Id>) -> impl Factual<'static, Id> {
     let le = brute("< u32::MAX", |id: &Id| *id < Id::MAX / 2);
 
     if let Some(id) = id {
-        Either::Left(facts![le, eq("id", id)])
+        Either::Left(facts![le, eq(id)])
     } else {
         Either::Right(facts![le])
     }
@@ -168,7 +168,7 @@ fn id_fact(id: Option<Id>) -> impl Factual<'static, Id> {
 fn pi_fact(id: Id) -> impl Factual<'static, Pi> {
     let alpha_fact = facts![
         lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
-        // lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
+        // lens("Alpha::data", |a: &mut Alpha| a.data(), eq(data)),
     ];
     let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, id_fact(Some(id)));
     facts![

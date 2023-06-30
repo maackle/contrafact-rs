@@ -1,44 +1,29 @@
+use std::fmt::Display;
+
 use super::*;
 
 /// Specifies an equality constraint
-pub fn eq<'a, S, T>(context: S, constant: T) -> Fact<'a, (), T>
+pub fn eq<'a, T>(constant: T) -> Fact<'a, (), T>
 where
-    S: ToString,
-    T: Bounds<'a> + PartialEq + Clone,
+    T: Bounds<'a> + PartialEq + Clone + Display,
 {
-    let ctx = context.to_string();
-    stateless("eq", move |g, mut obj| {
+    let label = format!("eq({})", constant);
+    stateless(label, move |g, mut obj| {
         if obj != constant {
-            g.fail(format!("{}: expected {:?} == {:?}", ctx, obj, constant))?;
+            g.fail(format!("expected {:?} == {:?}", obj, constant))?;
             obj = constant.clone();
         }
         Ok(obj)
     })
 }
 
-/// Specifies an equality constraint with no context
-pub fn eq_<'a, T>(constant: T) -> Fact<'a, (), T>
-where
-    T: Bounds<'a> + PartialEq + Clone,
-{
-    eq("eq", constant)
-}
-
 /// Specifies an inequality constraint
-pub fn ne<'a, S, T>(context: S, constant: T) -> Fact<'a, (), T>
+pub fn ne<'a, S, T>(constant: T) -> Fact<'a, (), T>
 where
     S: ToString,
-    T: Bounds<'a> + PartialEq,
+    T: Bounds<'a> + PartialEq + Display,
 {
-    not(context, eq_(constant)).label("ne")
-}
-
-/// Specifies an inequality constraint with no context
-pub fn ne_<'a, T>(constant: T) -> Fact<'a, (), T>
-where
-    T: Bounds<'a> + PartialEq,
-{
-    ne("ne", constant)
+    not(eq(constant)).label("ne")
 }
 
 #[test]
@@ -46,7 +31,7 @@ fn test_eq() {
     observability::test_run().ok();
     let mut g = utils::random_generator();
 
-    let eq1 = vec(eq("must be 1", 1));
+    let eq1 = vec(eq(1));
 
     let ones = eq1.clone().build(&mut g);
     eq1.clone().check(&ones).unwrap();

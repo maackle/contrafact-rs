@@ -25,11 +25,7 @@ struct Wrapper {
 /// consecutive `prev` values starting with 0.
 fn chain_fact<'a>(author: String) -> impl Factual<'a, Link> {
     facts![
-        lens(
-            "Link::author",
-            |o: &mut Link| &mut o.author,
-            eq("same author", author),
-        ),
+        lens("Link::author", |o: &mut Link| &mut o.author, eq(author),),
         lens(
             "Link::prev",
             |o: &mut Link| &mut o.prev,

@@ -20,7 +20,7 @@
 //!     y: u32,
 //! }
 //!
-//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
+//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq(1));
 //!
 //! assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
 //! assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
@@ -95,8 +95,8 @@ pub(crate) const SATISFY_ATTEMPTS: usize = 100;
 /// ```
 /// use contrafact::*;
 ///
-/// let eq1 = eq_(1);
-/// let not2 = not_(eq_(2));
+/// let eq1 = eq(1);
+/// let not2 = not(eq(2));
 /// let mut fact = facts![eq1, not2];
 /// assert!(fact.check(&1).is_ok());
 /// ```

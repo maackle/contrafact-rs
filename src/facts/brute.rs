@@ -32,13 +32,15 @@ use crate::*;
 /// let mut g = utils::random_generator();
 /// assert!(div_by(3).build(&mut g) % 3 == 0);
 /// ```
-pub fn brute<'a, T, F>(reason: impl ToString, f: F) -> Fact<'a, (), T>
+pub fn brute<'a, T, F>(label: impl ToString, f: F) -> Fact<'a, (), T>
 where
     T: Bounds<'a>,
     F: 'a + Send + Sync + Fn(&T) -> bool,
 {
-    let reason = reason.to_string();
-    brute_labeled(move |v| Ok(f(v).then_some(()).ok_or_else(|| reason.clone()))).label("brute")
+    let label = label.to_string();
+    // TODO figure out this label stuff
+    let label2 = label.clone();
+    brute_labeled(move |v| Ok(f(v).then_some(()).ok_or_else(|| label.clone()))).label(label2)
 }
 
 /// A version of [`brute`] which allows the closure to return the reason for failure

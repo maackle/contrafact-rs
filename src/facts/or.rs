@@ -1,7 +1,7 @@
 use super::*;
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<'a, A, B, Item>(context: impl ToString, a: A, b: B) -> Fact<'a, (A, B), Item>
+pub fn or<'a, A, B, Item>(a: A, b: B) -> Fact<'a, (A, B), Item>
 where
     A: Factual<'a, Item>,
     B: Factual<'a, Item>,
@@ -17,9 +17,7 @@ where
             (_, true) => Ok(obj),
             (false, false) => {
                 g.fail(format!(
-                    "expected either one of the following conditions to be met:
-    condition 1: {:#?}
-    condition 2: {:#?}",
+                    "expected either one of the following conditions to be met: {:?} OR {:?}",
                     a, b
                 ))?;
                 if thread_rng().gen::<bool>() {
@@ -37,13 +35,16 @@ fn test_or() {
     observability::test_run().ok();
     let mut g = utils::random_generator();
 
-    let eq1 = eq("must be 1", 1);
-    let eq2 = eq("must be 2", 2);
-    let either = or("can be 1 or 2", eq1, eq2);
+    let eq1 = eq(1);
+    let eq2 = eq(2);
+    let either = or(eq1, eq2);
 
     let ones = vec(either.clone()).build(&mut g);
     vec(either.clone()).check(&ones).unwrap();
     assert!(ones.iter().all(|x| *x == 1 || *x == 2));
 
-    assert_eq!(either.check(&3).result().unwrap().unwrap_err().len(), 1);
+    assert_eq!(
+        dbg!(either.check(&3)).result().unwrap().unwrap_err().len(),
+        1
+    );
 }
