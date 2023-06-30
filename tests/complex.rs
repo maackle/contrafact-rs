@@ -306,10 +306,10 @@ fn test_omega_fact() {
         beta: beta.clone(),
     };
 
-    valid1 = fact.mutate(valid1, &mut g).unwrap();
+    valid1 = fact.mutate(&mut g, valid1).unwrap();
     fact.check(dbg!(&valid1)).unwrap();
 
-    valid2 = fact.mutate(valid2, &mut g).unwrap();
+    valid2 = fact.mutate(&mut g, valid2).unwrap();
     fact.check(dbg!(&valid2)).unwrap();
 
     let mut invalid1 = Omega::Alpha {
@@ -332,11 +332,11 @@ fn test_omega_fact() {
 
     // Ensure that check fails for invalid data
     assert!(dbg!(fact.check(dbg!(&invalid1)).result().unwrap().unwrap_err()).len() > 0);
-    invalid1 = fact.mutate(invalid1, &mut g).unwrap();
+    invalid1 = fact.mutate(&mut g, invalid1).unwrap();
     fact.check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
     assert!(dbg!(fact.check(dbg!(&invalid2)).result().unwrap().unwrap_err()).len() > 0);
-    invalid2 = fact.mutate(invalid2, &mut g).unwrap();
+    invalid2 = fact.mutate(&mut g, invalid2).unwrap();
     fact.check(dbg!(&invalid2)).unwrap();
 }

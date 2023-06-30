@@ -71,9 +71,9 @@ where
     O: Fact<'a, T>,
 {
     #[tracing::instrument(fields(fact = "mapped"), skip(self, g))]
-    fn mutate(&mut self, t: T, g: &mut Generator<'a>) -> Mutation<T> {
-        (self.f)(&t)?
-            .mutate(t, g)
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
+        (self.f)(&obj)?
+            .mutate(g, obj)
             .map_check_err(|err| format!("mapped({}) > {}", self.reason, err))
     }
 }

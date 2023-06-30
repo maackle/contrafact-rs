@@ -23,6 +23,7 @@ where
     F2: Fact<'a, T>,
     T: ?Sized + Bounds<'a>,
 {
+    /// Constructor
     pub fn new(a: F1, b: F2) -> Self {
         Self {
             a,
@@ -38,9 +39,9 @@ where
     F2: Fact<'a, T> + Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
-        let obj = self.a.mutate(obj, g)?;
-        let obj = self.b.mutate(obj, g)?;
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
+        let obj = self.a.mutate(g, obj)?;
+        let obj = self.b.mutate(g, obj)?;
         Ok(obj)
     }
 }

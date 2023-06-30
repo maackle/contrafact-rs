@@ -68,13 +68,13 @@ where
     T: Bounds<'a>,
 {
     #[tracing::instrument(fields(fact = "brute"), skip(self, g))]
-    fn mutate(&mut self, mut t: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: T) -> Mutation<T> {
         tracing::trace!("brute");
         for _ in 0..=BRUTE_ITERATION_LIMIT {
-            if (self.f)(&t)? {
-                return Ok(t);
+            if (self.f)(&obj)? {
+                return Ok(obj);
             }
-            t = g.arbitrary(&self.label)?;
+            obj = g.arbitrary(&self.label)?;
         }
 
         panic!(

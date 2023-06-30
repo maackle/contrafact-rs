@@ -129,11 +129,11 @@ where
     O: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    fn mutate(&mut self, mut obj: O, g: &mut Generator<'a>) -> Mutation<O> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: O) -> Mutation<O> {
         if let Some(t) = (self.prism)(&mut obj) {
             *t = self
                 .inner_fact
-                .mutate(t.clone(), g)
+                .mutate(g, t.clone())
                 .map_check_err(|err| format!("prism({}) > {}", self.label, err))?;
         }
         Ok(obj)

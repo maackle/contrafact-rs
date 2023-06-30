@@ -105,11 +105,11 @@ where
     F: Fact<'a, T>,
 {
     #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
-    fn mutate(&mut self, obj: O, g: &mut Generator<'a>) -> Mutation<O> {
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: O) -> Mutation<O> {
         let t = (self.getter)(obj.clone());
         let t = self
             .inner_fact
-            .mutate(t, g)
+            .mutate(g, t)
             .map_check_err(|err| format!("lens({}) > {}", self.label, err))?;
         Ok((self.setter)(obj, t))
     }

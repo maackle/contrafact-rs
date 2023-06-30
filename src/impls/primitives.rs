@@ -216,11 +216,11 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     #[tracing::instrument(fields(fact = "bool"), skip(self, g))]
-    fn mutate(&mut self, t: T, g: &mut Generator<'_>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'_>, obj: T) -> Mutation<T> {
         if !self.0 {
             g.fail("never() encountered.")?;
         }
-        Ok(t)
+        Ok(obj)
     }
 }
 
@@ -243,7 +243,7 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     #[tracing::instrument(fields(fact = "eq"), skip(self, g))]
-    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: T) -> Mutation<T> {
         let constant = self.constant.clone();
         match self.op {
             EqOp::Equal => {
@@ -280,7 +280,7 @@ where
     T: Bounds<'a> + PartialEq + Clone,
 {
     #[tracing::instrument(fields(fact = "same"), skip(self, g))]
-    fn mutate(&mut self, mut obj: (T, T), g: &mut Generator<'a>) -> Mutation<(T, T)> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: (T, T)) -> Mutation<(T, T)> {
         match self.op {
             EqOp::Equal => {
                 if obj.0 != obj.1 {
@@ -317,7 +317,7 @@ where
     T: 'b + Bounds<'a> + Clone,
     // I: Iterator<Item = &'b T>,
 {
-    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
         Ok(if !self.slice.contains(&obj) {
             g.choose(
                 self.slice,
@@ -368,7 +368,7 @@ where
         + num::Bounded
         + num::One,
 {
-    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: T) -> Mutation<T> {
         if !self.range.contains(&obj) {
             let rand = g.arbitrary(format!(
                 "{}: expected {:?} to be contained in {:?}",
@@ -409,7 +409,7 @@ where
     T: Bounds<'a> + num::PrimInt,
 {
     #[tracing::instrument(fields(fact = "consecutive_int"), skip(self, g))]
-    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: T) -> Mutation<T> {
         if obj != self.counter {
             g.fail(&self.context)?;
             obj = self.counter.clone();
@@ -441,7 +441,7 @@ where
     P2: Fact<'a, T> + Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
         use rand::{thread_rng, Rng};
 
         let a = check_raw(&mut self.a, &obj).is_ok();
@@ -457,9 +457,9 @@ where
                     a, b
                 ))?;
                 if thread_rng().gen::<bool>() {
-                    self.a.mutate(obj, g)
+                    self.a.mutate(g, obj)
                 } else {
-                    self.b.mutate(obj, g)
+                    self.b.mutate(g, obj)
                 }
             }
         }
@@ -482,7 +482,7 @@ where
     F: Fact<'a, T>,
     T: Bounds<'a>,
 {
-    fn mutate(&mut self, mut obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: T) -> Mutation<T> {
         for _ in 0..BRUTE_ITERATION_LIMIT {
             if check_raw(&mut self.fact, &obj).is_err() {
                 break;

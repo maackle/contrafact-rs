@@ -19,7 +19,7 @@ use crate::*;
 ///
 /// // `consecutive_int`
 /// let fact = seq(eq_(1));
-/// let list = fact.clone().satisfy(vec![0; 5], &mut g).unwrap();
+/// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![1, 1, 1, 1, 1]);
 /// ```
 ///
@@ -32,7 +32,7 @@ use crate::*;
 ///
 /// // `consecutive_int`
 /// let fact = seq(consecutive_int_(0));
-/// let list = fact.clone().satisfy(vec![0; 5], &mut g).unwrap();
+/// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![0, 1, 2, 3, 4]);
 /// ```
 ///
@@ -46,6 +46,7 @@ where
     SeqFact::new(inner_fact)
 }
 
+/// Combines a LenFact with a SeqFact to ensure that the sequence is of a given length
 pub fn sized_seq<'a, T, F>(len: usize, inner_fact: F) -> impl Fact<'a, Vec<T>>
 where
     T: Bounds<'a> + Clone + 'a,
@@ -91,13 +92,13 @@ where
     F: Fact<'a, T>,
 {
     #[tracing::instrument(fields(fact = "seq"), skip(self, g))]
-    fn mutate(&mut self, obj: Vec<T>, g: &mut Generator<'a>) -> Mutation<Vec<T>> {
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: Vec<T>) -> Mutation<Vec<T>> {
         tracing::trace!("");
         obj.into_iter()
             .enumerate()
             .map(|(i, o)| {
                 self.inner_fact
-                    .mutate(o, g)
+                    .mutate(g, o)
                     .map_check_err(|e| format!("seq[{}]: {}", i, e))
             })
             .collect::<Result<Vec<_>, _>>()
@@ -135,7 +136,7 @@ where
     T: Bounds<'a>,
 {
     #[tracing::instrument(fields(fact = "len"), skip(self, g))]
-    fn mutate(&mut self, mut obj: Vec<T>, g: &mut Generator<'a>) -> Mutation<Vec<T>> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: Vec<T>) -> Mutation<Vec<T>> {
         tracing::trace!("");
 
         if obj.len() > self.len {
@@ -238,12 +239,11 @@ mod tests {
         {
             let mut f = facts!(eq_(0), piecewise());
             for _ in 0..3 {
-                let val = f.mutate(0, &mut g).unwrap();
+                let val = f.mutate(&mut g, 0).unwrap();
                 assert!(f.check(&val).is_err());
             }
-            let val = f.mutate(0, &mut g).unwrap();
+            let val = f.mutate(&mut g, 0).unwrap();
             f.check(&val).unwrap();
         }
-
     }
 }

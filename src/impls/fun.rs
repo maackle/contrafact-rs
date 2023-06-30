@@ -34,7 +34,7 @@ where
     T: Bounds<'a>,
     F: Clone + Send + Sync + FnMut(&mut Generator, &mut S, T) -> Mutation<T>,
 {
-    fn mutate(&mut self, obj: T, g: &mut Generator<'a>) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
         (self.fun)(g, &mut self.state, obj)
     }
 }
