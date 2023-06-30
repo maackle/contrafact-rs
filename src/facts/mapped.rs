@@ -2,15 +2,21 @@ use std::sync::Arc;
 
 use crate::{fact::Bounds, *};
 
+use super::lambda::LambdaFact;
+
 /// A version of [`mapped`] whose closure returns a Result
-pub fn mapped_fallible<'a, T, F, O, S>(reason: S, f: F) -> MappedFact<'a, T, O>
+pub fn mapped_fallible<'a, T, F, O, S>(reason: impl ToString, f: F) -> LambdaFact<'a, (), T>
 where
-    S: ToString,
     T: Bounds<'a>,
     O: Fact<'a, T>,
-    F: 'a + Send + Sync + Fn(&T) -> Mutation<O>,
+    F: 'a + Send + Sync + Fn(&T) -> ContrafactResult<O>,
 {
-    MappedFact::new(reason.to_string(), f)
+    let reason = reason.to_string();
+    lambda_unit(move |g, obj| {
+        f(&obj)?
+            .mutate(g, obj)
+            .map_check_err(|err| format!("mapped({}) > {}", reason, err))
+    })
 }
 
 /// A fact which is defined based on the data to which it is applied. It maps
@@ -47,44 +53,18 @@ where
 /// assert!(fact.clone().check(&9009).is_ok());
 /// assert!(fact.clone().check(&9010).is_err());
 /// ```
-pub fn mapped<'a, T, F, O, S>(reason: S, f: F) -> MappedFact<'a, T, O>
+pub fn mapped<'a, T, F, O>(reason: impl ToString, f: F) -> LambdaFact<'a, (), T>
 where
-    S: ToString,
     T: Bounds<'a>,
     O: Fact<'a, T>,
     F: 'a + Send + Sync + Fn(&T) -> O,
 {
-    MappedFact::new(reason.to_string(), move |x| Ok(f(x)))
-}
-
-/// A fact which is mapped from the data to be checked/mutated.
-/// Use [`mapped`] to construct.
-#[derive(Clone)]
-pub struct MappedFact<'a, T, O> {
-    reason: String,
-    f: Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<O>>,
-}
-
-impl<'a, T, O> Fact<'a, T> for MappedFact<'a, T, O>
-where
-    T: Bounds<'a>,
-    O: Fact<'a, T>,
-{
-    #[tracing::instrument(fields(fact = "mapped"), skip(self, g))]
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
-        (self.f)(&obj)?
+    let reason = reason.to_string();
+    lambda_unit(move |g, obj| {
+        f(&obj)
             .mutate(g, obj)
-            .map_check_err(|err| format!("mapped({}) > {}", self.reason, err))
-    }
-}
-
-impl<'a, T, O> MappedFact<'a, T, O> {
-    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<O>>(reason: String, f: F) -> Self {
-        Self {
-            reason,
-            f: Arc::new(f),
-        }
-    }
+            .map_check_err(|err| format!("mapped({}) > {}", reason, err))
+    })
 }
 
 #[test]
