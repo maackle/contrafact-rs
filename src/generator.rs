@@ -15,8 +15,8 @@
 use arbitrary::{Arbitrary, Unstructured};
 
 use crate::error::*;
-use std::ops::RangeInclusive;
 use arbitrary::unstructured::Int;
+use std::ops::RangeInclusive;
 
 /// Generators are used to generate new values and error messages.
 ///
@@ -99,7 +99,7 @@ impl<'a> Generator<'a> {
         if choices.len() == 1 {
             return Ok(&choices[0]).into();
         }
-        if self.arb.is_empty() {
+        if !self.check && self.arb.is_empty() {
             return Err(MutationError::Exception("Ran out of entropy".to_string())).into();
         }
         self.with(err, |u| u.choose(choices))
@@ -111,11 +111,7 @@ impl<'a> Generator<'a> {
     /// size of a collection to build, that's exactly what I will be doing with
     /// this, because I'm not sure exactly what the contrafact story is for
     /// size hints (which is what arbitrary would be using instead).
-    pub fn int_in_range<T>(
-        &mut self,
-        range: RangeInclusive<T>,
-        err: impl ToString,
-    ) -> Mutation<T>
+    pub fn int_in_range<T>(&mut self, range: RangeInclusive<T>, err: impl ToString) -> Mutation<T>
     where
         T: Arbitrary<'a> + PartialOrd + Copy + Int,
     {
@@ -124,7 +120,7 @@ impl<'a> Generator<'a> {
         } else if range.start() == range.end() {
             return Ok(*range.start()).into();
         }
-        if self.arb.is_empty() {
+        if !self.check && self.arb.is_empty() {
             return Err(MutationError::Exception("Ran out of entropy".to_string())).into();
         }
         self.with(err, |u| u.int_in_range(range))
@@ -147,14 +143,17 @@ impl<'a> Generator<'a> {
 #[cfg(test)]
 pub mod test {
     use crate::MutationError;
-    use rand::SeedableRng;
     use rand::prelude::SliceRandom;
+    use rand::SeedableRng;
 
     /// Test that int_in_range won't accept an invalid range.
     #[test]
     pub fn test_generator_int_in_range_invalid_range() {
         let mut gen = crate::generator::Generator::from(&[0, 1, 2, 3, 4, 5][..]);
-        assert_eq!(gen.int_in_range(5..=4, "error"), Err(MutationError::Exception("Invalid range".to_string())));
+        assert_eq!(
+            gen.int_in_range(5..=4, "error"),
+            Err(MutationError::Exception("Invalid range".to_string()))
+        );
     }
 
     /// Test that int_in_range will accept a valid range of a single option.
@@ -177,7 +176,10 @@ pub mod test {
         }
         // The generator has no entropy remaining at this point.
         assert_eq!(gen.len(), 0);
-        assert_eq!(gen.int_in_range(0..=3, "error"), Err(MutationError::Exception("Ran out of entropy".to_string())));
+        assert_eq!(
+            gen.int_in_range(0..=3, "error"),
+            Err(MutationError::Exception("Ran out of entropy".to_string()))
+        );
     }
 
     /// Test the error when there are no possible choices.
@@ -185,7 +187,10 @@ pub mod test {
     pub fn test_generator_no_choices() {
         let mut gen = crate::generator::Generator::from(&[0, 1, 2, 3, 4, 5][..]);
         let choices: [usize; 0] = [];
-        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Exception("Empty choices".to_string())));
+        assert_eq!(
+            gen.choose(&choices, "error"),
+            Err(MutationError::Exception("Empty choices".to_string()))
+        );
     }
 
     /// Test that a generator can be used to choose one value.
@@ -209,7 +214,10 @@ pub mod test {
         assert_eq!(gen.choose(&choices, "error").unwrap(), &1);
 
         // This is the only case where we can't choose a value, because we have 2 choices and 6 bytes.
-        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Exception("Ran out of entropy".to_string())));
+        assert_eq!(
+            gen.choose(&choices, "error"),
+            Err(MutationError::Exception("Ran out of entropy".to_string()))
+        );
     }
 
     /// Test that a generator can be used to choose between three values.
@@ -225,7 +233,10 @@ pub mod test {
         assert_eq!(gen.choose(&choices, "error").unwrap(), &2);
 
         // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
-        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Exception("Ran out of entropy".to_string())));
+        assert_eq!(
+            gen.choose(&choices, "error"),
+            Err(MutationError::Exception("Ran out of entropy".to_string()))
+        );
     }
 
     /// Test that a generator can be used to choose between three values with
@@ -249,7 +260,10 @@ pub mod test {
         assert_eq!(gen.choose(&choices, "error").unwrap(), &0);
 
         // This is the only case where we can't choose a value, because we have 3 choices and 6 bytes.
-        assert_eq!(gen.choose(&choices, "error"), Err(MutationError::Exception("Ran out of entropy".to_string())));
+        assert_eq!(
+            gen.choose(&choices, "error"),
+            Err(MutationError::Exception("Ran out of entropy".to_string()))
+        );
     }
 
     /// Test that a generator can choose a single item even if there is no entropy.
