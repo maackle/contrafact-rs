@@ -4,17 +4,6 @@ use arbitrary::Arbitrary;
 
 use crate::*;
 
-/// The trait bounds for the target of a Fact
-pub trait Target<'a>: std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a> {}
-impl<'a, T> Target<'a> for T where
-    T: std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a>
-{
-}
-
-/// The trait bounds for the State of a Fact
-pub trait State: std::fmt::Debug + Clone + Send + Sync {}
-impl<T> State for T where T: std::fmt::Debug + Clone + Send + Sync {}
-
 /// Create a fact from a bare function which specifies the mutation.
 /// Can be quicker to experiment with ideas this way than to have to directly implement
 /// the [`Fact`] trait

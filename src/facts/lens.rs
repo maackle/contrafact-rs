@@ -38,8 +38,8 @@ use crate::*;
 pub fn lens1<'a, O, T, L, S>(
     label: impl ToString,
     accessor: L,
-    inner_fact: Fact<'a, S, T>,
-) -> Fact<'a, Fact<'a, S, T>, O>
+    inner_fact: impl Factual<'a, T>,
+) -> impl Factual<'a, O>
 where
     O: Target<'a>,
     T: Target<'a>,

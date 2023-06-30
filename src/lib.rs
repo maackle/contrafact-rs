@@ -63,6 +63,7 @@ mod error;
 mod fact;
 /// Some built-in implementations of some useful facts
 pub mod facts;
+mod factual;
 mod generator;
 pub use facts::*;
 
@@ -74,6 +75,7 @@ pub use arbitrary;
 pub use check::Check;
 pub use error::*;
 pub use fact::{stateful, stateless, Fact, Fact2, State, StatelessFact, Target};
+pub use factual::Factual;
 pub use generator::*;
 
 pub use either;
