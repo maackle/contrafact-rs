@@ -217,7 +217,7 @@ mod tests {
 
         let piecewise = move || {
             let count = Arc::new(AtomicU8::new(0));
-            fun((), move |g, (), mut obj| {
+            lambda((), move |g, (), mut obj| {
                 let c = count.fetch_add(1, Ordering::SeqCst);
                 if c < 3 {
                     g.set(&mut obj, &999, "i'm being difficult, haha")?;
