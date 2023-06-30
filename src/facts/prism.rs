@@ -68,13 +68,13 @@ where
     P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
 {
     let label = label.to_string();
-    lambda("prism", inner_fact, move |g, fact, mut obj| {
-        if let Some(t) = prism(&mut obj) {
+    lambda("prism", inner_fact, move |g, fact, mut t| {
+        if let Some(t) = prism(&mut t) {
             *t = fact
                 .mutate(g, t.clone())
                 .map_check_err(|err| format!("prism({}) > {}", label, err))?;
         }
-        Ok(obj)
+        Ok(t)
     })
 }
 

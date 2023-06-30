@@ -48,7 +48,7 @@ pub fn lambda_unit<'a, T>(
 where
     T: Target<'a>,
 {
-    lambda(label, (), move |g, (), obj| f(g, obj))
+    lambda(label, (), move |g, (), t| f(g, t))
 }
 
 pub type LambdaFn<'a, S, T> =
@@ -87,8 +87,8 @@ where
     S: State + Debug,
     T: Target<'a>,
 {
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
-        (self.fun)(g, &mut self.state, obj)
+    fn mutate(&mut self, g: &mut Generator<'a>, t: T) -> Mutation<T> {
+        (self.fun)(g, &mut self.state, t)
     }
 
     fn label(&self) -> String {

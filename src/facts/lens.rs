@@ -72,12 +72,12 @@ where
     T: Target<'a>,
 {
     let label = label.to_string();
-    lambda("lens", inner_fact, move |g, fact, obj: O| {
-        let t = getter(obj.clone());
+    lambda("lens", inner_fact, move |g, fact, o: O| {
+        let t = getter(o.clone());
         let t = fact
             .mutate(g, t)
             .map_check_err(|err| format!("lens1({}) > {}", label, err))?;
-        Ok(setter(obj, t))
+        Ok(setter(o, t))
     })
 }
 

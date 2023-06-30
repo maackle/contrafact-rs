@@ -6,17 +6,17 @@ where
     T: Target<'a> + PartialEq + Clone,
 {
     let context = context.to_string();
-    lambda_unit("in_slice", move |g, obj| {
-        Ok(if !slice.contains(&obj) {
+    lambda_unit("in_slice", move |g, t| {
+        Ok(if !slice.contains(&t) {
             let reason = || {
                 format!(
                     "{}: expected {:?} to be contained in {:?}",
-                    context, obj, slice
+                    context, t, slice
                 )
             };
             g.choose(slice, reason)?.to_owned()
         } else {
-            obj
+            t
         })
     })
 }

@@ -37,15 +37,15 @@ where
     /// some reason unreasonable, a check function can be written by hand, but
     /// care must be taken to make sure it perfectly lines up with the mutation function.
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self))]
-    fn check(mut self, obj: &T) -> Check {
+    fn check(mut self, t: &T) -> Check {
         let mut g = Generator::checker();
-        Check::from_mutation(self.mutate(&mut g, obj.clone()))
+        Check::from_mutation(self.mutate(&mut g, t.clone()))
     }
 
-    /// Apply a mutation which moves the obj closer to satisfying the overall
+    /// Apply a mutation which moves the t closer to satisfying the overall
     /// constraint.
     // #[tracing::instrument(skip(self, g))]
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T>;
+    fn mutate(&mut self, g: &mut Generator<'a>, t: T) -> Mutation<T>;
 
     /// Make this many attempts to satisfy a constraint before giving up and panicking.
     ///
@@ -61,10 +61,10 @@ where
     /// Mutate a value such that it satisfies the constraint.
     /// If the constraint cannot be satisfied, panic.
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self, g))]
-    fn satisfy(&mut self, g: &mut Generator<'a>, obj: T) -> ContrafactResult<T> {
+    fn satisfy(&mut self, g: &mut Generator<'a>, t: T) -> ContrafactResult<T> {
         tracing::trace!("satisfy");
         let mut last_failure: Vec<String> = vec![];
-        let mut next = obj.clone();
+        let mut next = t.clone();
         for _i in 0..self.satisfy_attempts() {
             let mut m = self.clone();
             next = m.mutate(g, next).unwrap();
@@ -84,8 +84,8 @@ where
     #[tracing::instrument(fields(fact_impl = "Fact"), skip(self, g))]
     /// Build a new value such that it satisfies the constraint
     fn build_fallible(mut self, g: &mut Generator<'a>) -> ContrafactResult<T> {
-        let obj = T::arbitrary(g).unwrap();
-        self.satisfy(g, obj)
+        let t = T::arbitrary(g).unwrap();
+        self.satisfy(g, t)
     }
 
     /// Build a new value such that it satisfies the constraint, panicking on error
@@ -102,10 +102,10 @@ where
     F2: Fact<'a, T> + ?Sized,
 {
     #[tracing::instrument(fields(fact_impl = "Either"), skip(self, g))]
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
+    fn mutate(&mut self, g: &mut Generator<'a>, t: T) -> Mutation<T> {
         match self {
-            Either::Left(f) => f.mutate(g, obj),
-            Either::Right(f) => f.mutate(g, obj),
+            Either::Left(f) => f.mutate(g, t),
+            Either::Right(f) => f.mutate(g, t),
         }
     }
 
@@ -125,7 +125,7 @@ where
 }
 
 #[tracing::instrument(skip(facts))]
-fn collect_checks<'a, T, F>(facts: Vec<F>, obj: &T) -> Check
+fn collect_checks<'a, T, F>(facts: Vec<F>, t: &T) -> Check
 where
     T: Target<'a>,
     F: Fact<'a, T>,
@@ -134,7 +134,7 @@ where
         .into_iter()
         .enumerate()
         .map(|(i, f)| {
-            Ok(f.check(obj)
+            Ok(f.check(t)
                 .failures()?
                 .iter()
                 .map(|e| format!("fact {}: {}", i, e))

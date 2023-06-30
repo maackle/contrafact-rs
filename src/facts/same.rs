@@ -5,11 +5,11 @@ pub fn same<'a, T>() -> LambdaUnit<'a, (T, T)>
 where
     T: Target<'a> + PartialEq,
 {
-    lambda_unit("same", |g, mut obj: (T, T)| {
-        let o = obj.clone();
+    lambda_unit("same", |g, mut t: (T, T)| {
+        let o = t.clone();
         let reason = move || format!("must be same: expected {:?} == {:?}", o.0.clone(), o.1);
-        g.set(&mut obj.0, &obj.1, reason)?;
-        Ok(obj)
+        g.set(&mut t.0, &t.1, reason)?;
+        Ok(t)
     })
 }
 

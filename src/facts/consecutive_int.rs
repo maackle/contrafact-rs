@@ -6,13 +6,13 @@ where
     S: Target<'a> + std::fmt::Debug + PartialEq + num::PrimInt,
 {
     let context = context.to_string();
-    lambda("consecutive_int", initial, move |g, counter, mut obj| {
-        if obj != *counter {
+    lambda("consecutive_int", initial, move |g, counter, mut t| {
+        if t != *counter {
             g.fail(&context)?;
-            obj = counter.clone();
+            t = counter.clone();
         }
         *counter = counter.checked_add(&S::from(1).unwrap()).unwrap();
-        Ok(obj)
+        Ok(t)
     })
 }
 

@@ -49,14 +49,14 @@ where
     T: Target<'a>,
     F: 'a + Send + Sync + Fn(&T) -> ContrafactResult<BruteResult>,
 {
-    lambda_unit("brute_labeled", move |g, mut obj| {
+    lambda_unit("brute_labeled", move |g, mut t| {
         let mut last_reason = "".to_string();
         for _ in 0..=BRUTE_ITERATION_LIMIT {
-            if let Err(reason) = f(&obj)? {
+            if let Err(reason) = f(&t)? {
                 last_reason = reason.clone();
-                obj = g.arbitrary(|| reason)?;
+                t = g.arbitrary(|| reason)?;
             } else {
-                return Ok(obj);
+                return Ok(t);
             }
         }
 

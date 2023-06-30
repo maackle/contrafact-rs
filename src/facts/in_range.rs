@@ -16,15 +16,15 @@ where
         + num::One,
 {
     let context = context.to_string();
-    lambda_unit("in_range", move |g, mut obj| {
-        if !range.contains(&obj) {
+    lambda_unit("in_range", move |g, mut t| {
+        if !range.contains(&t) {
             let rand = g.arbitrary(|| {
                 format!(
                     "{}: expected {:?} to be contained in {:?}",
-                    context, obj, range
+                    context, t, range
                 )
             })?;
-            obj = match (range.start_bound(), range.end_bound()) {
+            t = match (range.start_bound(), range.end_bound()) {
                 (Bound::Unbounded, Bound::Unbounded) => rand,
                 (Bound::Included(a), Bound::Included(b)) if b.clone() - a.clone() >= T::one() => {
                     a.clone() + rand.rem_euclid(&(b.clone() - a.clone()))
@@ -44,7 +44,7 @@ where
                 _ => panic!("Range not yet supported, sorry! {:?}", range),
             };
         }
-        Ok(obj)
+        Ok(t)
     })
 }
 

@@ -65,8 +65,8 @@ where
 {
     // TODO: remove
     #[tracing::instrument(skip(self))]
-    fn check(&mut self, obj: &Src) -> Check {
-        let imgs = obj.traverse_ref(self.optics.clone());
+    fn check(&mut self, t: &Src) -> Check {
+        let imgs = t.traverse_ref(self.optics.clone());
         imgs.iter()
             .enumerate()
             .flat_map(|(i, img)| {
@@ -84,16 +84,16 @@ where
             .into()
     }
 
-    fn mutate(&mut self, mut obj: Src, g: &mut Generator<'a>) -> Src {
-        for img in obj.traverse_mut(self.optics.clone()) {
+    fn mutate(&mut self, mut t: Src, g: &mut Generator<'a>) -> Src {
+        for img in t.traverse_mut(self.optics.clone()) {
             *img = self.inner_fact.mutate(img.clone(), g);
         }
-        obj
+        t
     }
 
     #[tracing::instrument(skip(self))]
-    fn advance(&mut self, obj: &Src) {
-        for img in obj.traverse_ref(self.optics.clone()) {
+    fn advance(&mut self, t: &Src) {
+        for img in t.traverse_ref(self.optics.clone()) {
             self.inner_fact.advance(img);
         }
     }

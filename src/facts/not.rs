@@ -8,10 +8,10 @@ pub fn not<'a, T>(fact: LambdaUnit<'a, T>) -> LambdaUnit<'a, T>
 where
     T: Target<'a>,
 {
-    lambda_unit("not", move |g, obj| {
+    lambda_unit("not", move |g, t| {
         let label = format!("not({:?})", fact);
         let fact = fact.clone();
-        brute(label, move |o| fact.clone().check(o).is_err()).mutate(g, obj)
+        brute(label, move |o| fact.clone().check(o).is_err()).mutate(g, t)
     })
 }
 

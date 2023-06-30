@@ -8,12 +8,12 @@ where
     T: Target<'a> + PartialEq + Clone + Display,
 {
     let label = format!("eq({})", constant);
-    lambda_unit(label, move |g, mut obj| {
-        if obj != constant {
-            g.fail(format!("expected {:?} == {:?}", obj, constant))?;
-            obj = constant.clone();
+    lambda_unit(label, move |g, mut t| {
+        if t != constant {
+            g.fail(format!("expected {:?} == {:?}", t, constant))?;
+            t = constant.clone();
         }
-        Ok(obj)
+        Ok(t)
     })
 }
 

@@ -5,23 +5,23 @@ pub fn or<'a, T>(a: impl Fact<'a, T>, b: impl Fact<'a, T>) -> impl Fact<'a, T>
 where
     T: Target<'a>,
 {
-    lambda("or", (a, b), |g, (a, b), obj| {
+    lambda("or", (a, b), |g, (a, b), t| {
         use rand::{thread_rng, Rng};
 
-        let a_ok = a.clone().check(&obj).is_ok();
-        let b_ok = b.clone().check(&obj).is_ok();
+        let a_ok = a.clone().check(&t).is_ok();
+        let b_ok = b.clone().check(&t).is_ok();
         match (a_ok, b_ok) {
-            (true, _) => Ok(obj),
-            (_, true) => Ok(obj),
+            (true, _) => Ok(t),
+            (_, true) => Ok(t),
             (false, false) => {
                 g.fail(format!(
                     "expected either one of the following conditions to be met: {:?} OR {:?}",
                     a, b
                 ))?;
                 if thread_rng().gen::<bool>() {
-                    a.mutate(g, obj)
+                    a.mutate(g, t)
                 } else {
-                    b.mutate(g, obj)
+                    b.mutate(g, t)
                 }
             }
         }

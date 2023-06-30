@@ -39,8 +39,8 @@ pub fn vec<'a, T>(inner_fact: impl Fact<'a, T>) -> impl Fact<'a, Vec<T>>
 where
     T: Target<'a> + Clone,
 {
-    lambda("vec", inner_fact, |g, f, obj: Vec<T>| {
-        obj.into_iter()
+    lambda("vec", inner_fact, |g, f, t: Vec<T>| {
+        t.into_iter()
             .enumerate()
             .map(|(i, o)| {
                 f.mutate(g, o)
@@ -55,25 +55,25 @@ pub fn vec_len<'a, T>(len: usize) -> LambdaUnit<'a, Vec<T>>
 where
     T: Target<'a> + Clone + 'a,
 {
-    lambda_unit("vec_len", move |g, mut obj: Vec<T>| {
-        if obj.len() > len {
+    lambda_unit("vec_len", move |g, mut t: Vec<T>| {
+        if t.len() > len {
             g.fail(format!(
                 "vec should be of length {} but is actually of length {}",
                 len,
-                obj.len()
+                t.len()
             ))?;
-            obj = obj[0..len].to_vec();
+            t = t[0..len].to_vec();
         }
-        while obj.len() < len {
-            obj.push(g.arbitrary(|| {
+        while t.len() < len {
+            t.push(g.arbitrary(|| {
                 format!(
                     "vec should be of length {} but is actually of length {}",
                     len,
-                    obj.len()
+                    t.len()
                 )
             })?)
         }
-        Ok(obj)
+        Ok(t)
     })
 }
 
@@ -149,12 +149,12 @@ mod tests {
 
         let piecewise = move || {
             let count = Arc::new(AtomicU8::new(0));
-            lambda("piecewise", (), move |g, (), mut obj| {
+            lambda("piecewise", (), move |g, (), mut t| {
                 let c = count.fetch_add(1, Ordering::SeqCst);
                 if c < 3 {
-                    g.set(&mut obj, &999, || "i'm being difficult, haha")?;
+                    g.set(&mut t, &999, || "i'm being difficult, haha")?;
                 }
-                Ok(obj)
+                Ok(t)
             })
         };
 
