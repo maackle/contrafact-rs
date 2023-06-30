@@ -92,6 +92,6 @@ pub use impls::seq::{seq, sized_seq, SeqFact};
 #[cfg(feature = "optics")]
 pub use impls::optical::{optical, OpticalFact};
 
-pub use either::Either;
+pub use either;
 
 pub(crate) const BRUTE_ITERATION_LIMIT: usize = 100;
