@@ -12,7 +12,7 @@ use crate::*;
 ///
 /// let mut fact = vec_of_length(
 ///     4,
-///     lambda(2, move |g, s, mut v| {
+///     stateful(2, move |g, s, mut v| {
 ///         g.set(&mut v, s, "value is not geometrically increasing by 2")?;
 ///         *s *= 2;
 ///         Ok(v)

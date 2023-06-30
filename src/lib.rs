@@ -11,7 +11,7 @@
 //! meets the constraint, or to generate new instances of `S` which meet the constraint.
 //!
 //! ```
-//! use contrafact::{Fact, facts::{eq, lens}};
+//! use contrafact::{Factual, facts::{eq, lens}};
 //! use arbitrary::{Arbitrary, Unstructured};
 //!
 //! #[derive(Debug, Clone, PartialEq, Arbitrary)]

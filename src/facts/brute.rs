@@ -24,7 +24,7 @@ use crate::*;
 /// use arbitrary::Unstructured;
 /// use contrafact::*;
 ///
-/// fn div_by(n: usize) -> impl Fact<'static, usize> {
+/// fn div_by(n: usize) -> impl Factual<'static, usize> {
 ///     facts![brute(format!("Is divisible by {}", n), move |x| x % n == 0)]
 /// }
 ///
