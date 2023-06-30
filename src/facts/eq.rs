@@ -1,13 +1,11 @@
-use std::fmt::Display;
-
 use super::*;
 
 /// Specifies an equality constraint
 pub fn eq<'a, T>(constant: T) -> Lambda<'a, (), T>
 where
-    T: Target<'a> + PartialEq + Clone + Display,
+    T: Target<'a> + PartialEq + Clone,
 {
-    let label = format!("eq({})", constant);
+    let label = format!("eq({:?})", constant);
     lambda_unit(label, move |g, mut t| {
         if t != constant {
             g.fail(format!("expected {:?} == {:?}", t, constant))?;
@@ -21,7 +19,7 @@ where
 pub fn ne<'a, S, T>(constant: T) -> Lambda<'a, (), T>
 where
     S: ToString,
-    T: Target<'a> + PartialEq + Display,
+    T: Target<'a> + PartialEq,
 {
     not(eq(constant)).labeled("ne")
 }
