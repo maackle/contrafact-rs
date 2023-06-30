@@ -11,7 +11,7 @@
 //! meets the constraint, or to generate new instances of `S` which meet the constraint.
 //!
 //! ```
-//! use contrafact::{Fact, eq, lens};
+//! use contrafact::{Fact, facts::{eq, lens}};
 //! use arbitrary::{Arbitrary, Unstructured};
 //!
 //! #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -22,8 +22,8 @@
 //!
 //! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
 //!
-//! assert!(fact.check(&S {x: 1, y: 333}).is_ok());
-//! assert!(fact.check(&S {x: 2, y: 333}).is_err());
+//! assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
+//! assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
 //!
 //! // NB: don't actually construct a Generator this way! See the docs for [[`Generator`]].
 //! let mut g = contrafact::utils::random_generator();
@@ -62,8 +62,10 @@ mod check;
 mod error;
 mod fact;
 mod generator;
-mod impls;
-mod satisfy;
+
+/// Some built-in implementations of some useful facts
+pub mod facts;
+pub use facts::*;
 
 #[cfg(feature = "utils")]
 pub mod utils;
@@ -72,21 +74,40 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{Bounds, BoxFact, Fact, Facts, FactsRef};
+pub use fact::{Bounds, Fact};
 pub use generator::*;
-pub use satisfy::*;
 
-pub use impls::primitives::{
-    always, consecutive_int, consecutive_int_, different, eq, eq_, in_range, in_range_, in_slice,
-    in_slice_, ne, ne_, never, not, not_, or, same,
-};
+pub use either;
 
-pub use impls::brute::{brute, brute_fallible, BruteFact};
-pub use impls::lens::{lens, LensFact};
-pub use impls::mapped::{mapped, mapped_fallible, MappedFact};
-pub use impls::prism::{prism, PrismFact};
+/// The `brute` fact should only make this many attempts
+pub(crate) const BRUTE_ITERATION_LIMIT: usize = 1000;
 
-#[cfg(feature = "optics")]
-pub use impls::optical::{optical, OpticalFact};
+/// When running `Fact::satisfy`, repeat mutate+check this many times, in case
+/// repetition helps ease into the constraint.
+pub(crate) const SATISFY_ATTEMPTS: usize = 100;
 
-pub(crate) const BRUTE_ITERATION_LIMIT: usize = 100;
+/// Convenience macro for creating a collection of [`Fact`](crate::Fact)s
+/// of different types.
+/// The Facts will be composed into a nested series of [`AndFact`] which causes
+/// all facts to be applied in sequence. The collection of Facts is also a Fact.
+///
+/// ```
+/// use contrafact::*;
+///
+/// let eq1 = eq_(1);
+/// let not2 = not_(eq_(2));
+/// let mut fact = facts![eq1, not2];
+/// assert!(fact.check(&1).is_ok());
+/// ```
+#[macro_export]
+macro_rules! facts {
+
+    ( $fact:expr $(,)?) => { $fact };
+
+    ( $fact_0:expr, $fact_1:expr $( , $fact_n:expr )* $(,)? ) => {{
+        facts![
+            $crate::facts::and($fact_0, $fact_1),
+            $( $fact_n , )*
+        ]
+    }};
+}

@@ -44,9 +44,9 @@ use crate::*;
 ///
 /// let mut fact = prism("E::x", E::x, eq("must be 1", 1));
 ///
-/// assert!(fact.check(&E::X(1)).is_ok());
-/// assert!(fact.check(&E::X(2)).is_err());
-/// assert!(fact.check(&E::Y(99)).is_ok());
+/// assert!(fact.clone().check(&E::X(1)).is_ok());
+/// assert!(fact.clone().check(&E::X(2)).is_err());
+/// assert!(fact.clone().check(&E::Y(99)).is_ok());
 ///
 /// let mut g = utils::random_generator();
 /// let e = fact.build(&mut g);
@@ -65,7 +65,7 @@ where
     S: ToString,
     T: Bounds<'a> + Clone,
     F: Fact<'a, T>,
-    P: 'a + Fn(&mut O) -> Option<&mut T>,
+    P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
 {
     // let getter = |o| prism(&mut o).cloned();
     // let setter = |o, t| {
@@ -89,9 +89,9 @@ where
     F: Fact<'a, T>,
 {
     label: String,
-    // getter: Arc<dyn 'a + Fn(O) -> Option<T>>,
-    // setter: Arc<dyn 'a + Fn(O, T) -> Option<O>>,
-    prism: Arc<dyn 'a + Fn(&mut O) -> Option<&mut T>>,
+    // getter: Arc<dyn 'a + Send + Sync + Fn(O) -> Option<T>>,
+    // setter: Arc<dyn 'a + Send + Sync + Fn(O, T) -> Option<O>>,
+    prism: Arc<dyn 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>>,
     inner_fact: F,
     __phantom: PhantomData<&'a F>,
 }
@@ -108,7 +108,7 @@ where
         T: Bounds<'a>,
         O: Bounds<'a>,
         F: Fact<'a, T>,
-        P: 'a + Fn(&mut O) -> Option<&mut T>,
+        P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
         // G: Fn(O) -> Option<T>,
         // S: Fn(O, T) -> Option<O>,
     {
@@ -129,35 +129,21 @@ where
     O: Bounds<'a>,
     F: Fact<'a, T>,
 {
-    fn mutate(&self, mut obj: O, g: &mut Generator<'a>) -> Mutation<O> {
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: O) -> Mutation<O> {
         if let Some(t) = (self.prism)(&mut obj) {
             *t = self
                 .inner_fact
-                .mutate(t.clone(), g)
+                .mutate(g, t.clone())
                 .map_check_err(|err| format!("prism({}) > {}", self.label, err))?;
         }
         Ok(obj)
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn advance(&mut self, obj: &O) {
-        unsafe {
-            // We can convert the immutable ref to a mutable one because `advance`
-            // never mutates the value, but we need `prism` to return a mutable
-            // reference so it can be reused in `mutate`
-            let o = obj as *const O;
-            let o = o as *mut O;
-            if let Some(t) = (self.prism)(&mut *o) {
-                self.inner_fact.advance(t)
-            }
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, utils};
+    use crate::utils;
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -187,16 +173,16 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            vec![
-                prism("E::x", E::x, crate::eq("must be 1", 1)),
-                prism("E::y", E::y, crate::eq("must be 2", 2)),
-            ]
+            facts::vec(facts![
+                prism("E::x", E::x, facts::eq("must be 1", 1)),
+                prism("E::y", E::y, facts::eq("must be 2", 2)),
+            ])
         };
 
-        let seq = build_seq(&mut g, 6, f());
-        check_seq(seq.as_slice(), f()).unwrap();
+        let items = f().build(&mut g);
+        f().check(&items).unwrap();
 
-        assert!(seq.iter().all(|e| match e {
+        assert!(items.iter().all(|e| match e {
             E::X(x) => *x == 1,
             E::Y(y) => *y == 2,
         }))
@@ -209,29 +195,33 @@ mod tests {
         let mut g = utils::random_generator();
 
         let f = || {
-            vec![
+            facts::vec(facts![
                 prism(
                     "E::x",
                     E::x,
-                    crate::consecutive_int("must be increasing", 0),
+                    facts::consecutive_int("must be increasing", 0),
                 ),
                 prism(
                     "E::y",
                     E::y,
-                    crate::consecutive_int("must be increasing", 0),
+                    facts::consecutive_int("must be increasing", 0),
                 ),
-            ]
+            ])
         };
 
-        let seq = build_seq(&mut g, 10, f());
-        check_seq(seq.as_slice(), f()).unwrap();
+        let items = f().build(&mut g);
+        f().check(&items).unwrap();
 
         // Assert that each variant of E is independently increasing
-        let (xs, ys): (Vec<_>, Vec<_>) = seq.into_iter().partition_map(|e| match e {
+        let (xs, ys): (Vec<_>, Vec<_>) = items.into_iter().partition_map(|e| match e {
             E::X(x) => Either::Left(x),
             E::Y(y) => Either::Right(y),
         });
-        check_seq(xs.as_slice(), crate::facts![crate::consecutive_int_(0u32)]).unwrap();
-        check_seq(ys.as_slice(), crate::facts![crate::consecutive_int_(0u32)]).unwrap();
+        facts::vec(crate::facts![facts::consecutive_int_(0u32)])
+            .check(&xs)
+            .unwrap();
+        facts::vec(crate::facts![facts::consecutive_int_(0u32)])
+            .check(&ys)
+            .unwrap();
     }
 }

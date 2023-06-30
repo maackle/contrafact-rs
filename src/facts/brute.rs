@@ -9,7 +9,7 @@ pub fn brute_fallible<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> Mutation<bool>,
+    F: 'a + Send + Sync + Fn(&T) -> Mutation<bool>,
 {
     BruteFact::<T>::new(reason.to_string(), f)
 }
@@ -38,7 +38,7 @@ where
 /// use arbitrary::Unstructured;
 /// use contrafact::*;
 ///
-/// fn div_by(n: usize) -> Facts<usize> {
+/// fn div_by(n: usize) -> impl Fact<'static, usize> {
 ///     facts![brute(format!("Is divisible by {}", n), move |x| x % n == 0)]
 /// }
 ///
@@ -49,12 +49,12 @@ pub fn brute<'a, T, F, S>(reason: S, f: F) -> BruteFact<'a, T>
 where
     S: ToString,
     T: Bounds<'a>,
-    F: 'a + Fn(&T) -> bool,
+    F: 'a + Send + Sync + Fn(&T) -> bool,
 {
     BruteFact::<T>::new(reason.to_string(), move |x| Ok(f(x)))
 }
 
-type BruteFn<'a, T> = Arc<dyn 'a + (Fn(&T) -> Mutation<bool>)>;
+type BruteFn<'a, T> = Arc<dyn 'a + Send + Sync + Fn(&T) -> Mutation<bool>>;
 
 /// A brute-force fact. Use [`brute()`] to construct.
 #[derive(Clone)]
@@ -67,12 +67,14 @@ impl<'a, T> Fact<'a, T> for BruteFact<'a, T>
 where
     T: Bounds<'a>,
 {
-    fn mutate(&self, mut t: T, g: &mut Generator<'a>) -> Mutation<T> {
+    #[tracing::instrument(fields(fact = "brute"), skip(self, g))]
+    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: T) -> Mutation<T> {
+        tracing::trace!("brute");
         for _ in 0..=BRUTE_ITERATION_LIMIT {
-            if (self.f)(&t)? {
-                return Ok(t);
+            if (self.f)(&obj)? {
+                return Ok(obj);
             }
-            t = g.arbitrary(&self.label)?;
+            obj = g.arbitrary(&self.label)?;
         }
 
         panic!(
@@ -80,12 +82,13 @@ where
             BRUTE_ITERATION_LIMIT, self.label
         );
     }
-
-    fn advance(&mut self, _: &T) {}
 }
 
 impl<'a, T> BruteFact<'a, T> {
-    pub(crate) fn new<F: 'a + Fn(&T) -> Mutation<bool>>(reason: String, f: F) -> Self {
+    pub(crate) fn new<F: 'a + Send + Sync + Fn(&T) -> Mutation<bool>>(
+        reason: String,
+        f: F,
+    ) -> Self {
         Self {
             label: reason,
             f: Arc::new(f),

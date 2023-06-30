@@ -1,6 +1,7 @@
 use arbitrary::Arbitrary;
-use contrafact::*;
+use contrafact::{facts::*, *};
 
+use either::Either;
 #[cfg(feature = "optics")]
 use lens_rs::{optics, Lens, Prism};
 
@@ -128,20 +129,20 @@ impl AlphaSigner {
 }
 
 #[allow(unused)]
-fn alpha_fact() -> Facts<Alpha> {
+fn alpha_fact() -> impl Fact<'static, Alpha> {
     facts![lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
 }
 
-fn beta_fact() -> Facts<Beta> {
+fn beta_fact() -> impl Fact<'static, Beta> {
     facts![lens("Beta::id", |a: &mut Beta| &mut a.id, id_fact(None))]
 }
 
 /// Just a pair of an Alpha with optional Beta.
-/// An intermediate type not used "in production" but useful for writing Facts against
+/// An intermediate type not used "in production" but useful for writing Fact 'static, against
 #[derive(Clone, Debug, PartialEq, Arbitrary)]
 struct Pi(Alpha, Option<Beta>);
 
-fn pi_beta_match() -> Facts<Pi> {
+fn pi_beta_match() -> impl Fact<'static, Pi> {
     facts![brute(
         "Pi alpha has matching beta iff beta is Some",
         |p: &Pi| match p {
@@ -152,19 +153,19 @@ fn pi_beta_match() -> Facts<Pi> {
     )]
 }
 
-fn id_fact(id: Option<Id>) -> Facts<Id> {
+fn id_fact(id: Option<Id>) -> impl Fact<'static, Id> {
     let le = brute("< u32::MAX", |id: &Id| *id < Id::MAX / 2);
 
     if let Some(id) = id {
-        facts![le, eq("id", id)]
+        Either::Left(facts![le, eq("id", id)])
     } else {
-        facts![le]
+        Either::Right(facts![le])
     }
 }
 
 /// - id must be set as specified
 /// - All Ids should match each other. If there is a Beta, its id should match too.
-fn pi_fact(id: Id) -> Facts<Pi> {
+fn pi_fact(id: Id) -> impl Fact<'static, Pi> {
     let alpha_fact = facts![
         lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
         // lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
@@ -182,7 +183,7 @@ fn pi_fact(id: Id) -> Facts<Pi> {
 /// - If Omega::AlphaBeta, then Alpha::Beta,
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
-fn omega_fact(id: Id) -> Facts<Omega> {
+fn omega_fact(id: Id) -> impl Fact<'static, Omega> {
     let omega_pi = LensFact::new(
         "Omega -> Pi",
         |o| match o {
@@ -206,7 +207,7 @@ fn omega_fact(id: Id) -> Facts<Omega> {
 }
 
 #[allow(unused)]
-fn sigma_fact() -> Facts<Sigma> {
+fn sigma_fact() -> impl Fact<'static, Sigma> {
     let id2_fact = LensFact::new(
         "Sigma::id is correct",
         |mut s: Sigma| (s.id2, *(s.alpha.id()) * 2),
@@ -233,7 +234,7 @@ fn sigma_fact() -> Facts<Sigma> {
 
 /// The inner Sigma is correct wrt to signature
 /// XXX: this is a little wonky, probably room for improvement.
-fn rho_fact(id: Id, signer: AlphaSigner) -> Facts<Rho> {
+fn rho_fact(id: Id, signer: AlphaSigner) -> impl Fact<'static, Rho> {
     let rho_pi = LensFact::new(
         "Rho -> Pi",
         |rho: Rho| Pi(rho.sigma.alpha, rho.beta),
@@ -267,14 +268,14 @@ fn test_rho_fact() {
     observability::test_run().ok();
     let mut g = utils::random_generator();
 
-    let mut fact = rho_fact(5, AlphaSigner);
-    let mut rho = fact.build(&mut g);
-    assert!(fact.check(&rho).is_ok());
+    let fact = rho_fact(5, AlphaSigner);
+    let mut rho = fact.clone().build(&mut g);
+    assert!(fact.clone().check(&rho).is_ok());
     assert_eq!(rho.sigma.id2, 10);
     assert_eq!(rho.sigma.sig, "5".to_string());
 
     rho.sigma.id2 = 9;
-    assert!(fact.check(&rho).is_err());
+    assert!(fact.clone().check(&rho).is_err());
 
     dbg!(rho);
 }
@@ -284,7 +285,7 @@ fn test_omega_fact() {
     observability::test_run().ok();
     let mut g = utils::random_generator();
 
-    let fact = omega_fact(11);
+    let mut fact = omega_fact(11);
 
     let beta = beta_fact().build(&mut g);
 
@@ -305,11 +306,11 @@ fn test_omega_fact() {
         beta: beta.clone(),
     };
 
-    valid1 = fact.mutate(valid1, &mut g).unwrap();
-    fact.check(dbg!(&valid1)).unwrap();
+    valid1 = fact.mutate(&mut g, valid1).unwrap();
+    fact.clone().check(dbg!(&valid1)).unwrap();
 
-    valid2 = fact.mutate(valid2, &mut g).unwrap();
-    fact.check(dbg!(&valid2)).unwrap();
+    valid2 = fact.mutate(&mut g, valid2).unwrap();
+    fact.clone().check(dbg!(&valid2)).unwrap();
 
     let mut invalid1 = Omega::Alpha {
         id: 8,
@@ -330,12 +331,30 @@ fn test_omega_fact() {
     };
 
     // Ensure that check fails for invalid data
-    assert!(dbg!(fact.check(dbg!(&invalid1)).result().unwrap().unwrap_err()).len() > 1);
-    invalid1 = fact.mutate(invalid1, &mut g).unwrap();
-    fact.check(dbg!(&invalid1)).unwrap();
+    assert!(
+        dbg!(fact
+            .clone()
+            .check(dbg!(&invalid1))
+            .result()
+            .unwrap()
+            .unwrap_err())
+        .len()
+            > 0
+    );
+    invalid1 = fact.mutate(&mut g, invalid1).unwrap();
+    fact.clone().check(dbg!(&invalid1)).unwrap();
 
     // Ensure that check fails for invalid data
-    assert!(dbg!(fact.check(dbg!(&invalid2)).result().unwrap().unwrap_err()).len() > 1);
-    invalid2 = fact.mutate(invalid2, &mut g).unwrap();
-    fact.check(dbg!(&invalid2)).unwrap();
+    assert!(
+        dbg!(fact
+            .clone()
+            .check(dbg!(&invalid2))
+            .result()
+            .unwrap()
+            .unwrap_err())
+        .len()
+            > 0
+    );
+    invalid2 = fact.mutate(&mut g, invalid2).unwrap();
+    fact.clone().check(dbg!(&invalid2)).unwrap();
 }

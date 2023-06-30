@@ -26,8 +26,8 @@ use crate::*;
 ///
 /// let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
 ///
-/// assert!(fact.check(&S {x: 1, y: 333}).is_ok());
-/// assert!(fact.check(&S {x: 2, y: 333}).is_err());
+/// assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
+/// assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
 ///
 /// let mut g = utils::random_generator();
 /// let a = fact.build(&mut g);
@@ -41,7 +41,7 @@ where
     T: Bounds<'a> + Clone,
     S: ToString,
     F: Fact<'a, T>,
-    L: 'a + Clone + Fn(&mut O) -> &mut T,
+    L: 'a + Clone + Send + Sync + Fn(&mut O) -> &mut T,
 {
     let lens2 = lens.clone();
     let getter = move |mut o| lens(&mut o).clone();
@@ -63,8 +63,8 @@ where
 {
     label: String,
 
-    getter: Arc<dyn 'a + Fn(O) -> T>,
-    setter: Arc<dyn 'a + Fn(O, T) -> O>,
+    getter: Arc<dyn 'a + Send + Sync + Fn(O) -> T>,
+    setter: Arc<dyn 'a + Send + Sync + Fn(O, T) -> O>,
 
     /// The inner_fact about the inner substructure
     inner_fact: F,
@@ -85,8 +85,8 @@ where
         O: Bounds<'a>,
         F: Fact<'a, T>,
         L: ToString,
-        G: 'a + Fn(O) -> T,
-        S: 'a + Fn(O, T) -> O,
+        G: 'a + Send + Sync + Fn(O) -> T,
+        S: 'a + Send + Sync + Fn(O, T) -> O,
     {
         Self {
             label: label.to_string(),
@@ -104,26 +104,21 @@ where
     O: Bounds<'a> + Clone,
     F: Fact<'a, T>,
 {
-    #[tracing::instrument(skip(self, g))]
-    fn mutate(&self, obj: O, g: &mut Generator<'a>) -> Mutation<O> {
+    #[tracing::instrument(fields(fact = "lens"), skip(self, g))]
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: O) -> Mutation<O> {
         let t = (self.getter)(obj.clone());
         let t = self
             .inner_fact
-            .mutate(t, g)
+            .mutate(g, t)
             .map_check_err(|err| format!("lens({}) > {}", self.label, err))?;
         Ok((self.setter)(obj, t))
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn advance(&mut self, obj: &O) {
-        self.inner_fact.advance(&(self.getter)(obj.clone()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{build_seq, check_seq, eq, utils};
+    use crate::facts::*;
     use arbitrary::*;
 
     #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -137,9 +132,9 @@ mod tests {
         observability::test_run().ok();
         let mut g = utils::random_generator();
 
-        let f = || lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
-        let ones = build_seq(&mut g, 3, f());
-        check_seq(ones.as_slice(), f()).unwrap();
+        let f = || vec(lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1)));
+        let ones = f().build(&mut g);
+        f().check(&ones).unwrap();
 
         assert!(ones.iter().all(|s| s.x == 1));
     }

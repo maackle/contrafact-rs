@@ -1,5 +1,5 @@
 use arbitrary::*;
-use contrafact::{utils::random_generator, *};
+use contrafact::{facts::*, utils::random_generator, *};
 
 #[derive(Arbitrary, Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 enum Color {
@@ -23,7 +23,7 @@ struct Wrapper {
 
 /// Fact: all Links in a chain are by the same `author`, and any chain link has
 /// consecutive `prev` values starting with 0.
-fn chain_fact<'a>(author: String) -> FactsRef<'a, Link> {
+fn chain_fact<'a>(author: String) -> impl Fact<'a, Link> {
     facts![
         lens(
             "Link::author",
@@ -40,7 +40,7 @@ fn chain_fact<'a>(author: String) -> FactsRef<'a, Link> {
 
 /// Fact: the Links within each wrapper form a valid chain, and the color
 /// of the wrapper is in the given set.
-fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> FactsRef<'a, Wrapper> {
+fn wrapper_fact<'a>(author: String, valid_colors: &'a [Color]) -> impl Fact<'a, Wrapper> {
     facts![
         lens(
             "Wrapper::color",
@@ -62,11 +62,11 @@ fn test_link() {
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = move || chain_fact(author.clone());
+    let fact = move || vec_of_length(NUM as usize, chain_fact(author.clone()));
 
-    let mut chain = build_seq(&mut g, NUM as usize, fact());
+    let chain = fact().build(&mut g);
     dbg!(&chain);
-    check_seq(chain.as_mut_slice(), fact()).unwrap();
+    fact().check(&chain).unwrap();
 
     assert!(chain.iter().all(|c| c.author == "alice"));
     assert_eq!(chain.iter().last().unwrap().prev, NUM - 1);
@@ -79,11 +79,16 @@ fn test_wrapper() {
 
     const NUM: u32 = 10;
     let author = "alice".to_string();
-    let fact = move || wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]);
+    let fact = move || {
+        vec_of_length(
+            NUM as usize,
+            wrapper_fact(author.clone(), &[Color::Cyan, Color::Magenta]),
+        )
+    };
 
-    let mut chain = build_seq(&mut g, NUM as usize, fact());
+    let chain = fact().build(&mut g);
     dbg!(&chain);
-    check_seq(chain.as_mut_slice(), fact()).unwrap();
+    fact().check(&chain).unwrap();
 
     assert!(chain.iter().all(|c| c.link.author == "alice"));
     assert!(chain.iter().all(|c| c.color != Color::Black));

@@ -65,7 +65,7 @@ where
 {
     // TODO: remove
     #[tracing::instrument(skip(self))]
-    fn check(&self, obj: &Src) -> Check {
+    fn check(&mut self, obj: &Src) -> Check {
         let imgs = obj.traverse_ref(self.optics.clone());
         imgs.iter()
             .enumerate()
@@ -84,14 +84,7 @@ where
             .into()
     }
 
-    #[tracing::instrument(skip(self, g))]
-    #[cfg(feature = "mutate-inplace")]
-    fn mutate(&self, obj: &mut Src, g: &mut Generator<'a>) {
-        let t = obj.view_mut(self.optics.clone());
-        self.inner_fact.mutate(t, g);
-    }
-
-    fn mutate(&self, mut obj: Src, g: &mut Generator<'a>) -> Src {
+    fn mutate(&mut self, mut obj: Src, g: &mut Generator<'a>) -> Src {
         for img in obj.traverse_mut(self.optics.clone()) {
             *img = self.inner_fact.mutate(img.clone(), g);
         }
