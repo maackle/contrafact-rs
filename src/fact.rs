@@ -84,6 +84,20 @@ where
     }
 }
 
+impl<'a, S, T> Factual<'a, T> for Fact<'a, S, T>
+where
+    S: Clone + Send + Sync + Debug,
+    T: Target<'a>,
+{
+    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
+        (self.fun)(g, &mut self.state, obj)
+    }
+
+    fn label(self, label: impl ToString) -> Self {
+        self.label(label)
+    }
+}
+
 impl<'a, S, T> Fact<'a, S, T>
 where
     S: Clone + Send + Sync + Debug,

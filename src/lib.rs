@@ -11,7 +11,7 @@
 //! meets the constraint, or to generate new instances of `S` which meet the constraint.
 //!
 //! ```
-//! use contrafact::{Factual, facts::{eq, lens}};
+//! use contrafact::{Factual, facts::{eq, lens1}};
 //! use arbitrary::{Arbitrary, Unstructured};
 //!
 //! #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -74,8 +74,8 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{stateful, stateless, Fact, Fact2, State, StatelessFact, Target};
-pub use factual::Factual;
+pub use fact::{stateful, stateless, Fact, Fact2, StatelessFact};
+pub use factual::{Factual, State, Target};
 pub use generator::*;
 
 pub use either;

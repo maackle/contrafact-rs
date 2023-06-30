@@ -59,16 +59,15 @@ use crate::*;
 /// The `prism` closure is a rather lazy way to provide a prism in the
 /// traditional optics sense. We may consider using a true lens library for
 /// this in the future.
-pub fn prism<'a, O, T, P, S>(
+pub fn prism<'a, O, T, P>(
     label: impl ToString,
     prism: P,
-    inner_fact: Fact<'a, S, T>,
-) -> Fact<'a, Fact<'a, S, T>, O>
+    inner_fact: impl Factual<'a, T>,
+) -> impl Factual<'a, O>
 where
     O: Target<'a>,
     T: Target<'a>,
     P: 'a + Send + Sync + Fn(&mut O) -> Option<&mut T>,
-    S: State,
 {
     let label = label.to_string();
     stateful("prism", inner_fact, move |g, fact, mut obj| {

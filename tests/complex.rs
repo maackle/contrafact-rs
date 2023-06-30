@@ -116,6 +116,7 @@ struct Rho {
 
 /// Some struct needed to set the values of a Sigma whenever its Alpha changes.
 /// Analogous to Holochain's Keystore (MetaLairClient).
+#[derive(Clone)]
 struct AlphaSigner;
 
 impl AlphaSigner {
@@ -184,7 +185,7 @@ fn pi_fact(id: Id) -> impl Factual<'static, Pi> {
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
 fn omega_fact(id: Id) -> impl Factual<'static, Omega> {
-    let omega_pi = LensFact::new(
+    let omega_pi = lens2(
         "Omega -> Pi",
         |o| match o {
             Omega::AlphaBeta { alpha, beta, .. } => Pi(alpha, Some(beta)),
@@ -208,7 +209,7 @@ fn omega_fact(id: Id) -> impl Factual<'static, Omega> {
 
 #[allow(unused)]
 fn sigma_fact() -> impl Factual<'static, Sigma> {
-    let id2_fact = LensFact::new(
+    let id2_fact = lens2(
         "Sigma::id is correct",
         |mut s: Sigma| (s.id2, *(s.alpha.id()) * 2),
         |mut s, (_, id2)| {
@@ -217,7 +218,7 @@ fn sigma_fact() -> impl Factual<'static, Sigma> {
         },
         same(),
     );
-    let sig_fact = LensFact::new(
+    let sig_fact = lens2(
         "Sigma::sig is correct",
         |mut s: Sigma| (s.sig, s.alpha.id().to_string()),
         |mut s, (_, sig)| {
@@ -235,7 +236,7 @@ fn sigma_fact() -> impl Factual<'static, Sigma> {
 /// The inner Sigma is correct wrt to signature
 /// XXX: this is a little wonky, probably room for improvement.
 fn rho_fact(id: Id, signer: AlphaSigner) -> impl Factual<'static, Rho> {
-    let rho_pi = LensFact::new(
+    let rho_pi = lens2(
         "Rho -> Pi",
         |rho: Rho| Pi(rho.sigma.alpha, rho.beta),
         move |mut rho, Pi(a, b)| {

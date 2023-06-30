@@ -4,9 +4,12 @@ use either::Either;
 use crate::*;
 
 /// The trait bounds for the target of a Fact
-pub trait Target<'a>: std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a> {}
+pub trait Target<'a>:
+    'a + std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a>
+{
+}
 impl<'a, T> Target<'a> for T where
-    T: std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a>
+    T: 'a + std::fmt::Debug + Clone + Send + Sync + PartialEq + Arbitrary<'a>
 {
 }
 
@@ -21,6 +24,8 @@ pub trait Factual<'a, T>: Send + Sync + Clone + std::fmt::Debug
 where
     T: Target<'a>,
 {
+    fn label(self, label: impl ToString) -> Self;
+
     /// Assert that the constraint is satisfied for given data.
     ///
     /// If the mutation function is written properly, we get a check for free
@@ -97,6 +102,13 @@ where
         match self {
             Either::Left(f) => f.mutate(g, obj),
             Either::Right(f) => f.mutate(g, obj),
+        }
+    }
+
+    fn label(self, label: impl ToString) -> Self {
+        match self {
+            Either::Left(f) => Either::Left(f.label(label)),
+            Either::Right(f) => Either::Right(f.label(label)),
         }
     }
 }

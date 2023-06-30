@@ -37,10 +37,9 @@ use super::and;
 /// let list = fact.clone().satisfy(&mut g, vec![0; 5]).unwrap();
 /// assert_eq!(list, vec![0, 1, 2, 3, 4]);
 /// ```
-pub fn vec<'a, S, T>(inner_fact: Fact<'a, S, T>) -> Fact<'a, Fact<'a, S, T>, Vec<T>>
+pub fn vec<'a, T>(inner_fact: impl Factual<'a, T>) -> impl Factual<'a, Vec<T>>
 where
     T: Target<'a> + Clone,
-    S: State,
 {
     stateful("vec", inner_fact, |g, f, obj: Vec<T>| {
         obj.into_iter()
@@ -81,12 +80,8 @@ where
 }
 
 /// Combines a LenFact with a VecFact to ensure that the vector is of a given length
-pub fn vec_of_length<'a, S, T>(
-    len: usize,
-    inner_fact: Fact<'a, S, T>,
-) -> Fact<'a, Fact2<'a, (), Fact<'a, S, T>, Vec<T>>, Vec<T>>
+pub fn vec_of_length<'a, T>(len: usize, inner_fact: impl Factual<'a, T>) -> impl Factual<'a, Vec<T>>
 where
-    S: State,
     T: Target<'a> + 'a,
 {
     and(vec_len(len), vec(inner_fact))

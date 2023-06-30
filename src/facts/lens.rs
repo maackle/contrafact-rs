@@ -35,7 +35,7 @@ use crate::*;
 /// ```
 //
 // TODO: can rewrite this in terms of PrismFact for DRYness
-pub fn lens1<'a, O, T, L, S>(
+pub fn lens1<'a, O, T, L>(
     label: impl ToString,
     accessor: L,
     inner_fact: impl Factual<'a, T>,
@@ -43,7 +43,6 @@ pub fn lens1<'a, O, T, L, S>(
 where
     O: Target<'a>,
     T: Target<'a>,
-    S: State,
     L: 'a + Clone + Send + Sync + Fn(&mut O) -> &mut T,
 {
     let accessor2 = accessor.clone();
@@ -56,16 +55,15 @@ where
     lens2(label, getter, setter, inner_fact).label("lens1")
 }
 
-pub fn lens2<'a, O, T, S>(
+pub fn lens2<'a, O, T>(
     label: impl ToString,
     getter: impl 'a + Clone + Send + Sync + Fn(O) -> T,
     setter: impl 'a + Clone + Send + Sync + Fn(O, T) -> O,
-    inner_fact: Fact<'a, S, T>,
-) -> Fact<'a, Fact<'a, S, T>, O>
+    inner_fact: impl Factual<'a, T>,
+) -> impl Factual<'a, O>
 where
     O: Target<'a>,
     T: Target<'a>,
-    S: State,
 {
     let label = label.to_string();
     stateful("lens", inner_fact, move |g, fact, obj: O| {
