@@ -1,56 +1,50 @@
-use super::*;
+use super::{brute::brute_labeled, *};
 
 /// Specifies an equality constraint between two items in a tuple
-pub fn same<T>() -> SameFact<T>
+pub fn same<'a, T>() -> LambdaUnit<'a, (T, T)>
 where
-    T: std::fmt::Debug + PartialEq,
+    T: Target<'a> + PartialEq,
 {
-    SameFact {
-        op: EqOp::Equal,
-        _phantom: PhantomData,
-    }
+    lambda_unit("same", |g, mut t: (T, T)| {
+        let o = t.clone();
+        let reason = move || format!("must be same: expected {:?} == {:?}", o.0.clone(), o.1);
+        g.set(&mut t.0, &t.1, reason)?;
+        Ok(t)
+    })
 }
 
 /// Specifies an inequality constraint between two items in a tuple
-pub fn different<T>() -> SameFact<T>
+pub fn different<'a, T>() -> LambdaUnit<'a, (T, T)>
 where
-    T: std::fmt::Debug + PartialEq,
+    T: Target<'a> + PartialEq,
 {
-    SameFact {
-        op: EqOp::NotEqual,
-        _phantom: PhantomData,
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SameFact<T> {
-    op: EqOp,
-    _phantom: PhantomData<T>,
-}
-
-impl<'a, T> Fact<'a, (T, T)> for SameFact<T>
-where
-    T: Bounds<'a> + PartialEq + Clone,
-{
-    #[tracing::instrument(fields(fact = "same"), skip(self, g))]
-    fn mutate(&mut self, g: &mut Generator<'a>, mut obj: (T, T)) -> Mutation<(T, T)> {
-        match self.op {
-            EqOp::Equal => {
-                if obj.0 != obj.1 {
-                    g.fail(format!("must be same: expected {:?} == {:?}", obj.0, obj.1))?;
-                    obj.0 = obj.1.clone();
-                }
-            }
-            EqOp::NotEqual => loop {
-                if obj.0 != obj.1 {
-                    break;
-                }
-                obj.0 = g.arbitrary(format!(
-                    "must be different: expected {:?} != {:?}",
-                    obj.0, obj.1
-                ))?;
-            },
+    brute_labeled(|(a, b)| {
+        if a == b {
+            Ok(Err(format!(
+                "must be different: expected {:?} != {:?}",
+                a, b
+            )))
+        } else {
+            Ok(Ok(()))
         }
-        Ok(obj)
+    })
+}
+
+#[test]
+fn test_same() {
+    observability::test_run().ok();
+    let mut g = utils::random_generator();
+
+    {
+        let f = vec(same::<u8>());
+        let nums = f.clone().build(&mut g);
+        f.clone().check(&nums).unwrap();
+        assert!(nums.iter().all(|(a, b)| a == b));
+    }
+    {
+        let f = vec(different::<u8>());
+        let nums = f.clone().build(&mut g);
+        f.clone().check(&nums).unwrap();
+        assert!(nums.iter().all(|(a, b)| a != b));
     }
 }

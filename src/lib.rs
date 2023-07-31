@@ -11,7 +11,7 @@
 //! meets the constraint, or to generate new instances of `S` which meet the constraint.
 //!
 //! ```
-//! use contrafact::{Fact, facts::{eq, lens}};
+//! use contrafact::{Fact, facts::{eq, lens1}};
 //! use arbitrary::{Arbitrary, Unstructured};
 //!
 //! #[derive(Debug, Clone, PartialEq, Arbitrary)]
@@ -20,7 +20,7 @@
 //!     y: u32,
 //! }
 //!
-//! let mut fact = lens("S::x", |s: &mut S| &mut s.x, eq("must be 1", 1));
+//! let mut fact = lens1("S::x", |s: &mut S| &mut s.x, eq(1));
 //!
 //! assert!(fact.clone().check(&S {x: 1, y: 333}).is_ok());
 //! assert!(fact.clone().check(&S {x: 2, y: 333}).is_err());
@@ -61,10 +61,10 @@
 mod check;
 mod error;
 mod fact;
-mod generator;
-
 /// Some built-in implementations of some useful facts
 pub mod facts;
+mod generator;
+mod lambda;
 pub use facts::*;
 
 #[cfg(feature = "utils")]
@@ -74,8 +74,11 @@ pub use arbitrary;
 
 pub use check::Check;
 pub use error::*;
-pub use fact::{Bounds, Fact};
+pub use fact::{Fact, State, Target};
 pub use generator::*;
+pub use lambda::{lambda, lambda_unit};
+
+pub(crate) use lambda::{Lambda, LambdaUnit};
 
 pub use either;
 
@@ -94,8 +97,8 @@ pub(crate) const SATISFY_ATTEMPTS: usize = 100;
 /// ```
 /// use contrafact::*;
 ///
-/// let eq1 = eq_(1);
-/// let not2 = not_(eq_(2));
+/// let eq1 = eq(1);
+/// let not2 = not(eq(2));
 /// let mut fact = facts![eq1, not2];
 /// assert!(fact.check(&1).is_ok());
 /// ```
@@ -105,7 +108,7 @@ macro_rules! facts {
     ( $fact:expr $(,)?) => { $fact };
 
     ( $fact_0:expr, $fact_1:expr $( , $fact_n:expr )* $(,)? ) => {{
-        facts![
+        $crate::facts![
             $crate::facts::and($fact_0, $fact_1),
             $( $fact_n , )*
         ]

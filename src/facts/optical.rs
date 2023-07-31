@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use arbitrary::Unstructured;
 use lens_rs::*;
 
-use crate::{fact::Bounds, Fact, *};
+use crate::{fact::Target, Fact, *};
 
 pub fn optical<'a, Src, Img, Optics, F, L>(
     label: L,
@@ -11,8 +11,8 @@ pub fn optical<'a, Src, Img, Optics, F, L>(
     inner_fact: F,
 ) -> OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
     L: ToString,
@@ -20,12 +20,12 @@ where
     OpticalFact::new(label.to_string(), optics, inner_fact)
 }
 
-/// A fact which uses a lens to apply another fact. Use [`lens()`] to construct.
+/// A fact which uses a lens to apply another fact. Use [`lens1()`] to construct.
 #[derive(Clone)]
 pub struct OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
@@ -41,8 +41,8 @@ where
 
 impl<'a, Src, Img, Optics, F> OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
@@ -58,15 +58,15 @@ where
 
 impl<'a, Src, Img, Optics, F> Fact<'a, Src> for OpticalFact<'a, Src, Img, Optics, F>
 where
-    Src: Bounds<'a> + Lens<Optics, Img>,
-    Img: Bounds<'a> + Clone,
+    Src: Target<'a> + Lens<Optics, Img>,
+    Img: Target<'a>,
     Optics: Clone + std::fmt::Debug,
     F: Fact<'a, Img>,
 {
     // TODO: remove
     #[tracing::instrument(skip(self))]
-    fn check(&mut self, obj: &Src) -> Check {
-        let imgs = obj.traverse_ref(self.optics.clone());
+    fn check(&mut self, t: &Src) -> Check {
+        let imgs = t.traverse_ref(self.optics.clone());
         imgs.iter()
             .enumerate()
             .flat_map(|(i, img)| {
@@ -78,40 +78,40 @@ where
 
                 self.inner_fact
                     .check(img)
-                    .map(|err| format!("lens({}){{{:?}}} > {}", label, self.optics.clone(), err))
+                    .map(|err| format!("lens1({}){{{:?}}} > {}", label, self.optics.clone(), err))
             })
             .collect::<Vec<_>>()
             .into()
     }
 
-    fn mutate(&mut self, mut obj: Src, g: &mut Generator<'a>) -> Src {
-        for img in obj.traverse_mut(self.optics.clone()) {
+    fn mutate(&mut self, mut t: Src, g: &mut Generator<'a>) -> Src {
+        for img in t.traverse_mut(self.optics.clone()) {
             *img = self.inner_fact.mutate(img.clone(), g);
         }
-        obj
+        t
     }
 
     #[tracing::instrument(skip(self))]
-    fn advance(&mut self, obj: &Src) {
-        for img in obj.traverse_ref(self.optics.clone()) {
+    fn advance(&mut self, t: &Src) {
+        for img in t.traverse_ref(self.optics.clone()) {
             self.inner_fact.advance(img);
         }
     }
 }
 
 #[test]
-fn test_lens() {
+fn test_lens1() {
     let x = (1u8, (2u8, (3u8, 4u8)));
 
     let mut fact = OpticalFact {
         label: "".into(),
         optics: optics!(_1._1._1),
-        inner_fact: eq_(3),
+        inner_fact: eq(3),
         __phantom: PhantomData::<&((u8, (u8, (u8, u8))), u8)>,
     };
 
     assert_eq!(fact.check(&x).errors().len(), 1);
 
-    fact.inner_fact = eq_(4);
+    fact.inner_fact = eq(4);
     assert!(fact.check(&x).is_ok());
 }

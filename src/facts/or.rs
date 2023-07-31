@@ -1,64 +1,48 @@
 use super::*;
 
 /// Combines two constraints so that either one may be satisfied
-pub fn or<'a, A, T, S, Item>(context: S, a: A, b: T) -> OrFact<'a, A, T, Item>
+pub fn or<'a, T>(a: impl Fact<'a, T>, b: impl Fact<'a, T>) -> impl Fact<'a, T>
 where
-    S: ToString,
-    A: Fact<'a, Item>,
-    T: Fact<'a, Item>,
-    Item: Bounds<'a>,
+    T: Target<'a>,
 {
-    OrFact {
-        context: context.to_string(),
-        a,
-        b,
-        _phantom: PhantomData,
-    }
-}
-
-/// Fact that combines two `Fact`s, returning the OR of the results.
-///
-/// This is created by the `or` function.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OrFact<'a, M1, M2, Item>
-where
-    M1: Fact<'a, Item>,
-    M2: Fact<'a, Item>,
-    Item: ?Sized + Bounds<'a>,
-{
-    context: String,
-    pub(crate) a: M1,
-    pub(crate) b: M2,
-    _phantom: PhantomData<&'a Item>,
-}
-
-impl<'a, P1, P2, T> Fact<'a, T> for OrFact<'a, P1, P2, T>
-where
-    P1: Fact<'a, T> + Fact<'a, T>,
-    P2: Fact<'a, T> + Fact<'a, T>,
-    T: Bounds<'a>,
-{
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
+    lambda("or", (a, b), |g, (a, b), t| {
         use rand::{thread_rng, Rng};
 
-        let a = check_raw(&mut self.a, &obj).is_ok();
-        let b = check_raw(&mut self.b, &obj).is_ok();
-        match (a, b) {
-            (true, _) => Ok(obj),
-            (_, true) => Ok(obj),
+        let a_ok = a.clone().check(&t).is_ok();
+        let b_ok = b.clone().check(&t).is_ok();
+        match (a_ok, b_ok) {
+            (true, _) => Ok(t),
+            (_, true) => Ok(t),
             (false, false) => {
                 g.fail(format!(
-                    "expected either one of the following conditions to be met:
-    condition 1: {:#?}
-    condition 2: {:#?}",
+                    "expected either one of the following conditions to be met: {:?} OR {:?}",
                     a, b
                 ))?;
                 if thread_rng().gen::<bool>() {
-                    self.a.mutate(g, obj)
+                    a.mutate(g, t)
                 } else {
-                    self.b.mutate(g, obj)
+                    b.mutate(g, t)
                 }
             }
         }
-    }
+    })
+}
+
+#[test]
+fn test_or() {
+    observability::test_run().ok();
+    let mut g = utils::random_generator();
+
+    let eq1 = eq(1);
+    let eq2 = eq(2);
+    let either = or(eq1, eq2);
+
+    let ones = vec(either.clone()).build(&mut g);
+    vec(either.clone()).check(&ones).unwrap();
+    assert!(ones.iter().all(|x| *x == 1 || *x == 2));
+
+    assert_eq!(
+        dbg!(either.check(&3)).result().unwrap().unwrap_err().len(),
+        1
+    );
 }

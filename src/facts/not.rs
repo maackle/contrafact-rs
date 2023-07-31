@@ -4,47 +4,36 @@ use super::*;
 // TODO: `not` in particular would really benefit from Facts having accessible
 // labels, since currently you can only get context about why a `not` fact passed,
 // not why it fails.
-pub fn not<'a, F, S, T>(context: S, fact: F) -> NotFact<'a, F, T>
+pub fn not<'a, T>(fact: LambdaUnit<'a, T>) -> LambdaUnit<'a, T>
 where
-    S: ToString,
-    F: Fact<'a, T>,
-    T: Bounds<'a>,
+    T: Target<'a>,
 {
-    NotFact {
-        context: context.to_string(),
-        fact,
-        _phantom: PhantomData,
-    }
+    lambda_unit("not", move |g, t| {
+        let label = format!("not({:?})", fact);
+        let fact = fact.clone();
+        brute(label, move |o| fact.clone().check(o).is_err()).mutate(g, t)
+    })
 }
 
-/// Negates a fact, with no context given
-pub fn not_<'a, F, T>(fact: F) -> NotFact<'a, F, T>
-where
-    F: Fact<'a, T>,
-    T: Bounds<'a>,
-{
-    not("not", fact)
-}
+// /// Negates a fact, with no context given
+// pub fn not<'a, F, T>(fact: F) -> Fact<'a, (), T>
+// where
+//     F: 'a + Fact<'a, T>,
+//     T: Bounds<'a>,
+// {
+//     not("not", fact)
+// }
 
-#[derive(Debug, Clone)]
-pub struct NotFact<'a, F, T>
-where
-    F: Fact<'a, T>,
-    T: Bounds<'a>,
-{
-    context: String,
-    fact: F,
-    _phantom: PhantomData<&'a T>,
-}
+#[test]
+fn test_not() {
+    observability::test_run().ok();
+    let mut g = utils::random_generator();
 
-impl<'a, F, T> Fact<'a, T> for NotFact<'a, F, T>
-where
-    F: Fact<'a, T> + 'a,
-    T: Bounds<'a>,
-{
-    fn mutate(&mut self, g: &mut Generator<'a>, obj: T) -> Mutation<T> {
-        let label = format!("not({})", self.context.clone());
-        let fact = self.fact.clone();
-        brute(label, move |o| fact.clone().check(o).is_err()).mutate(g, obj)
-    }
+    let eq1 = eq(1);
+    let not1 = vec(not(eq1));
+
+    let nums = not1.clone().build(&mut g);
+    not1.clone().check(&nums).unwrap();
+
+    assert!(nums.iter().all(|x| *x != 1));
 }

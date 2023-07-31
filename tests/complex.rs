@@ -116,6 +116,7 @@ struct Rho {
 
 /// Some struct needed to set the values of a Sigma whenever its Alpha changes.
 /// Analogous to Holochain's Keystore (MetaLairClient).
+#[derive(Clone)]
 struct AlphaSigner;
 
 impl AlphaSigner {
@@ -130,11 +131,11 @@ impl AlphaSigner {
 
 #[allow(unused)]
 fn alpha_fact() -> impl Fact<'static, Alpha> {
-    facts![lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
+    facts![lens1("Alpha::id", |a: &mut Alpha| a.id(), id_fact(None))]
 }
 
 fn beta_fact() -> impl Fact<'static, Beta> {
-    facts![lens("Beta::id", |a: &mut Beta| &mut a.id, id_fact(None))]
+    facts![lens1("Beta::id", |a: &mut Beta| &mut a.id, id_fact(None))]
 }
 
 /// Just a pair of an Alpha with optional Beta.
@@ -157,7 +158,7 @@ fn id_fact(id: Option<Id>) -> impl Fact<'static, Id> {
     let le = brute("< u32::MAX", |id: &Id| *id < Id::MAX / 2);
 
     if let Some(id) = id {
-        Either::Left(facts![le, eq("id", id)])
+        Either::Left(facts![le, eq(id)])
     } else {
         Either::Right(facts![le])
     }
@@ -167,13 +168,13 @@ fn id_fact(id: Option<Id>) -> impl Fact<'static, Id> {
 /// - All Ids should match each other. If there is a Beta, its id should match too.
 fn pi_fact(id: Id) -> impl Fact<'static, Pi> {
     let alpha_fact = facts![
-        lens("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
-        // lens("Alpha::data", |a: &mut Alpha| a.data(), eq("data", data)),
+        lens1("Alpha::id", |a: &mut Alpha| a.id(), id_fact(Some(id))),
+        // lens1("Alpha::data", |a: &mut Alpha| a.data(), eq(data)),
     ];
-    let beta_fact = lens("Beta::id", |b: &mut Beta| &mut b.id, id_fact(Some(id)));
+    let beta_fact = lens1("Beta::id", |b: &mut Beta| &mut b.id, id_fact(Some(id)));
     facts![
         pi_beta_match(),
-        lens("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
+        lens1("Pi::alpha", |o: &mut Pi| &mut o.0, alpha_fact),
         prism("Pi::beta", |o: &mut Pi| o.1.as_mut(), beta_fact),
     ]
 }
@@ -184,7 +185,7 @@ fn pi_fact(id: Id) -> impl Fact<'static, Pi> {
 ///     - and, the the Betas of the Alpha and the Omega should match.
 /// - all data must be set as specified
 fn omega_fact(id: Id) -> impl Fact<'static, Omega> {
-    let omega_pi = LensFact::new(
+    let omega_pi = lens2(
         "Omega -> Pi",
         |o| match o {
             Omega::AlphaBeta { alpha, beta, .. } => Pi(alpha, Some(beta)),
@@ -202,13 +203,13 @@ fn omega_fact(id: Id) -> impl Fact<'static, Omega> {
 
     facts![
         omega_pi,
-        lens("Omega::id", |o: &mut Omega| o.id_mut(), id_fact(Some(id))),
+        lens1("Omega::id", |o: &mut Omega| o.id_mut(), id_fact(Some(id))),
     ]
 }
 
 #[allow(unused)]
 fn sigma_fact() -> impl Fact<'static, Sigma> {
-    let id2_fact = LensFact::new(
+    let id2_fact = lens2(
         "Sigma::id is correct",
         |mut s: Sigma| (s.id2, *(s.alpha.id()) * 2),
         |mut s, (_, id2)| {
@@ -217,7 +218,7 @@ fn sigma_fact() -> impl Fact<'static, Sigma> {
         },
         same(),
     );
-    let sig_fact = LensFact::new(
+    let sig_fact = lens2(
         "Sigma::sig is correct",
         |mut s: Sigma| (s.sig, s.alpha.id().to_string()),
         |mut s, (_, sig)| {
@@ -227,7 +228,7 @@ fn sigma_fact() -> impl Fact<'static, Sigma> {
         same(),
     );
     facts![
-        lens("Sigma::id", |o: &mut Sigma| o.alpha.id(), id_fact(None)),
+        lens1("Sigma::id", |o: &mut Sigma| o.alpha.id(), id_fact(None)),
         id2_fact
     ]
 }
@@ -235,7 +236,7 @@ fn sigma_fact() -> impl Fact<'static, Sigma> {
 /// The inner Sigma is correct wrt to signature
 /// XXX: this is a little wonky, probably room for improvement.
 fn rho_fact(id: Id, signer: AlphaSigner) -> impl Fact<'static, Rho> {
-    let rho_pi = LensFact::new(
+    let rho_pi = lens2(
         "Rho -> Pi",
         |rho: Rho| Pi(rho.sigma.alpha, rho.beta),
         move |mut rho, Pi(a, b)| {
@@ -249,7 +250,7 @@ fn rho_fact(id: Id, signer: AlphaSigner) -> impl Fact<'static, Rho> {
     #[cfg(not(feature = "optics"))]
     {
         facts![
-            lens("Rho -> Sigma", |rho: &mut Rho| &mut rho.sigma, sigma_fact()),
+            lens1("Rho -> Sigma", |rho: &mut Rho| &mut rho.sigma, sigma_fact()),
             rho_pi
         ]
     }

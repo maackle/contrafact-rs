@@ -91,6 +91,11 @@ impl Check {
         }
     }
 
+    /// If Failures, return all failures joined together in a single string
+    pub fn result_joined(self) -> ContrafactResult<std::result::Result<(), String>> {
+        self.result().map(|r| r.map_err(|es| es.join(";")))
+    }
+
     /// Create a single-error failure if predicate is false, otherwise pass
     ///
     /// ```
@@ -118,7 +123,8 @@ impl Check {
             Ok(_) => Self::pass(),
             Err(MutationError::Check(err)) => Self::fail(err),
             Err(MutationError::Arbitrary(err)) => Self::Error(err.to_string()),
-            Err(MutationError::Exception(err)) => Self::Error(format!("{:?}", err)),
+            Err(MutationError::Internal(err)) => Self::Error(format!("{:?}", err)),
+            Err(MutationError::User(err)) => Self::Error(format!("{:?}", err)),
         }
     }
 
